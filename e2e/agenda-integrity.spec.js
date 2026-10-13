@@ -95,7 +95,7 @@ for(const width of [390,820,1440]) test(`appointment form has labels and usable 
     const primary=form.getByRole('button',{name:'Agendar',exact:true}); await primary.scrollIntoViewIfNeeded();
     const bounds=await primary.boundingBox(); expect(bounds.height).toBeGreaterThanOrEqual(44); expect(bounds.x+bounds.width).toBeLessThanOrEqual(width);
     const dimensions=await form.evaluate(element=>({width:element.clientWidth,scroll:element.scrollWidth}));expect(dimensions.scroll).toBeLessThanOrEqual(dimensions.width+1);
-    await expect(form.getByLabel('Status *',{exact:true})).toBeDisabled();
+    await expect(form.getByLabel('Status *',{exact:true})).toHaveCount(0);
 });
 
 test('anonymous reads and mismatched mutation actor cannot access the appointment',async()=>{

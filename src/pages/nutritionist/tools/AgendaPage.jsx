@@ -21,6 +21,7 @@ import { civilDateInZone, civilDateToDate, localTimeInZone } from '@/lib/utils/d
 import { agendaReturnContext, readAgendaReturn, appointmentCharge } from '@/lib/agenda/navigation';
 import { calendarDateKey } from '@/lib/agenda/availability';
 import { formatCurrency } from '@/lib/utils';
+import { appointmentMoveDraft } from '@/lib/agenda/schedule-layout';
 
 import { useAgendaController } from '@/hooks/useAgendaController';
 
@@ -32,6 +33,7 @@ export default function AgendaPage() {
     const [calendarAppointment, setCalendarAppointment] = useState(null);
     const [initialAppointmentType, setInitialAppointmentType] = useState('first_appointment');
     const [returnLoading, setReturnLoading] = useState(false);
+    const [initialSlot, setInitialSlot] = useState(null);
     const returnLock = useRef(false);
     const location = useLocation();
     const [searchParams, setSearchParams] = useSearchParams();
@@ -103,7 +105,7 @@ export default function AgendaPage() {
                 return;
             }
             if (!active) return;
-            setInitialAppointmentType('first_appointment');
+            setInitialSlot(null); setInitialAppointmentType('first_appointment');
             setRoutePatient(patient);
             setRoutePatientId(patient?.id || null);
             setEditingAppointment(null);
@@ -127,7 +129,7 @@ export default function AgendaPage() {
                 toast({ title: 'Acompanhamento não disponível', description: 'Confira o vínculo ativo do paciente antes de agendar um retorno.' });
                 return;
             }
-            setRoutePatient(patient); setRoutePatientId(patient.id); setInitialAppointmentType('return');
+            setInitialSlot(null); setRoutePatient(patient); setRoutePatientId(patient.id); setInitialAppointmentType('return');
             const today = civilDateInZone();
             if (calendarDateKey(selectedDate) < today) setSelectedDate(civilDateToDate(today));
             setEditingAppointment(null); setIsFormOpen(true);
@@ -148,11 +150,12 @@ export default function AgendaPage() {
         <div className="min-h-dvh bg-background">
             <div>
                 <AgendaWorkspace controller={controller}
-                    onNew={date => { setInitialAppointmentType('first_appointment'); setRoutePatientId(null); setRoutePatient(null); if (date) setSelectedDate(civilDateToDate(date)); setEditingAppointment(null); setIsFormOpen(true); }}
+                    onNew={(date, time) => { setInitialSlot(date ? { date, time: time || '' } : null); setInitialAppointmentType('first_appointment'); setRoutePatientId(null); setRoutePatient(null); setEditingAppointment(null); setIsFormOpen(true); }}
+                    onMove={(appointment, date, time) => { const draft = appointmentMoveDraft(appointment, date, time); if (!draft) return; setInitialSlot(draft); setEditingAppointment(appointment); setIsFormOpen(true); }}
                     onNotices={setNoticeAppointment} onReturn={openReturn} onCalendar={setCalendarAppointment} returnLoading={returnLoading}
                     onSettings={() => navigate('/nutritionist/profile?tab=agenda', { state: { agendaReturn: agendaReturnContext(user?.id, selectedDate, filterView, controller.periodDate) } })}
                     onExport={() => setExportDialogOpen(true)}
-                    onEdit={appointment => { setEditingAppointment(appointment); setIsFormOpen(true); }}
+                    onEdit={appointment => { setInitialSlot(null); setEditingAppointment(appointment); setIsFormOpen(true); }}
                     onDelete={handleDeleteClick}
                     onRegister={appointment => setAskToRegisterPatient({ isOpen: true, name: appointment.unregistered_patient_name, appointment })}
                     onPatient={appointment => navigate(`/nutritionist/patients/${appointment.patient_id}/hub`)}
@@ -292,6 +295,7 @@ export default function AgendaPage() {
                     preSelectedDate={selectedDate}
                     initialPatientId={routePatientId}
                     initialAppointmentType={initialAppointmentType}
+                    initialSlot={initialSlot}
                     onSave={handleSaveAppointment}
                 />
 

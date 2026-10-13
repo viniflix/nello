@@ -29,6 +29,7 @@ export default function AppointmentDialog({
     preSelectedDate,
     initialPatientId,
     initialAppointmentType = 'first_appointment',
+    initialSlot = null,
     onSave,
     onSearchPatients,
     agendaSettings,
@@ -109,12 +110,12 @@ export default function AppointmentDialog({
             initializeDraft({
                 patient_id: appointment.patient_id || '',
                 unregistered_patient_name: appointment.unregistered_patient_name || '',
-                appointment_time_date: appointmentStart
+                appointment_time_date: initialSlot?.date || (appointmentStart
                     ? civilDateInZone(appointmentStart)
-                    : getTodayIsoDate(),
-                appointment_time_hour: appointmentStart
+                    : getTodayIsoDate()),
+                appointment_time_hour: initialSlot?.time || (appointmentStart
                     ? localTimeInZone(appointmentStart)
-                    : '',
+                    : ''),
                 duration: appointment.duration || 60,
                 appointment_type: appointment.appointment_type || 'first_appointment',
                 status: canonicalAppointmentStatus(appointment.status || 'scheduled'),
@@ -132,8 +133,8 @@ export default function AppointmentDialog({
             initializeDraft({
                 patient_id: initialPatient?.id || '',
                 unregistered_patient_name: '',
-                appointment_time_date: preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate(),
-                appointment_time_hour: '',
+                appointment_time_date: initialSlot?.date || (preSelectedDate ? calendarDateKey(preSelectedDate) : getTodayIsoDate()),
+                appointment_time_hour: initialSlot?.time || '',
                 duration: Number(agendaSettings?.slotDuration) >= 1 && Number(agendaSettings?.slotDuration) <= 480 ? Number(agendaSettings.slotDuration) : 60,
                 appointment_type: initialAppointmentType,
                 status: 'scheduled',
@@ -144,7 +145,7 @@ export default function AppointmentDialog({
                 custom_description: ''
             }, initialPatient?.name || '');
         }
-    }, [appointment, open, preSelectedDate, patients, initialPatientId, initialAppointmentType, nutritionistId, agendaSettings]);
+    }, [appointment, open, preSelectedDate, patients, initialPatientId, initialAppointmentType, initialSlot, nutritionistId, agendaSettings]);
 
     // Restaurar pointer-events ao fechar (evita página travada quando Popover modal está dentro de Dialog)
     useEffect(() => {
@@ -248,6 +249,7 @@ export default function AppointmentDialog({
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-4" aria-busy={saving}>
                     <fieldset disabled={saving || readOnly} className="space-y-4 min-w-0">
+                    {initialSlot?.originalTime && <div role="status" className="agenda-move-preview"><strong>Confira o reagendamento</strong><p>Anterior: {civilDateInZone(initialSlot.originalTime).split('-').reverse().join('/')} às {localTimeInZone(initialSlot.originalTime)}.</p><p>A nova data e hora abaixo são um rascunho. A consulta e a cobrança só serão atualizadas após salvar.</p></div>}
                     {identityLocked ? <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs text-muted-foreground">Paciente</p><p className="mt-1 break-words text-sm font-semibold">{patientSearchTerm}</p></div> : <AgendaPatientPicker value={patientSearchTerm} selectedId={formData.patient_id} disabled={saving || readOnly}
                         patients={patients} onSearch={onSearchPatients}
                         onChange={(name, id) => { setPatientSearchTerm(name); setFormData(previous => ({ ...previous, patient_id: appointment ? '' : id, unregistered_patient_name: id ? '' : name })); }} />}
@@ -255,7 +257,7 @@ export default function AppointmentDialog({
                     {referenceErrors.patients && <p role="alert" className="text-xs text-destructive">Não foi possível carregar os pacientes. A busca pode ser tentada novamente; nenhum vínculo será escolhido automaticamente.</p>}
 
                     {/* Date and Time */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="agenda-form-pair grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <Label htmlFor="date">Data *</Label>
                             <DateInputWithCalendar
@@ -277,7 +279,7 @@ export default function AppointmentDialog({
                     </div>
 
                     {/* Duration and Type */}
-                    <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    <div className="agenda-form-pair grid grid-cols-1 gap-4 sm:grid-cols-2">
                         <div>
                             <Label htmlFor="duration">Duração *</Label>
                             <Select
@@ -324,8 +326,8 @@ export default function AppointmentDialog({
                         appointmentId={appointment?.id} onChoose={time => { setFormData(previous => ({ ...previous, appointment_time_hour: time })); setOutsideConfirmed(false); }} />}
                     {outsideSchedule && !readOnly && <div className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900"><p>Este horário ou duração está fora da jornada configurada.</p><Label htmlFor="agenda-outside-hours" className="mt-2 flex min-h-11 items-center gap-2"><Checkbox id="agenda-outside-hours" checked={outsideConfirmed} onCheckedChange={checked => setOutsideConfirmed(checked === true)} />Agendar fora da jornada neste atendimento</Label></div>}
 
-                    {/* Status */}
-                    <div>
+                    {/* A new reservation always starts scheduled; no disabled decision field. */}
+                    {appointment && <div>
                         <Label htmlFor="status">Status *</Label>
                         <Select
                             name="status"
@@ -345,7 +347,7 @@ export default function AppointmentDialog({
                                 ))}
                             </SelectContent>
                         </Select>
-                    </div>
+                    </div>}
 
                     {appointment && <section className="rounded-xl bg-muted/50 p-3 text-sm" aria-label="Cobrança vinculada">
                         <p className="font-medium">{charge ? 'Cobrança vinculada' : 'Sem cobrança vinculada'}</p>
