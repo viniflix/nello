@@ -1,4 +1,4 @@
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 import AgendaCalendarNavigator from './AgendaCalendarNavigator';
 
@@ -6,7 +6,7 @@ describe('visible calendar preserves civil dates and explicit status information
   it('keeps the confirmed signals, caption and focused day unchanged during refresh', () => {
     const props = { month: new Date(2034,9,1), onMonthChange: vi.fn(), onSelect: vi.fn(), hasSnapshot: true, appointments: [{ appointment_time:'2034-10-19T01:30:00Z',status:'confirmed' }] };
     const view = render(<AgendaCalendarNavigator {...props} />);
-    const day = screen.getByText(/1 registros: Confirmada/).closest('button'); day.focus();
+    const day = screen.getByText(/1 registros: Confirmada/).closest('button'); act(() => day.focus());
     const caption = screen.getByText(/Selecione um dia/);
     view.rerender(<AgendaCalendarNavigator {...props} loading />);
     expect(screen.getByText(/1 registros: Confirmada/).closest('button')).toBe(day);
