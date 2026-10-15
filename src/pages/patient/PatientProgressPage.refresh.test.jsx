@@ -12,7 +12,7 @@ describe('Patient progress source independence', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.read.mockImplementation(async table => ({ data: table === 'growth_records' ? [{ id: 'synthetic-weight', weight: 70, record_date: '2026-10-13' }] : [], error: null })); mocks.photos.mockResolvedValue({ data: [] }); mocks.foundation.mockResolvedValue({ data: { records: [] } }); });
   it('keeps a confirmed history while refreshing instead of re-entering initial loading', async () => {
     const { result } = renderHook(() => usePatientProgressPageController()); await waitFor(() => expect(result.current.loading).toBe(false));
-    mocks.read.mockReturnValue(new Promise(() => {})); act(() => { void result.current.loadProgressData(); });
+    mocks.read.mockReturnValue(new Promise(() => {})); await act(async () => { void result.current.loadProgressData(); });
     expect(result.current.loading).toBe(false); expect(result.current.sortedWeightData).toHaveLength(1);
   });
   it('keeps a successful weight section when another history source fails', async () => {

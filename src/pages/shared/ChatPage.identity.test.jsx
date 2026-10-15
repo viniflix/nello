@@ -1,4 +1,4 @@
-import {act,fireEvent,render,screen} from '@testing-library/react';
+import {act,fireEvent,render,screen,waitFor} from '@testing-library/react';
 import {MemoryRouter} from 'react-router-dom';
 import {afterEach,expect,it,vi} from 'vitest';
 import ChatPage from './ChatPage';
@@ -19,5 +19,5 @@ it('stops a microphone stream granted after its owner was unmounted',async()=>{
 it('removes denied recipient metadata after an access event instead of keeping the old private header',async()=>{
  state.denied=false;render(<MemoryRouter><ChatPage propRecipientId="synthetic-peer"/></MemoryRouter>);await screen.findByText('Pessoa fictícia');
  state.denied=true;act(()=>invalidateDomain('synthetic-a','access'));
- await vi.waitFor(()=>expect(screen.queryByText('Pessoa fictícia')).not.toBeInTheDocument());
+ await waitFor(()=>expect(screen.queryByText('Pessoa fictícia')).not.toBeInTheDocument());
 });

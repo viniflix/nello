@@ -13,7 +13,7 @@ describe('Anthropometry confirmed resources', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.records.mockResolvedValue({ data: [{ id: 'synthetic-record', record_date: '2026-10-13', weight: 70, height: 170 }] }); mocks.charts.mockResolvedValue({ data: [] }); });
   it('keeps history and avoids initial loading during refresh', async () => {
     const { result } = renderHook(() => useAnthropometryController(props)); await waitFor(() => expect(result.current.loading).toBe(false));
-    mocks.records.mockReturnValue(new Promise(() => {})); act(() => { void result.current.loadData(); });
+    mocks.records.mockReturnValue(new Promise(() => {})); await act(async () => { void result.current.loadData(); });
     expect(result.current.loading).toBe(false); expect(result.current.records).toHaveLength(1);
   });
   it('keeps a healthy history when charts fail on initial load', async () => {
@@ -27,7 +27,7 @@ describe('Anthropometry confirmed resources', () => {
     await waitFor(() => expect(result.current.records).toHaveLength(1));
     expect(result.current.loading).toBe(false);
     mocks.records.mockResolvedValue({ error: { status: 403 } });
-    act(() => { void result.current.loadData(); });
+    await act(async () => { void result.current.loadData(); });
     await waitFor(() => expect(result.current.resources.records.error?.kind).toBe('forbidden'));
     expect(result.current.records).toEqual([]); expect(result.current.latestRecord).toBeNull();
   });
