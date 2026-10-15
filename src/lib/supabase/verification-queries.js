@@ -1,9 +1,11 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
-export async function getMyProfessionalVerification() {
+export async function getMyProfessionalVerification(readOptions = {}) {
   try {
-    const { data, error } = await supabase.rpc('get_my_professional_verification');
+    const { data, error } = await readRequest(() => supabase.rpc('get_my_professional_verification'), {signal:readOptions?.signal,policy:readPolicies.clinical});
     if (error) throw error;
     return { data: data || { status: 'not_submitted', has_clinical_capacity: false }, error: null };
   } catch (error) {

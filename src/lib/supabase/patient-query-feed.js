@@ -1,3 +1,6 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
+import { registerPrivateSessionCleanup } from '@/lib/utils/privateSessionState';
 import { idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 
 import { communicationClient as supabase } from '@/infrastructure/supabase/domainClients';
@@ -258,14 +261,14 @@ export const getFeedTaskAuditTrail = async ({
     sourceType,
     sourceId,
     limit = 10
-}) => {
+}, readOptions = {}) => {
     try {
         const identity = buildFeedTaskIdentity({ nutritionistId, sourceType, sourceId });
-        const { data: existingRows, error } = await supabase
+        const { data: existingRows, error } = await readRequest(() => supabase
             .from('feed_tasks')
             .select('id, status, snooze_until, updated_at, metadata')
             .match(identity)
-            .order('updated_at', { ascending: false });
+            .order('updated_at', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
             
         const data = existingRows?.[0];
 
@@ -287,9 +290,10 @@ export const clearActivityFeedCache = () => {
     activityFeedCacheEpoch += 1;
     activityFeedCache = { key: null, data: null, ts: 0 };
 };
+registerPrivateSessionCleanup(clearActivityFeedCache);
 export let activityFeedCache = { key: null, data: null, ts: 0 };
 
-export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) => {
+export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20, readOptions = {}) => {
     const epoch = activityFeedCacheEpoch;
     const cacheKey = `${nutritionistId}:${limit}`;
     if (activityFeedCache.key === cacheKey && (Date.now() - activityFeedCache.ts) < ACTIVITY_FEED_CACHE_TTL_MS) {
@@ -308,10 +312,10 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20) =
 
         // Buscar avatares e slugs dos pacientes (cache-friendly)
         const patientIds = [...new Set(data?.map(a => a.patient_id) || [])];
-        const { data: patientsData } = await supabase
+        const { data: patientsData } = await readRequest(() => supabase
             .from('user_profiles')
             .select('id, avatar_url, slug')
-            .in('id', patientIds);
+            .in('id', patientIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         const avatarMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.avatar_url]));
         const slugMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.slug]).filter(([, s]) => s));

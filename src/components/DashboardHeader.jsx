@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
@@ -201,7 +202,7 @@ const getNotificationMeta = (notification) => {
 const DashboardHeader = ({ user, logout }) => {
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const { notifications, senderProfiles, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
+  const { resource, countResource, refresh, notifications, senderProfiles, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
   const { totalUnreadMessages } = useChat();
   if (!user) return null;
   const initials = (user?.profile?.name || 'U').substring(0, 2).toUpperCase();
@@ -427,7 +428,9 @@ const DashboardHeader = ({ user, logout }) => {
                   </div>
 
                   <div className="max-h-80 overflow-y-auto p-2">
-                    {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
+                    <ResourceStatus resource={resource} label="notificações" onRetry={refresh} />
+<ResourceStatus resource={countResource} label="contagem de notificações" onRetry={refresh} />
+{notificationsError && !resource?.hasSnapshot ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
                       <p className="px-2 py-6 text-center text-sm text-muted-foreground">Carregando...</p>
                     ) : notifications.length > 0 ? (
                       notifications.map((notification) => {

@@ -1,4 +1,5 @@
 import { executeDomainOperation as executeOperation } from '@/infrastructure/supabase/versionedOperations';
+import { registerPrivateSessionCleanup } from '@/lib/utils/privateSessionState';
 import { isConfirmedAnamnesis } from '@/domain/clinical/status';
 import { identityClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { track, Events } from '@/infrastructure/analytics/posthog';
@@ -14,6 +15,7 @@ function canonical(value) {
   return value;
 }
 export function clearMutationIntents() { intents.clear();preparing.clear();generation += 1; }
+registerPrivateSessionCleanup(clearMutationIntents);
 supabase.auth?.onAuthStateChange?.((event,session)=>{
   const nextActor = session?.user?.id;
   if (event === 'SIGNED_OUT' || (observedActor !== undefined && observedActor !== nextActor)

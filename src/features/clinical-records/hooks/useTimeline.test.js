@@ -23,6 +23,7 @@ describe('useTimeline', () => {
     await options.queryFn({ pageParam: { occurredAt: '2026-01-01', eventId: 'event-1' } });
     expect(mocks.listPatientTimeline).toHaveBeenCalledWith(
       'patient-1', 'episode-1', 'operational', { occurredAt: '2026-01-01', eventId: 'event-1' }, 30,
+      { signal: expect.any(AbortSignal) },
     );
   });
 

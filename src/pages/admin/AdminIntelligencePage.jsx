@@ -16,7 +16,7 @@ export default function AdminIntelligencePage(){
  const kind=Object.hasOwn(RECORDS,view)?view:'decision';
  const page=Math.max(1,Math.min(10000,Math.trunc(Number(params.get('page')))||1));const setPage=next=>setParams({view,page:String(typeof next==='function'?next(page):next)});
  const [editing,setEditing]=useState(null),[history,setHistory]=useState(null),[feedback,setFeedback]=useState('');
- const query=useAdminSource(['intelligence',kind,page],()=>intelligenceOverview(kind,page));const data=query.data;
+ const query=useAdminSource(['intelligence',kind,page],options=>intelligenceOverview(kind,page,options));const data=query.data;
  function navigate(next){setEditing(null);setHistory(null);setFeedback('');setParams({view:next});}
  async function saved(){setEditing(null);setFeedback('Registro confirmado no servidor.');if(page!==1)setPage(1);else await query.refetch();}
  return <div className="min-w-0 space-y-6 ph-no-capture [&_h3]:tracking-normal [&_h3]:leading-snug [&_h3]:[word-spacing:.08em] max-sm:[&_button]:h-auto max-sm:[&_button]:min-h-11 max-sm:[&_button]:max-w-full max-sm:[&_button]:whitespace-normal" data-ph-no-capture>

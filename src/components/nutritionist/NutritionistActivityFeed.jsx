@@ -3,6 +3,7 @@ import { scopeFeedItems, scopeFeedStates, feedItemKey, canRetryFeedFailure } fro
 import { retryFeedTaskSync, clearActivityFeedCache } from '@/lib/supabase/patient-query-feed';
 import { civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
+import { failurePresentation } from '@/lib/utils/failure';
 import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -151,13 +152,21 @@ const toneByType = {
 
 const NutritionistActivityFeed = () => {
     const { user } = useAuth();
+    return <NutritionistActivityFeedContent key={user?.id || 'signed-out'} />;
+};
+
+const NutritionistActivityFeedContent = () => {
+    const { user } = useAuth();
+    const userId = user?.id;
     const navigate = useNavigate();
     const { toast } = useToast();
     const [loading, setLoading] = useState(true);
     const [feedItems, setFeedItems] = useState([]);
+    const [hasSnapshot, setHasSnapshot] = useState(false);
     const [loadError, setLoadError] = useState(false);
     const [failedSyncItems, setFailedSyncItems] = useState([]);
     const loadGeneration = useRef(0);
+    const feedSnapshot = useRef([]);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
     const [patientSearch, setPatientSearch] = useState('');
@@ -170,7 +179,7 @@ const NutritionistActivityFeed = () => {
     const [refreshing, setRefreshing] = useState(false);
 
     const fetchFeed = useCallback(async () => {
-            if (!user?.id) return;
+            if (!userId) return;
             const generation = ++loadGeneration.current;
             const started = performance.now();
             setLoading(true);
@@ -179,19 +188,19 @@ const NutritionistActivityFeed = () => {
             try {
                 const today = new Date();
                 const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes, priorityRulesRes, feedStateRes] = await Promise.all([
-                    getComprehensiveActivityFeed(user.id, 40),
-                    getPatientsWithLowAdherence(user.id),
-                    getPatientsPendingData(user.id),
+                    getComprehensiveActivityFeed(userId, 40),
+                    getPatientsWithLowAdherence(userId),
+                    getPatientsPendingData(userId),
                     supabase
                         .from('appointments')
                         .select('id, start_time, patient_id, care_episode_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
-                        .eq('nutritionist_id', user.id)
+                        .eq('nutritionist_id', userId)
                         .gte('start_time', today.toISOString())
                         .order('start_time', { ascending: true })
                         .limit(5),
-                    getNutritionistPatientsForFeed(user.id),
-                    getFeedPriorityRules(user.id),
-                    getFeedTaskStates(user.id)
+                    getNutritionistPatientsForFeed(userId),
+                    getFeedPriorityRules(userId),
+                    getFeedTaskStates(userId)
                 ]);
 
                 if (activitiesRes.error) throw activitiesRes.error;
@@ -210,12 +219,12 @@ const NutritionistActivityFeed = () => {
 
                 const [highRiskRes, paymentsRes] = await Promise.all([
                     patientIds.length ? getPatientsHighRiskLabAlerts({
-                        nutritionistId: user.id,
+                        nutritionistId: userId,
                         careEpisodeIds: patients.map(patient=>patient.care_episode_id),
                         patientIds,
                         daysWindow: 120
                     }) : Promise.resolve({ data: [], error: null }),
-                    getPendingPayments(user.id).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
+                    getPendingPayments(userId).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
                 ]);
                 const labRiskAlerts = highRiskRes.error ? [] : highRiskRes.data || [];
                 const pendingPayments = paymentsRes.data || [];
@@ -351,7 +360,7 @@ const NutritionistActivityFeed = () => {
                 if (generation !== loadGeneration.current) return;
 
                 const scopedStates = scopeFeedStates(feedStateRes?.data || [], patients);
-                const syncRes = await syncFeedTasksFromItems(user.id, allItems, scopedStates);
+                const syncRes = await syncFeedTasksFromItems(userId, allItems, scopedStates);
                 if (generation !== loadGeneration.current || syncRes.skipped) return;
                 setFailedSyncItems(syncRes.failedItems || (syncRes.error ? allItems : []));
                 if (syncRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:342', '[Feed] Erro sync:', syncRes.error);
@@ -395,33 +404,48 @@ const NutritionistActivityFeed = () => {
                     return bTime - aTime;
                 });
 
+                const previousFeed = feedSnapshot.current;
                 setFeedItems(sorted);
-                setSelectedItemIds([]);setExpandedAuditItemId(null);setAuditTrailByKey({});
+                setHasSnapshot(true);
+                setSelectedItemIds(previous => previous.filter(id => sorted.some(item => item.id === id
+                    && previousFeed.find(old => old.id === id)?.careEpisodeId === item.careEpisodeId)));
+                setExpandedAuditItemId(previous => sorted.some(item => item.id === previous
+                    && previousFeed.find(old => old.id === previous)?.careEpisodeId === item.careEpisodeId) ? previous : null);
+                setAuditTrailByKey({});
+                feedSnapshot.current = sorted;
                 track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_feed', duration_ms: Math.round(performance.now() - started), result_count: sorted.length });
             } catch (error) {
                 if (generation !== loadGeneration.current) return;
                 logDiagnostic('error', 'components/nutritionist/NutritionistActivityFeed.jsx:384', 'Erro ao carregar feed:', error?.code || 'unknown');
+                if (['unauthenticated', 'forbidden'].includes(failurePresentation(error).kind)) {
+                    setHasSnapshot(false); setFeedItems([]); feedSnapshot.current = [];
+                    setSelectedItemIds([]); setAuditTrailByKey({}); setExpandedAuditItemId(null); setFailedSyncItems([]);
+                }
                 setLoadError(true);
             } finally {
                 if (generation !== loadGeneration.current) return;
                 setLoading(false);
                 setRefreshing(false);
             }
-    }, [user]);
+    }, [userId]);
 
     useEffect(() => {
-        setFailedSyncItems([]);setFeedItems([]);setSelectedItemIds([]);setAuditTrailByKey({});
-        if (user?.id) fetchFeed();
+        setHasSnapshot(false);setFailedSyncItems([]);setFeedItems([]);setSelectedItemIds([]);setAuditTrailByKey({});
+        if (userId) fetchFeed();
         return () => {loadGeneration.current += 1;};
-    }, [user?.id, fetchFeed]);
+    }, [userId, fetchFeed]);
 
     useEffect(() => {
-        if (!user?.id) return;
+        if (!userId) return;
         const refreshScope = () => {
             clearActivityFeedCache();
             fetchFeed();
         };
-        const unsubscribe = subscribeDomain(user.id, 'access', refreshScope);
+        const unsubscribe = subscribeDomain(userId, 'access', () => {
+            setHasSnapshot(false); setFeedItems([]); feedSnapshot.current = [];
+            setSelectedItemIds([]); setAuditTrailByKey({}); setExpandedAuditItemId(null); setFailedSyncItems([]);
+            refreshScope();
+        });
         window.addEventListener('online', refreshScope);
         window.addEventListener('focus', refreshScope);
         return () => {
@@ -429,16 +453,16 @@ const NutritionistActivityFeed = () => {
             window.removeEventListener('online', refreshScope);
             window.removeEventListener('focus', refreshScope);
         };
-    }, [user?.id, fetchFeed]);
+    }, [userId, fetchFeed]);
 
     const handleRetrySync = async () => {
-        if (!user?.id || refreshing) return;
+        if (!userId || refreshing || loading || loadError) return;
         const generation = ++loadGeneration.current;
         setRefreshing(true);
         try {
             const retryable = failedSyncItems.filter(item=>canRetryFeedFailure(item.failureCode));
             const blocked = failedSyncItems.filter(item=>!canRetryFeedFailure(item.failureCode));
-            const result = await retryFeedTaskSync(user.id, retryable);
+            const result = await retryFeedTaskSync(userId, retryable);
             if (generation !== loadGeneration.current || result.skipped) return;
             setFailedSyncItems([...blocked, ...(result.failedItems || (result.error ? retryable : []))]);
             const discarded = new Set([...(result.discardedKeys || []), ...(result.outcomes || [])
@@ -518,7 +542,7 @@ const NutritionistActivityFeed = () => {
     }, [feedItems]);
 
     const buildTaskInputFromItem = (item) => ({
-        nutritionistId: user?.id,
+        nutritionistId: userId,
         patientId: item?.patientId || null,
         sourceType: item?.sourceType || item?.type || 'activity',
         sourceId: item?.sourceId || item?.id,
@@ -542,7 +566,7 @@ const NutritionistActivityFeed = () => {
     );
 
     const handleResolveSelected = async () => {
-        if (!selectedItems.length || !user?.id) return;
+        if (!selectedItems.length || !userId || loading || loadError) return;
         setBulkActionLoading(true);
         try {
             const payload = selectedItems.map((i) => buildTaskInputFromItem(i));
@@ -565,7 +589,7 @@ const NutritionistActivityFeed = () => {
     };
 
     const handleResolveInline = async (item) => {
-        if (!user?.id) return;
+        if (!userId || loading || loadError) return;
         setActionLoadingId(item.id);
         try {
             const { data, error, skipped, obsolete } = await resolveFeedTask(buildTaskInputFromItem(item));
@@ -583,7 +607,7 @@ const NutritionistActivityFeed = () => {
     const buildAuditKey = (item) => `${item?.sourceType || 'activity'}:${item?.sourceId || item?.id}`;
 
     const handleToggleAudit = async (item) => {
-        if (!user?.id) return;
+        if (!userId) return;
         const key = buildAuditKey(item);
         if (expandedAuditItemId === item.id) {
             setExpandedAuditItemId(null);
@@ -594,7 +618,7 @@ const NutritionistActivityFeed = () => {
         setAuditLoadingItemId(item.id);
         try {
             const { data, error } = await getFeedTaskAuditTrail({
-                nutritionistId: user.id,
+                nutritionistId: userId,
                 sourceType: item.sourceType,
                 sourceId: item.sourceId,
                 limit: 6
@@ -622,7 +646,7 @@ const NutritionistActivityFeed = () => {
         return map[action] || 'Atualizado';
     };
 
-    if (loading) {
+    if (loading && !hasSnapshot) {
         return (
             <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
                 <CardHeader>
@@ -636,16 +660,21 @@ const NutritionistActivityFeed = () => {
         );
     }
 
-    if (loadError) {
+    if (loadError && !hasSnapshot) {
         return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><p role="alert" className="text-sm text-destructive">Não foi possível carregar o feed.</p><Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button></CardContent></Card>;
     }
 
     return (
-        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+        <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden" aria-busy={loading || undefined}>
+            {loading && <p role="status" aria-live="polite" className="mx-6 mt-4 text-sm text-muted-foreground">Atualizando feed…</p>}
+            {loadError && <div role="alert" className="mx-6 mt-4 text-sm text-destructive">
+                Não foi possível atualizar o feed. A última consulta confirmada continua visível.
+                <Button variant="link" onClick={handleRefresh}>Tentar novamente</Button>
+            </div>}
             {failedSyncItems.length > 0 && <div role="alert" className="mx-6 mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-stone-800">
                 {failedSyncItems.length} alterações do feed não foram salvas. Isso não indica perda de dados clínicos.
                 {failedSyncItems.some(item=>!canRetryFeedFailure(item.failureCode)) && <p className="mt-2">Algumas alterações foram recusadas pelo servidor. Atualize o feed; se o aviso continuar, contate o suporte.</p>}
-                {failedSyncItems.some(item=>canRetryFeedFailure(item.failureCode)) && <Button variant="link" onClick={handleRetrySync} disabled={refreshing}>
+                {failedSyncItems.some(item=>canRetryFeedFailure(item.failureCode)) && <Button variant="link" onClick={handleRetrySync} disabled={refreshing || loading || loadError}>
                     {refreshing ? 'Salvando alterações…' : 'Tentar salvar novamente'}
                 </Button>}
             </div>}
@@ -769,7 +798,7 @@ const NutritionistActivityFeed = () => {
                 {selectMode && selectedItems.length > 0 && (
                     <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 p-2 mt-2">
                         <span className="text-xs font-medium">{selectedItems.length} selecionado(s)</span>
-                        <Button size="sm" variant="default" className="h-7 text-xs" disabled={bulkActionLoading} onClick={handleResolveSelected}>
+                        <Button size="sm" variant="default" className="h-7 text-xs" disabled={bulkActionLoading || loading || loadError} onClick={handleResolveSelected}>
                             {bulkActionLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
                             Marcar como resolvido
                         </Button>
@@ -896,7 +925,7 @@ const NutritionistActivityFeed = () => {
                                                 )}
                                                 <DropdownMenuItem
                                                     onClick={() => handleResolveInline(item)}
-                                                    disabled={actionLoadingId === item.id || bulkActionLoading}
+                                                    disabled={actionLoadingId === item.id || bulkActionLoading || loading || loadError}
                                                 >
                                                     {actionLoadingId === item.id ? (
                                                         <Loader2 className="h-3.5 w-3.5 mr-2 animate-spin" />

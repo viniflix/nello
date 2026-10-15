@@ -90,10 +90,10 @@ describe('usePatientHub clinical record foundation', () => {
     expect(result.current.canWriteEpisode).toBe(true);
     expect(result.current.legalGuardians).toEqual([{ id: 'guardian-1', status: 'active' }]);
     expect(result.current.profileRequirements).toEqual([]);
-    expect(mocks.getPatientSummary).toHaveBeenCalledWith('patient-1', 'nutritionist-1');
-    expect(mocks.getPatientRecordFoundation).toHaveBeenCalledWith('patient-1');
-    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
-    expect(mocks.getPatientHubOperationalContext).toHaveBeenCalledWith('patient-1', 'nutritionist-1', 'episode-1');
+    expect(mocks.getPatientSummary).toHaveBeenCalledWith('patient-1', 'nutritionist-1', expect.objectContaining({signal:expect.any(AbortSignal)}));
+    expect(mocks.getPatientRecordFoundation).toHaveBeenCalledWith('patient-1', expect.objectContaining({signal:expect.any(AbortSignal)}));
+    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1', expect.objectContaining({signal:expect.any(AbortSignal)}));
+    expect(mocks.getPatientHubOperationalContext).toHaveBeenCalledWith('patient-1', 'nutritionist-1', 'episode-1', expect.objectContaining({signal:expect.any(AbortSignal)}));
   });
 
   it('publishes separate viewed and writable episode contracts without inventing a foundation shape', async () => {
@@ -106,7 +106,7 @@ describe('usePatientHub clinical record foundation', () => {
     expect(result.current.viewedEpisodeId).toBe('episode-ended');
     expect(result.current.writableEpisodeId).toBeNull();
     expect(result.current.canWriteEpisode).toBe(false);
-    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-ended');
+    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-ended', expect.objectContaining({signal:expect.any(AbortSignal)}));
   });
 
   it('preserves summary fallbacks and empty states when foundation fails', async () => {
@@ -118,7 +118,7 @@ describe('usePatientHub clinical record foundation', () => {
     expect(result.current.patientData.name).toBe('Ana');
     expect(result.current.foundation).toBeNull();
     expect(result.current.legalGuardians).toEqual([{ id: 'guardian-1', status: 'active' }]);
-    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1');
+    expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-1', 'episode-1', expect.objectContaining({signal:expect.any(AbortSignal)}));
   });
 
   it('surfaces summary errors and clears clinical state', async () => {
@@ -216,7 +216,7 @@ describe('usePatientHub clinical record foundation', () => {
     const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(),
       initialProps: { patientId: 'patient-a' },
     });
-    await waitFor(() => expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-a', 'episode-a'));
+    await waitFor(() => expect(mocks.listPatientLegalGuardians).toHaveBeenCalledWith('patient-a', 'episode-a', expect.objectContaining({signal:expect.any(AbortSignal)})));
     rerender({ patientId: 'patient-b' });
     await waitFor(() => expect(result.current.legalGuardians).toEqual([{ id: 'guardian-b', status: 'active' }]));
     await act(async () => {
@@ -286,7 +286,7 @@ describe('usePatientHub clinical record foundation', () => {
       .mockReturnValueOnce(activitiesA.promise)
       .mockResolvedValueOnce({ data: [{ id: 'activity-b' }], error: null });
     const { result, rerender } = renderHook(({ patientId }) => usePatientHub(patientId), { wrapper: createWrapper(), initialProps: { patientId: 'a' } });
-    await waitFor(() => expect(mocks.getPatientActivities).toHaveBeenCalledWith('a', 100));
+    await waitFor(() => expect(mocks.getPatientActivities).toHaveBeenCalledWith('a', 100, expect.objectContaining({signal:expect.any(AbortSignal)})));
     rerender({ patientId: 'b' });
     await waitFor(() => expect(result.current.activities).toEqual([{ id: 'activity-b' }]));
     await act(async () => {

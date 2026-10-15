@@ -1,3 +1,4 @@
+import {queryRead} from '@/lib/utils/readPolicy';
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
@@ -26,23 +27,23 @@ export default function TabContentNutrition({ patientId, patientData, operationa
         queryKey: ['hub-nutrition-plan', user?.id, patientId],
         enabled: Boolean(user?.id && patientId && !operationalContext),
         staleTime: 60000,
-        queryFn: async () => {
-            const result = await getActiveMealPlan(patientId);
+        queryFn: queryRead(async ({signal}) => {
+            const result = await getActiveMealPlan(patientId,{signal:signal});
             if (result.error) throw result.error;
             return result.data;
-        },
+        }),
     });
     const diaryQuery = useQuery({
         queryKey: ['hub-nutrition-diary', user?.id, patientId, today],
         enabled: Boolean(user?.id && patientId),
         staleTime: 60000,
-        queryFn: async () => {
+        queryFn: queryRead(async ({signal}) => {
             const start = format(subDays(parseISO(today), 6), 'yyyy-MM-dd');
             const [adherence, summary] = await Promise.all([
-                calculateDiaryAdherence(patientId, 7), getNutritionalSummary(patientId, start, today),
+                calculateDiaryAdherence(patientId, 7,{signal:signal}), getNutritionalSummary(patientId, start, today,{signal:signal}),
             ]);
             return { adherence, summary };
-        },
+        }),
     });
     const plan = operationalContext ? operationalContext.displayedPlan : planQuery.data;
     const status = operationalContext?.planStatus || (planQuery.isError ? 'unknown' : plan?.is_draft ? 'draft' : plan ? (plan.prescription_status === 'finalized' ? 'active' : 'review') : 'missing');

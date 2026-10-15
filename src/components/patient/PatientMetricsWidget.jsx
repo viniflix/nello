@@ -1,3 +1,5 @@
+import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -16,6 +18,19 @@ import { supabase } from '@/infrastructure/supabase/client';
  */
 export default function PatientMetricsWidget() {
   const { user } = useAuth();
+  return <PatientMetricsWidgetContent key={user?.id || 'signed-out'} />;
+}
+
+function PatientMetricsWidgetContent() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [dataRevision, setDataRevision] = useState(0);
+  const readSource = useCoordinatedSources(JSON.stringify([userId,'patient.metrics']));
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const off = ['clinical', 'access'].map(domain => subscribeDomain(userId, domain, refresh));
+    return () => off.forEach(unsubscribe => unsubscribe());
+  }, [userId]);
   const navigate = useNavigate();
   const [latestWeight, setLatestWeight] = useState(null);
   const [latestGlycemia, setLatestGlycemia] = useState(null);
@@ -23,17 +38,21 @@ export default function PatientMetricsWidget() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const loadMetrics = async () => {
-      if (!user) return;
+      if (!userId) return;
       setLoading(true);
 
       // Buscar últimos 2 registros de peso para calcular tendência
-      const { data: weightData } = await supabase
+      const { data: weightData } = await readSource('0', () => supabase
         .from('growth_records')
         .select('weight, record_date')
-        .eq('patient_id', user.id)
+        .eq('patient_id', userId)
         .order('record_date', { ascending: false })
-        .limit(2);
+        .limit(2));
+      if (cancelled) return;
+      setLatestWeight(null);
+      setWeightTrend(null);
 
       if (weightData && weightData.length > 0) {
         setLatestWeight(weightData[0]);
@@ -59,7 +78,8 @@ export default function PatientMetricsWidget() {
     };
 
     loadMetrics();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [userId, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active, readSource]);
 
   if (loading) {
     return (

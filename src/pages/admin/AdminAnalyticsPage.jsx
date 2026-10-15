@@ -29,9 +29,9 @@ function CapturePanel({query}) {
 
 export default function AdminAnalyticsPage() {
  const [days,setDays]=useState(30);
- const query=useAdminSource(`product-metrics:${days}`,()=>getAdminProductMetrics(days));
- const captures=useAdminSource(`product-captures:${days}`,async()=>{
-  const result=await getAdminProductCaptures(days);
+ const query=useAdminSource(`product-metrics:${days}`,options=>getAdminProductMetrics(days,options));
+ const captures=useAdminSource(`product-captures:${days}`,async(options)=>{
+  const result=await getAdminProductCaptures(days,options);
   if(result.error)return result;
   try {return {data:validateProductCaptures(result.data,days),error:null};}
   catch(error) {return {data:null,error};}

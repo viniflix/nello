@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -320,15 +322,15 @@ export const getLatestAnthropometryRecord = async (patientId) => {
  * @param {string} patientId - ID do paciente
  * @returns {Promise<{data: object, error: object}>}
  */
-export const getAnthropometryStats = async (patientId) => {
+export const getAnthropometryStats = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('growth_records')
             .select('weight, height, record_date')
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .eq('is_latest_revision', true)
-            .order('record_date', { ascending: true });
+            .order('record_date', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
@@ -383,11 +385,11 @@ export const getAnthropometryStats = async (patientId) => {
  * Score longitudinal antropométrico (30/60/90 dias)
  * Requer a função SQL public.get_anthropometry_longitudinal_score
  */
-export const getAnthropometryLongitudinalScore = async (patientId) => {
+export const getAnthropometryLongitudinalScore = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase.rpc('get_anthropometry_longitudinal_score', {
+        const { data, error } = await readRequest(() => supabase.rpc('get_anthropometry_longitudinal_score', {
             p_patient_id: patientId
-        });
+        }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || null, error: null };
@@ -400,13 +402,13 @@ export const getAnthropometryLongitudinalScore = async (patientId) => {
 /**
  * Flags de sincronização entre módulos (GET/plano)
  */
-export const getPatientModuleSyncFlags = async (patientId) => {
+export const getPatientModuleSyncFlags = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('patient_module_sync_flags')
             .select("patient_id,anthropometry_updated_at,needs_energy_recalc,needs_meal_plan_review,updated_at")
             .eq('patient_id', patientId)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || null, error: null };

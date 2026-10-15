@@ -48,7 +48,13 @@ export default function LoginPage() {
   const secondsLeft = Math.max(0, Math.ceil((retryAt - now) / 1000));
   useEffect(() => {
     if (!retryAt) return undefined;
-    const timer = setInterval(() => setNow(Date.now()), 1000);
+    const tick = () => {
+      const current = Date.now();
+      setNow(current);
+      if (current >= retryAt) clearInterval(timer);
+    };
+    const timer = setInterval(tick, 1000);
+    tick();
     return () => clearInterval(timer);
   }, [retryAt]);
 
@@ -194,7 +200,7 @@ export default function LoginPage() {
                   width="158"
                   height="64"
                   className="h-16 w-auto object-contain"
-                  fetchPriority="high"
+                  fetchpriority="high"
                   loading="eager"
                   decoding="async"
                 />

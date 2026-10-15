@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import React, { lazy, Suspense, useEffect, useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
@@ -135,7 +136,7 @@ export default function PatientHubPage() {
     const { isUserOnline } = useOnlinePresence();
 
     const {
-        loading: hubLoading, error: hubError, patientData, latestMetrics, modulesStatus,
+        summaryResource, activitiesResource, partialFailures, loading: hubLoading, error: hubError, patientData, latestMetrics, modulesStatus,
         activities, activitiesLoading, viewedEpisodeId, writableEpisodeId,
         profileRequirements, legalGuardians, operationalContext, adherence, insights,
         refresh, loadActivities,
@@ -179,10 +180,10 @@ export default function PatientHubPage() {
     if (loading) return <HubSkeleton />;
 
     const notFound = (!resolveLoading && !patientId && paramValue) || (patientId && !hubLoading && !patientData);
-    if (error || notFound) {
+    if ((error && !patientData) || notFound) {
         return (
             <div className="flex min-h-dvh flex-col items-center justify-center bg-[#ecebe8] p-4">
-                <Alert variant="destructive" className="mb-6 max-w-md"><AlertCircle className="h-4 w-4" /><AlertDescription>{error?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}</AlertDescription></Alert>
+                <Alert variant="destructive" className="mb-6 max-w-md"><AlertCircle className="h-4 w-4" /><AlertDescription>{summaryResource.error?.message || resolveError?.message || 'Paciente não encontrado ou você não tem permissão para visualizá-lo.'}</AlertDescription></Alert>
                 <Button asChild variant="outline"><Link to="/nutritionist/patients"><ArrowLeft className="mr-2 h-4 w-4" />Voltar aos pacientes</Link></Button>
             </div>
         );
@@ -190,6 +191,10 @@ export default function PatientHubPage() {
 
     return (
         <div className="min-h-dvh overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
+        <ResourceStatus resource={summaryResource} label="resumo" onRetry={refresh} />
+        <ResourceStatus resource={activitiesResource} label="atividades" onRetry={loadActivities} />
+        {Object.keys(partialFailures).length > 0 && <p role="alert" className="text-sm text-destructive">Algumas fontes complementares não foram confirmadas. {Object.keys(partialFailures).map(key => ({foundation:'prontuário',adherence:'diário',operational:'acompanhamento',guardians:'responsáveis'})[key] || 'fonte complementar').join(', ')}. Os dados disponíveis continuam visíveis.</p>}
+
             <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] px-3 py-4 sm:px-6 lg:px-8">
                 <div className="mb-3 flex items-center justify-between gap-2">
                     <Button asChild variant="ghost" size="sm" className="-ml-2 gap-2 text-slate-600"><Link to="/nutritionist/patients"><ArrowLeft className="h-4 w-4" />Pacientes</Link></Button>

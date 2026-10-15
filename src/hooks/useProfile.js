@@ -1,3 +1,6 @@
+import {queryRead} from '@/lib/utils/readPolicy';
+import { readRequest } from '@/lib/supabase/readRequest';
+import { readPolicies, retryableRead } from '@/lib/utils/readPolicy';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase/client';
 
@@ -11,16 +14,14 @@ import { supabase } from '@/infrastructure/supabase/client';
 export function useProfile(userId) {
   return useQuery({
     queryKey: ['profile', userId],
-    queryFn: async () => {
+    queryFn: queryRead(async ({ signal }) => {
       if (!userId) return null;
 
-      const { data: profile, error } = await supabase
+      const { data: profile, error } = await readRequest(() => supabase
         .from('user_profiles')
         .select("id,name,user_type,crn,birth_date,gender,height,weight,goal,nutritionist_id,created_at,patient_category,fiscal_data,preferences,avatar_url,phone,address,specialties,education,bio,is_active,cpf,occupation,civil_status,email,observations,is_admin,clinic_settings,slug,invite_code,patient_invite_code,needs_password_reset,ethnicity,last_seen_at,clinical_flags,is_simulation,simulation_owner_id")
         .eq('id', userId)
-        .single()
-        // TanStack Query owns retries here; nested SDK retries multiply the wait.
-        .retry(false);
+        .single(), { signal, policy: readPolicies.profile, retryWhen: (error, attempt, status) => error.code === 'PGRST116' && ![400,401,403,409,412,429].includes(Number(status)) ? attempt < 5 : attempt < 3 && retryableRead(error, status) });
 
       if (error) {
         if (error.code === 'PGRST116') {
@@ -39,18 +40,12 @@ export function useProfile(userId) {
         user_type: profile?.user_type ?? profile?.role,
         is_admin: profile?.is_admin === true,
       };
-    },
+    }),
     enabled: !!userId,
     // Cache de 30 minutos (staleTime) e garbage collection de 1 hora
     staleTime: 1000 * 60 * 30,
     gcTime: 1000 * 60 * 60,
     // Retentativas amigáveis para lidar com latência de rede ou cold start do banco
-    retry: (failureCount, error) => {
-      if (error.message === 'PROFILE_NOT_FOUND') {
-        return failureCount < 4; // Mais retentativas para perfis novos
-      }
-      return failureCount < 2;
-    },
-    retryDelay: (attempt) => Math.min(attempt * 500, 3000),
+    retry: false, // This read owns the full profile/trigger budget, including backoff.
   });
 }

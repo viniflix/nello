@@ -4,6 +4,9 @@ import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
 import { invalidateDomain, subscribeDomain } from '@/infrastructure/realtime/events';
 import { mergeChatMessages, reconcileChatPage } from '@/infrastructure/realtime/chatMessages';
+import { classifyFailure } from '@/lib/utils/failure';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
 
 const ChatContext = createContext();
 export function useChat() {
@@ -25,6 +28,7 @@ export function ChatProvider({ children }) {
   const conversationEpoch = useRef(0);
   const readThrough = useRef(null);
   const sending = useRef(false);
+  const accessBlocked = useRef(false);
   const conversationRequest = useRef(null);
   const fetchConversations = useCallback(async () => {
     if (!userId) return;
@@ -35,6 +39,7 @@ export function ChatProvider({ children }) {
         const { data, error } = await supabase.rpc('get_nutritionist_conversations', { p_nutritionist_id: userId });
         if (identity.current !== userId || epoch !== conversationEpoch.current) return;
         if (!error) setConversationState({ owner: userId, data: data || [] });
+        else if (['forbidden','unauthenticated'].includes(classifyFailure(error))) setConversationState({owner:userId,data:[]});
       } catch { /* Keep the last confirmed counter until reconciliation succeeds. */ }
       finally { if (conversationRequest.current?.promise === promise) { const dirty = conversationRequest.current.dirty; conversationRequest.current = null; if (dirty && identity.current === userId) void fetchConversations(); } }
     })();
@@ -44,6 +49,7 @@ export function ChatProvider({ children }) {
   const fetchMessages = useCallback(async (fromId, toId, { older = false, refresh = false } = {}) => {
     if (!userId || fromId !== userId || !toId) return;
     const epoch = ++requestEpoch.current;
+    const access = getAccessEpoch(userId), session = getPrivateSessionEpoch();
     const previous = viewRef.current;
     const first = older ? previous.messages[0] : null;
     recipientRef.current = toId;
@@ -54,13 +60,16 @@ export function ChatProvider({ children }) {
         p_recipient: toId, p_before_time: first?.created_at || null,
         p_before_id: first ? String(first.id) : null, p_limit: 50, p_actor: userId,
       });
-      if (identity.current !== userId || epoch !== requestEpoch.current) return;
+      if (identity.current !== userId || epoch !== requestEpoch.current || access !== getAccessEpoch(userId) || session !== getPrivateSessionEpoch()) return;
       if (error) throw error;
       const reconciled = refresh ? reconcileChatPage(previous, data) : { messages: mergeChatMessages(older ? previous.messages : [], data?.messages || []), hasMore: data?.has_more === true };
       setView({ owner: userId, recipient: toId, ...reconciled, loading: false });
-    } catch {
+      accessBlocked.current = false;
+    } catch (error) {
       if (identity.current === userId && epoch === requestEpoch.current) {
-        setView({ owner: userId, recipient: toId, messages: older || refresh ? previous.messages : [], hasMore: (older || refresh) && previous.hasMore, loading: false });
+        const denied = ['forbidden','unauthenticated'].includes(classifyFailure(error));
+        if (denied) accessBlocked.current = true;
+        setView({ owner: userId, recipient: toId, messages: !denied && (older || refresh) ? previous.messages : [], hasMore: !denied && (older || refresh) && previous.hasMore, loading: false });
         setLoadError(true);
       }
     }
@@ -89,7 +98,8 @@ export function ChatProvider({ children }) {
     void fetchConversations();
   }, [userId, fetchConversations]);
   const sendMessage = useCallback(async input => {
-    if (!userId || sending.current || !input?.client_message_id) return null;
+    if (!userId || sending.current || accessBlocked.current || !input?.client_message_id) return null;
+    const access = getAccessEpoch(userId), session = getPrivateSessionEpoch();
     sending.current = true;
     try {
       const { data, error } = await supabase.rpc('send_chat_message', {
@@ -97,7 +107,7 @@ export function ChatProvider({ children }) {
         p_media: input.media_url || null, p_client_id: input.client_message_id, p_actor: userId,
       });
       if (error) throw error;
-      if (identity.current !== userId) return null;
+      if (identity.current !== userId || access !== getAccessEpoch(userId) || session !== getPrivateSessionEpoch()) return null;
       if (recipientRef.current === input.to_id) setView(current => ({ ...current, messages: mergeChatMessages(current.messages, [data]) }));
       invalidateDomain(userId, 'chat');
       return true;
@@ -117,6 +127,8 @@ export function ChatProvider({ children }) {
     const unsubChat = subscribeDomain(userId, 'chat', refresh);
     const unsubNotifications = subscribeDomain(userId, 'notifications', () => { void fetchConversations(); });
     const unsubAccess = subscribeDomain(userId, 'access', () => {
+      accessBlocked.current = true;
+      requestEpoch.current += 1; conversationEpoch.current += 1; conversationRequest.current = null;
       readThrough.current = null;
       setConversationState({ owner: userId, data: [] });
       setView({ owner: userId, recipient: recipientRef.current, messages: [], hasMore: false, loading: false });

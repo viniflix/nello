@@ -1,3 +1,4 @@
+import {TemplateCatalogStatus} from '@/components/meal-plan/TemplateCatalogStatus';
 import React, { useState, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useTemplates } from '@/hooks/useTemplates';
@@ -333,9 +334,10 @@ export default function TemplatesPage() {
   const { toast } = useToast();
 
   // Nutrição hook — só carrega quando no grupo certo
-  const { templates, loading, deleteTemplate } = useTemplates(activeNutritionTab, {
-    enabled: activeGroup === 'nutrition',
+  const catalog = useTemplates(activeNutritionTab, {
+    enabled: activeGroup === 'nutrition', search:searchTerm,
   });
+  const {templates,loading,deleteTemplate}=catalog;
 
   const filteredTemplates = useMemo(
     () => templates.filter(t =>
@@ -442,6 +444,7 @@ export default function TemplatesPage() {
             </div>
           </div>
 
+          <TemplateCatalogStatus catalog={catalog}/>
           {/* Grid de Cards */}
           {loading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">

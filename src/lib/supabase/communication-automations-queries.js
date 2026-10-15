@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { communicationClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
@@ -13,13 +15,13 @@ const defaultAutomationTemplate = {
   config: {}
 };
 
-export const getCommunicationAutomations = async (nutritionistId) => {
+export const getCommunicationAutomations = async (nutritionistId, readOptions = {}) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('communication_automations')
       .select("id,nutritionist_id,automation_key,name,description,trigger_event,channel,template_title,template_body,is_active,cooldown_hours,config,created_at,updated_at")
       .eq('nutritionist_id', nutritionistId)
-      .order('created_at', { ascending: false });
+      .order('created_at', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
     if (error) throw error;
     return { data: data || [], error: null };

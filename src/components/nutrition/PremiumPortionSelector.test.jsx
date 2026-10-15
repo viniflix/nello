@@ -33,3 +33,16 @@ it('keeps a typed portion while retrying failed measures and clears the alert on
  expect(measures.refetch).toHaveBeenCalledOnce();expect(onChange).not.toHaveBeenCalled();expect(ui.getByLabelText('Quantidade')).toHaveValue(2);
  measures.error=null;ui.rerender(<PremiumPortionSelector food={{id:'bread',calories:285.6}} value={quantity} onChange={onChange}/>);expect(ui.queryByRole('alert')).toBeNull();expect(ui.getByLabelText('Quantidade')).toHaveValue(2);
 });
+
+it('keeps confirmed mass and nutrition while a shared catalogue conversion changes',()=>{
+ measures.error=null;measures.customMeasures=[{code:'custom_cup',name:'Cup',grams_equivalent:25}];
+ const value={quantity:2,measureCode:'custom_cup'},onChange=vi.fn(),onNutritionChange=vi.fn();
+ const food={id:'bread',calories:200,protein:10,carbs:20,fat:4,portion_size:100};
+ const ui=render(<PremiumPortionSelector food={food} value={value} onChange={onChange} onNutritionChange={onNutritionChange}/>);
+ expect(ui.getByText('Total: 50g')).toBeInTheDocument();const before=onNutritionChange.mock.calls.at(-1)[0];
+ measures.customMeasures=[{code:'custom_cup',name:'Cup updated',grams_equivalent:50}];
+ ui.rerender(<PremiumPortionSelector food={food} value={value} onChange={onChange} onNutritionChange={onNutritionChange}/>);
+ expect(ui.getByText('Total: 50g')).toBeInTheDocument();expect(onNutritionChange.mock.calls.at(-1)[0]).toEqual(before);
+ expect(ui.getByLabelText('Quantidade')).toHaveValue(2);expect(onChange).not.toHaveBeenCalled();
+ measures.customMeasures=[];
+});

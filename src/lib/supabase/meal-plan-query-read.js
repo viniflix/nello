@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { calculateNutrition as calculateServingNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
@@ -5,7 +7,7 @@ import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 import {fetchAllRows,fetchByIdsInPages,getFoodsMapByIds,FOOD_FIELDS} from './meal-plan-query-model';
-export const getMealPlans = async (patientId, onlyActive = false) => {
+export const getMealPlans = async (patientId, onlyActive = false, {signal} = {}) => {
     try {
         const data = await fetchAllRows((offset, pageSize) => {
             let query = supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
@@ -17,7 +19,7 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
                 .range(offset, offset + pageSize - 1);
             if (onlyActive) query = query.eq('is_active', true);
             return query;
-        });
+        }, 500, {signal});
         return { data, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_buscar_planos_alimentares", error);
@@ -25,14 +27,14 @@ export const getMealPlans = async (patientId, onlyActive = false) => {
     }
 };
 
-export const getMealPlansByIds = async (planIds, existingPlans = null) => {
+export const getMealPlansByIds = async (planIds, existingPlans = null, readOptions = {}) => {
     try {
         if (!planIds.length) return { data: [], error: null };
         let plans = existingPlans;
         if (!plans) {
             plans = [];
             for (let offset = 0; offset < planIds.length; offset += 400) {
-                const { data, error } = await supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason").in('id', planIds.slice(offset, offset + 400));
+                const { data, error } = await readRequest(() => supabase.from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason").in('id', planIds.slice(offset, offset + 400)), {signal:readOptions?.signal,policy:readPolicies.clinical});
                 if (error) throw error;
                 plans.push(...(data || []));
             }
@@ -43,7 +45,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         const meals = await fetchByIdsInPages(planIds, (ids, offset, pageSize) => supabase
             .from('meal_plan_meals').select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,include_in_totals,created_at,updated_at").in('meal_plan_id', ids)
             .order('order_index', { ascending: true }).order('id', { ascending: true })
-            .range(offset, offset + pageSize - 1));
+            .range(offset, offset + pageSize - 1),{signal:readOptions?.signal});
 
         if (!meals || meals.length === 0) {
             return {
@@ -58,7 +60,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         const allFoods = await fetchByIdsInPages(mealIds, (ids, offset, pageSize) => supabase
             .from('meal_plan_foods').select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group").in('meal_plan_meal_id', ids)
             .order('order_index', { ascending: true }).order('id', { ascending: true })
-            .range(offset, offset + pageSize - 1));
+            .range(offset, offset + pageSize - 1),{signal:readOptions?.signal});
 
         // Agrupar alimentos por meal_plan_meal_id
         const foodsByMealId = (allFoods || []).reduce((acc, food) => {
@@ -78,7 +80,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
                 .select('id, meal_plan_food_id, substitute_food_id, quantity, unit, notes, food_snapshot, measure_snapshot')
                 .in('meal_plan_food_id', ids)
                 .order('id', { ascending: true })
-                .range(offset, offset + pageSize - 1));
+                .range(offset, offset + pageSize - 1),{signal:readOptions?.signal});
 
             if (subs && subs.length > 0) {
                 subFoodIds = subs.map(s => s.substitute_food_id);
@@ -96,30 +98,30 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
 
         const numericIds = allUnits.filter(u => /^\d+$/.test(String(u))).map(u => Number(u));
         if (numericIds.length > 0) {
-            const { data: measures, error: measuresError } = await supabase
+            const { data: measures, error: measuresError } = await readRequest(() => supabase
                 .from('household_measures')
                 .select('id, name, code, grams_equivalent')
-                .in('id', numericIds);
+                .in('id', numericIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
             if (measuresError) throw measuresError;
             (measures || []).forEach(m => { measuresMap[m.id] = { ...m, source: 'system' }; });
         }
 
         const systemCodes = allUnits.filter(u => u && !/^\d+$/.test(String(u)) && !String(u).startsWith('custom_') && u !== 'gram');
         if (systemCodes.length > 0) {
-            const { data: measures, error: measuresError } = await supabase
+            const { data: measures, error: measuresError } = await readRequest(() => supabase
                 .from('household_measures')
                 .select('id, name, code, grams_equivalent')
-                .in('code', systemCodes);
+                .in('code', systemCodes), {signal:readOptions?.signal,policy:readPolicies.clinical});
             if (measuresError) throw measuresError;
             (measures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'system' }; });
         }
 
         const customCodes = allUnits.filter(u => u && String(u).startsWith('custom_'));
         if (customCodes.length > 0) {
-            const { data: customMeasures, error: customMeasuresError } = await supabase
+            const { data: customMeasures, error: customMeasuresError } = await readRequest(() => supabase
                 .from('nutritionist_custom_measures')
                 .select('id, name, code, grams_equivalent, category, description')
-                .in('code', customCodes);
+                .in('code', customCodes), {signal:readOptions?.signal,policy:readPolicies.clinical});
             if (customMeasuresError) throw customMeasuresError;
             (customMeasures || []).forEach(m => { measuresMap[m.code] = { ...m, source: 'custom' }; });
         }
@@ -127,10 +129,10 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         const isUuid = (str) => /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/.test(String(str));
         const foodMeasureIds = allUnits.filter(u => u && isUuid(u));
         if (foodMeasureIds.length > 0) {
-            const { data: foodMeasures, error: foodMeasuresError } = await supabase
+            const { data: foodMeasures, error: foodMeasuresError } = await readRequest(() => supabase
                 .from('food_measures')
                 .select('id, label, weight_in_grams')
-                .in('id', foodMeasureIds);
+                .in('id', foodMeasureIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
             if (foodMeasuresError) throw foodMeasuresError;
             (foodMeasures || []).forEach(m => {
                 measuresMap[m.id] = {
@@ -152,7 +154,7 @@ export const getMealPlansByIds = async (planIds, existingPlans = null) => {
         // 4. Batch Fetch: Buscar os dados originais da tabela `foods`
         const primaryFoodIds = (allFoods || []).map(f => f.food_id);
         const allFoodIdsToFetch = [...new Set([...primaryFoodIds, ...subFoodIds])];
-        const globalFoodsMap = await getFoodsMapByIds(allFoodIdsToFetch);
+        const globalFoodsMap = await getFoodsMapByIds(allFoodIdsToFetch,{signal:readOptions?.signal});
 
         // 5. Construir a estrutura final
         const mealsWithFoods = meals.map(meal => {
@@ -211,11 +213,11 @@ export const getMealPlanById = async (planId) => {
     return { data: result.data?.[0] || null, error: result.error };
 };
 
-export const getActiveMealPlan = async (patientId) => {
+export const getActiveMealPlan = async (patientId, readOptions = {}) => {
     try {
         const today = getTodayIsoDate();
 
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plans')
             .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('patient_id', patientId)
@@ -224,13 +226,13 @@ export const getActiveMealPlan = async (patientId) => {
             .or(`end_date.is.null,end_date.gte.${today}`)
             .order('start_date', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
         // Se encontrou um plano, buscar com detalhes completos
         if (data) {
-            const result = await getMealPlansByIds([data.id], [data]);
+            const result = await getMealPlansByIds([data.id], [data],{signal:readOptions?.signal});
             const plan = result.data?.[0];
             // Patient home/diary consume the nested relation names; keep the
             // professional meals/foods shape as well, from the same RLS read.
@@ -250,13 +252,13 @@ export const getActiveMealPlan = async (patientId) => {
     }
 };
 
-export const getMealsInPlan = async (planId) => {
+export const getMealsInPlan = async (planId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plan_meals')
             .select("id,meal_plan_id,name,meal_type,meal_time,order_index,notes,total_calories,total_protein,total_carbs,total_fat,include_in_totals,created_at,updated_at")
             .eq('meal_plan_id', planId)
-            .order('order_index', { ascending: true });
+            .order('order_index', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || [], error: null };
@@ -266,17 +268,17 @@ export const getMealsInPlan = async (planId) => {
     }
 };
 
-export const getFoodsInMeal = async (mealId) => {
+export const getFoodsInMeal = async (mealId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plan_foods')
             .select("id,meal_plan_meal_id,food_id,quantity,unit,calories,protein,carbs,fat,notes,order_index,created_at,patient_description,food_snapshot,measure_snapshot,equivalent_group")
             .eq('meal_plan_meal_id', mealId)
-            .order('order_index', { ascending: true });
+            .order('order_index', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
-        const foodsMap = await getFoodsMapByIds((data || []).map((item) => item.food_id));
+        const foodsMap = await getFoodsMapByIds((data || []).map((item) => item.food_id),{signal:readOptions?.signal});
         const enriched = (data || []).map((item) => ({
             ...item,
             food: foodsMap[String(item.food_id)] || null,
@@ -290,7 +292,7 @@ export const getFoodsInMeal = async (mealId) => {
     }
 };
 
-export const calculateNutrition = async (food, quantity, unit) => {
+export const calculateNutrition = async (food, quantity, unit, readOptions = {}) => {
     try {
         let gramsEquivalent = null;
 
@@ -303,34 +305,34 @@ export const calculateNutrition = async (food, quantity, unit) => {
 
             // Se unit é string (código), converter para ID
             if (typeof unit === 'string') {
-                const { data: measure } = await supabase
+                const { data: measure } = await readRequest(() => supabase
                     .from('household_measures')
                     .select('id')
                     .eq('code', unit)
-                    .maybeSingle();
+                    .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
                 measureId = measure?.id;
             }
 
             if (measureId) {
                 // Buscar conversão específica do alimento na nova tabela
-                const { data: foodMeasure } = await supabase
+                const { data: foodMeasure } = await readRequest(() => supabase
                     .from('food_household_measures')
                     .select('quantity, grams')
                     .eq('food_id', food.id)
                     .eq('measure_id', measureId)
-                    .maybeSingle();
+                    .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
                 if (foodMeasure) {
                     // Usar conversão específica
                     gramsEquivalent = foodMeasure.grams * (quantity / foodMeasure.quantity);
                 } else {
                     // Fallback: usar conversão padrão da medida
-                    const { data: measure } = await supabase
+                    const { data: measure } = await readRequest(() => supabase
                         .from('household_measures')
                         .select('grams_equivalent')
                         .eq('id', measureId)
-                        .maybeSingle();
+                        .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
                     if (measure && measure.grams_equivalent) {
                         gramsEquivalent = measure.grams_equivalent * quantity;
@@ -369,14 +371,14 @@ export const calculateNutrition = async (food, quantity, unit) => {
     }
 };
 
-export const getMealPlanVersions = async (planId, limit = 20) => {
+export const getMealPlanVersions = async (planId, limit = 20, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plan_versions')
             .select("id,meal_plan_id,nutritionist_id,patient_id,version_number,change_reason,snapshot,is_rollback,metadata,created_by,created_at,care_episode_id")
             .eq('meal_plan_id', planId)
             .order('version_number', { ascending: false })
-            .limit(limit);
+            .limit(limit), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || [], error: null };
@@ -398,7 +400,7 @@ export const getDraftMealPlan = async (patientId, nutritionistId) => {
     }
 };
 
-export const getDraftMealPlans = async (patientId, nutritionistId) => {
+export const getDraftMealPlans = async (patientId, nutritionistId, {signal} = {}) => {
     try {
         const draftMetas = await fetchAllRows((offset, pageSize) => supabase
             .from('meal_plans').select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
@@ -407,10 +409,10 @@ export const getDraftMealPlans = async (patientId, nutritionistId) => {
             .eq('is_draft', true)
             .order('updated_at', { ascending: false })
             .order('id', { ascending: false })
-            .range(offset, offset + pageSize - 1));
+            .range(offset, offset + pageSize - 1), 500, {signal});
         if (!draftMetas || draftMetas.length === 0) return { data: [], error: null };
 
-        const result = await getMealPlansByIds(draftMetas.map(meta => meta.id), draftMetas);
+        const result = await getMealPlansByIds(draftMetas.map(meta => meta.id), draftMetas, {signal});
         if (result.error) throw result.error;
         const planMap = new Map(result.data.map(plan => [plan.id, plan]));
         const drafts = draftMetas.map(meta => planMap.get(meta.id)).filter(Boolean);
@@ -422,22 +424,22 @@ export const getDraftMealPlans = async (patientId, nutritionistId) => {
     }
 };
 
-export const getFoodSubstitutions = async (mealPlanFoodId) => {
+export const getFoodSubstitutions = async (mealPlanFoodId, readOptions = {}) => {
     try {
-        const { data: subs, error: subsError } = await supabase
+        const { data: subs, error: subsError } = await readRequest(() => supabase
             .from('meal_plan_food_substitutions')
             .select('substitute_food_id, quantity, unit, notes, measure_snapshot')
-            .eq('meal_plan_food_id', mealPlanFoodId);
+            .eq('meal_plan_food_id', mealPlanFoodId), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (subsError) throw subsError;
         if (!subs || subs.length === 0) return { data: [], error: null };
 
         // Buscar detalhes dos alimentos
         const foodIds = subs.map(s => s.substitute_food_id);
-        const { data: foods, error: foodsError } = await supabase
+        const { data: foods, error: foodsError } = await readRequest(() => supabase
             .from('foods')
             .select(FOOD_FIELDS)
-            .in('id', foodIds);
+            .in('id', foodIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (foodsError) throw foodsError;
 
@@ -460,17 +462,17 @@ export const getFoodSubstitutions = async (mealPlanFoodId) => {
     }
 };
 
-export const getSuggestedSubstitutes = async (targetGroup, targetCalories, limit = 6) => {
+export const getSuggestedSubstitutes = async (targetGroup, targetCalories, limit = 6, readOptions = {}) => {
     try {
         if (!targetGroup) return { data: [], error: null };
 
         // Buscamos um conjunto maior do mesmo grupo para ordenar por proximidade calórica no JS
-        const { data: groupFoods, error } = await supabase
+        const { data: groupFoods, error } = await readRequest(() => supabase
             .from('foods')
             .select(FOOD_FIELDS)
             .eq('group', targetGroup)
             .eq('is_active', true)
-            .limit(100);
+            .limit(100), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         if (!groupFoods || groupFoods.length === 0) return { data: [], error: null };

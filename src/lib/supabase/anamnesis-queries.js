@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { track, Events } from '@/infrastructure/analytics/posthog';
 import { getTodayIsoDate } from '@/lib/utils/date';
@@ -19,15 +21,15 @@ import { isUuid } from '@/lib/utils/patientRoutes';
  * Buscar todos os templates disponíveis para um nutricionista
  * Retorna templates do sistema + templates personalizados do nutricionista
  */
-export const getAnamnesisTemplates = async (nutritionistId) => {
+export const getAnamnesisTemplates = async (nutritionistId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('anamnesis_templates')
             .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
             .or(`is_system_default.eq.true,nutritionist_id.eq.${nutritionistId}`)
             .eq('is_active', true)
             .order('is_system_default', { ascending: false })
-            .order('title', { ascending: true });
+            .order('title', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data, error: null };
@@ -40,13 +42,13 @@ export const getAnamnesisTemplates = async (nutritionistId) => {
 /**
  * Buscar template específico por ID
  */
-export const getTemplateById = async (templateId) => {
+export const getTemplateById = async (templateId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('anamnesis_templates')
             .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
             .eq('id', templateId)
-            .single();
+            .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data, error: null };
@@ -90,9 +92,9 @@ export const createCustomTemplate = async (templateData) => {
  * Buscar todas as anamneses de um paciente
  * Ordenado por data (mais recente primeiro)
  */
-export const getPatientAnamnesisList = async (patientId) => {
+export const getPatientAnamnesisList = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select(`
                 id,
@@ -106,7 +108,7 @@ export const getPatientAnamnesisList = async (patientId) => {
             `)
             .eq('patient_id', patientId)
             .order('date', { ascending: false })
-            .order('version', { ascending: false });
+            .order('version', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data, error: null };
@@ -122,15 +124,15 @@ export const getPatientAnamnesisList = async (patientId) => {
  * @param {string} slugOrId - Short code (8 hex chars) ou UUID completo
  * @returns {Promise<{anamnesisId: string|null, error: object|null}>}
  */
-export const resolveAnamnesisId = async (patientId, slugOrId) => {
+export const resolveAnamnesisId = async (patientId, slugOrId, readOptions = {}) => {
   if (!patientId || !slugOrId) return { anamnesisId: null, error: null };
   if (isUuid(slugOrId)) return { anamnesisId: slugOrId, error: null };
   try {
     const shortCode = String(slugOrId).replace(/-/g, '').substring(0, 8).toLowerCase();
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('anamnesis_records')
       .select('id')
-      .eq('patient_id', patientId);
+      .eq('patient_id', patientId), {signal:readOptions?.signal,policy:readPolicies.clinical});
     if (error) throw error;
     const match = (data || []).find((r) =>
       String(r.id).replace(/-/g, '').toLowerCase().startsWith(shortCode)
@@ -145,14 +147,14 @@ export const resolveAnamnesisId = async (patientId, slugOrId) => {
 /**
  * Buscar anamnese específica por ID (com conteúdo completo)
  */
-export const getAnamnesisById = async (anamnesisId) => {
+export const getAnamnesisById = async (anamnesisId, readOptions = {}) => {
     try {
         // Buscar anamnese
-        const { data: anamnesisData, error: anamnesisError } = await supabase
+        const { data: anamnesisData, error: anamnesisError } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id")
             .eq('id', anamnesisId)
-            .single();
+            .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (anamnesisError) {
             logSupabaseError("erro_ao_buscar_anamnesis_records", anamnesisError);
@@ -162,11 +164,11 @@ export const getAnamnesisById = async (anamnesisId) => {
         // Buscar template separadamente
         let templateData = null;
         if (anamnesisData.template_id) {
-            const { data: template, error: templateError } = await supabase
+            const { data: template, error: templateError } = await readRequest(() => supabase
                 .from('anamnesis_templates')
                 .select('id, title, sections')
                 .eq('id', anamnesisData.template_id)
-                .single();
+                .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
             if (!templateError) {
                 templateData = template;
@@ -176,11 +178,11 @@ export const getAnamnesisById = async (anamnesisId) => {
         // Buscar paciente separadamente
         let patientData = null;
         if (anamnesisData.patient_id) {
-            const { data: patient, error: patientError } = await supabase
+            const { data: patient, error: patientError } = await readRequest(() => supabase
                 .from('user_profiles')
                 .select('id, name')
                 .eq('id', anamnesisData.patient_id)
-                .single();
+                .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
             if (!patientError) {
                 patientData = patient;
@@ -290,13 +292,13 @@ export const deleteAnamnesis = async (anamnesisId) => {
  * Verificar se paciente tem anamnese
  * Útil para status no PatientHub
  */
-export const checkPatientHasAnamnesis = async (patientId) => {
+export const checkPatientHasAnamnesis = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select('id', { count: 'exact', head: true })
             .eq('patient_id', patientId)
-            .limit(1);
+            .limit(1), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { hasAnamnesis: data && data.length > 0, error: null };
@@ -313,7 +315,7 @@ export const checkPatientHasAnamnesis = async (patientId) => {
  * @param {boolean} includeContent - Se true, inclui o campo 'content' completo (JSONB)
  * @returns {Promise<{data: object|null, error: object|null}>}
  */
-export const getLatestAnamnesis = async (patientId, includeContent = false) => {
+export const getLatestAnamnesis = async (patientId, includeContent = false, readOptions = {}) => {
     try {
         let selectFields = `
             id,
@@ -328,14 +330,14 @@ export const getLatestAnamnesis = async (patientId, includeContent = false) => {
             selectFields += ', content';
         }
 
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select(selectFields)
             .eq('patient_id', patientId)
             .order('date', { ascending: false })
             .order('version', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) {
             // Se não encontrar registros, não é erro

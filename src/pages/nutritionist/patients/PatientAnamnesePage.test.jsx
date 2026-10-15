@@ -64,6 +64,12 @@ describe('PatientAnamnesePage timeline context', () => {
     expect(screen.getByTestId('timeline-context')).toHaveTextContent('patient-b:episode-b');
   });
 
+  it('returns from the anamnesis listing to the same patient clinical hub', () => {
+    render(<MemoryRouter><PatientAnamnesePage /></MemoryRouter>);
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar' }));
+    expect(mocks.navigate).toHaveBeenCalledWith('/nutritionist/patients/ana/hub?tab=clinical');
+  });
+
   it('blocks the retained prior patient context while a new slug resolves or fails', () => {
     const { rerender } = render(<MemoryRouter><PatientAnamnesePage /></MemoryRouter>);
     expect(screen.getByTestId('timeline-context')).toHaveTextContent('patient-a:episode-a');

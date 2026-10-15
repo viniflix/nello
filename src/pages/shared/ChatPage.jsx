@@ -10,6 +10,10 @@ import { patientRoute } from '@/lib/utils/patientRoutes';
 import { motion } from 'framer-motion';
 import { Send, ArrowLeft, Paperclip, X, FileText, Mic, Square, Loader2, User as UserIcon } from 'lucide-react'; // Adicionado PlayCircle
 import { useAuth } from '@/contexts/AuthContext';
+import { useAccessEpoch } from '@/hooks/useAccessEpoch';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
+import { failurePresentation } from '@/lib/utils/failure';
 import { useChat } from '@/contexts/ChatContext';
 import { supabase } from '@/infrastructure/supabase/client';
 import { Button } from '@/components/ui/button';
@@ -82,6 +86,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const [newMessage, setNewMessage] = useState('');
   const [recipient, setRecipient] = useState(null);
   const [recipientLoading, setRecipientLoading] = useState(true);
+  const [recipientError, setRecipientError] = useState(null);
   const [mediaFile, setMediaFile] = useState(null);
   const [mediaPreview, setMediaPreview] = useState(null);
   const [mediaType, setMediaType] = useState(null);
@@ -102,6 +107,20 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   const [isRecording, setIsRecording] = useState(false);
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
+  const accessEpoch = useAccessEpoch(user?.id);
+  const mediaGeneration = useRef(0);
+  useEffect(() => () => { if (mediaPreview?.startsWith('blob:')) URL.revokeObjectURL(mediaPreview); }, [mediaPreview]);
+  useEffect(() => {
+    mediaGeneration.current += 1;
+    sendIntent.current = null;
+    setMediaFile(null); setMediaPreview(null); setMediaType(null); setIsRecording(false);
+    return () => {
+      mediaGeneration.current += 1;
+      const recorder = mediaRecorderRef.current;
+      if (recorder) { recorder.onstop = null; recorder.ondataavailable = null; if (recorder.state === 'recording') recorder.stop(); recorder.stream?.getTracks().forEach(track => track.stop()); }
+      audioChunksRef.current = [];
+    };
+  }, [user?.id, accessEpoch, propRecipientId, urlPatientId, user?.profile?.nutritionist_id]);
 
   const recipientId = React.useMemo(() => {
     if (propRecipientId) return propRecipientId;
@@ -140,17 +159,21 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       return;
     }
     const epoch = ++recipientEpoch.current;
+    const session = getPrivateSessionEpoch(), access = getAccessEpoch(user?.id);
     setRecipient(null);
     setRecipientLoading(true);
+    setRecipientError(null);
 
-    const { data, error } = await supabase.rpc('get_chat_recipient_profile', {
-      recipient_id: id
-    });
+    let response;
+    try { response = await supabase.rpc('get_chat_recipient_profile', { recipient_id: id }); }
+    catch (error) { response = { data: null, error }; }
+    const {data,error} = response;
 
-    if (epoch !== recipientEpoch.current) return;
+    if (epoch !== recipientEpoch.current || session !== getPrivateSessionEpoch() || access !== getAccessEpoch(user?.id)) return;
     const recipientData = data ? data[0] : null;
 
     if (error) {
+      setRecipientError(failurePresentation(error));
       logDiagnostic('error', 'pages/shared/ChatPage.jsx:318', 'Erro ao buscar destinatário:', error);
       toast({
         title: "Erro",
@@ -162,12 +185,12 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
       setRecipient(recipientData);
     }
     setRecipientLoading(false);
-  }, [toast]);
+  }, [toast, user?.id]);
 
   useEffect(() => {
     fetchRecipient(recipientId);
     return () => { recipientEpoch.current += 1; };
-  }, [recipientId, fetchRecipient]);
+  }, [recipientId, fetchRecipient, accessEpoch]);
 
   const userId = user?.id;
   useEffect(() => {
@@ -241,6 +264,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
     e.preventDefault();
     if ((!newMessage.trim() && !mediaFile) || !recipientId || !user?.id || isSending) return;
     const actor = user.id, destination = recipientId, text = newMessage.trim();
+    const access = getAccessEpoch(actor), session = getPrivateSessionEpoch();
     const previous = sendIntent.current;
     const intent = previous?.actor === actor && previous.recipient === destination && previous.text === text && previous.file === mediaFile
       ? previous : { actor, recipient: destination, text, file: mediaFile, type: mediaFile ? mediaType : 'text', id: crypto.randomUUID(), path: null };
@@ -253,6 +277,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         try { await uploadVerifiedFile('chat_media', intent.path, intent.file, { chatRecipientId: destination }); }
         catch (error) { intent.path = null; throw error; }
       }
+      if (session !== getPrivateSessionEpoch() || access !== getAccessEpoch(actor) || sendIntent.current !== intent) return;
       const sent = await sendMessage({ to_id: destination, message: intent.file ? (intent.type === 'audio' ? '' : intent.file.name) : text,
         message_type: intent.type, media_url: intent.path, client_message_id: intent.id });
       if (sent && sendIntent.current === intent) {
@@ -266,10 +291,13 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
   };
 
   const startRecording = async () => {
+      const generation = mediaGeneration.current;
       try {
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        if (generation !== mediaGeneration.current) {stream.getTracks().forEach(track => track.stop());return;}
         const mimeType = 'audio/webm';
         if (!MediaRecorder.isTypeSupported(mimeType)) {
+            stream.getTracks().forEach(track => track.stop());
             toast({ title: "Formato não suportado", description: "Seu navegador não suporta gravação em áudio WebM.", variant: "destructive" });
             return;
         }
@@ -282,6 +310,7 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
         };
 
         mediaRecorder.onstop = () => {
+            if (generation !== mediaGeneration.current) {stream.getTracks().forEach(track => track.stop());return;}
             const audioBlob = new Blob(audioChunksRef.current, { type: mimeType });
             const audioFile = new File([audioBlob], `audio_${Date.now()}.webm`, { type: mimeType });
             setMediaFile(audioFile);
@@ -324,6 +353,12 @@ const ChatPage = ({ propRecipientId, isEmbedded = false, initialDraft = '' }) =>
     </div>
   );
 
+  if (recipientError) return (
+    <div role="alert" className="flex flex-col items-center justify-center gap-3 p-4 text-center">
+      <p>{recipientError.message}</p>
+      {recipientError.retryable && <Button variant="outline" onClick={() => fetchRecipient(recipientId)}>Tentar novamente</Button>}
+    </div>
+  );
   if (!recipient) return (
     <div className={`flex items-center justify-center p-4 text-center text-muted-foreground ${isEmbedded ? 'h-full' : 'h-dvh'}`}>
       Você não tem um {user?.profile?.user_type === 'patient' ? 'nutricionista' : 'paciente'} associado.

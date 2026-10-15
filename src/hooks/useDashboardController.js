@@ -1,3 +1,6 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { observeResources } from '@/lib/utils/resourceReads';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { failurePresentation, classifyFailure, settleResources } from '@/lib/utils/failure';
@@ -56,7 +59,7 @@ export function useDashboardController({ user }) {
   const clearFailure=useCallback(key=>setFailures(previous=>{const next={...previous};delete next[key];return next;}),[]);
   useEffect(()=>{
     owner.current=user?.id;setDataOwner(user?.id);setFailures({});setPatients([]);setAppointments([]);
-    setAppointmentsTodayCount(0);setAppointmentsTotalCount(0);setActivePatients24h(0);
+    setActivePatients24h(0);
     setAdherencePercent24h('--%');setAdherentPatients24h(0);setNewPatients30Days(0);
     setPatients90DaysSeries([]);setActive24hSeries([]);setAdherence24hSeries([]);
     setNoShowStats({noShowCount:0,completedCount:0,canceledCount:0,eligibleCount:0,noShowRate:0});
@@ -65,8 +68,6 @@ export function useDashboardController({ user }) {
   },[user?.id]);
   const [patients, setPatients] = useState([]);
   const [appointments, setAppointments] = useState([]);
-  const [appointmentsTodayCount, setAppointmentsTodayCount] = useState(0);
-  const [appointmentsTotalCount, setAppointmentsTotalCount] = useState(0);
   const [noShowPeriodDays, setNoShowPeriodDays] = useState(30);
   const [noShowStats, setNoShowStats] = useState({
     noShowCount: 0,
@@ -83,11 +84,19 @@ export function useDashboardController({ user }) {
   const [active24hSeries, setActive24hSeries] = useState([]);
   const [adherence24hSeries, setAdherence24hSeries] = useState([]);
   
-  const [statsLoading, setStatsLoading] = useState(true);
-  const [appointmentsLoading, setAppointmentsLoading] = useState(true);
-  const [noShowLoading, setNoShowLoading] = useState(true);
+  const statsResource = useResourceSnapshot(JSON.stringify([user?.id, 'stats']), null);
+  const appointmentsResource = useResourceSnapshot(JSON.stringify([user?.id, 'appointments']), null);
+  const noShowResource = useResourceSnapshot(JSON.stringify([user?.id, 'noShow', noShowPeriodDays]), null);
+  const totalResource = useResourceSnapshot(JSON.stringify([user?.id, 'total']), 0);
+  const todayResource = useResourceSnapshot(JSON.stringify([user?.id, format(new Date(), 'yyyy-MM-dd')]), 0);
+  const {begin:beginStats,succeed:confirmStats,fail:failStats}=statsResource;
+  const {begin:beginAppointments,succeed:confirmAppointments,fail:failAppointments}=appointmentsResource;
+  const {begin:beginNoShow,succeed:confirmNoShow,fail:failNoShow}=noShowResource;
+  const {begin:beginTotal,succeed:confirmTotal,fail:failTotal}=totalResource;
+  const {begin:beginToday,succeed:confirmToday,fail:failToday}=todayResource;
+  const statsLoading=statsResource.initialLoading,appointmentsLoading=appointmentsResource.initialLoading,noShowLoading=noShowResource.initialLoading;
 
-  const fetchStats = useCallback(async () => {
+  const fetchStats = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.stats;
     const current=()=>owner.current===account&&requests.current.stats===ticket;
     clearFailure('stats');
@@ -95,7 +104,7 @@ export function useDashboardController({ user }) {
     controllers.current.stats?.abort();const controller=new AbortController();controllers.current.stats=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
     const started = performance.now();
-    setStatsLoading(true);
+    const readTicket=beginStats();
     try {
       const scope = await supabase.rpc('get_active_feed_patients').abortSignal(controller.signal);
       if(scope.error)throw scope.error;
@@ -114,7 +123,6 @@ export function useDashboardController({ user }) {
         }) : [];
 
       if(!current())return;
-      setPatients(patientData);
       const patientIds = patientData.map((patient) => patient.id);
       const since24hIso = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
 
@@ -187,18 +195,20 @@ export function useDashboardController({ user }) {
 
       setActive24hSeries(activeSeries);
       setAdherence24hSeries(adherenceSeries);
+      setPatients(patientData);
+      confirmStats(readTicket,true);
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_stats', duration_ms: Math.round(performance.now() - started), result_count: patientData.length });
 
     } catch(error){
       if(!current())return;
-      reportFailure('stats',controller.signal.aborted?controller.signal.reason:error);
+      const failure=controller.signal.aborted?controller.signal.reason:error;failStats(readTicket,failure);reportFailure('stats',failure);
     } finally {
       clearTimeout(timeout);
-      if(current())setStatsLoading(false);
-    }
-  }, [user?.id, clearFailure, reportFailure]);
 
-  const fetchAppointments = useCallback(async () => {
+    }
+  }, [user?.id, clearFailure, reportFailure, beginStats, confirmStats, failStats]), statsResource.scopeKey, ['clinical']);
+
+  const fetchAppointments = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.appointments;
     const current=()=>owner.current===account&&requests.current.appointments===ticket;
     clearFailure('appointments');
@@ -206,7 +216,8 @@ export function useDashboardController({ user }) {
     controllers.current.appointments?.abort();const controller=new AbortController();controllers.current.appointments=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
     const started = performance.now();
-    setAppointmentsLoading(true);
+    const readTicket=beginAppointments();
+    const totalTicket=beginTotal(),todayTicket=beginToday();
     try {
       const today = new Date().toISOString();
       const { data, error } = await supabase
@@ -221,12 +232,13 @@ export function useDashboardController({ user }) {
       if (error) throw error;
       if(!current())return;
       setAppointments(data || []);
+      confirmAppointments(readTicket,true);
 
       const localDayStart = new Date();
       localDayStart.setHours(0, 0, 0, 0);
       const nextLocalDay = new Date(localDayStart);
       nextLocalDay.setDate(nextLocalDay.getDate() + 1);
-      const counts=await settleResources({total:()=>
+      await observeResources({total:()=>
         supabase
           .from('appointments')
           .select('id', { count: 'exact', head: true })
@@ -240,21 +252,23 @@ export function useDashboardController({ user }) {
           .eq('nutritionist_id', user.id)
           .gte('start_time', localDayStart.toISOString())
           .lt('start_time', nextLocalDay.toISOString()).then(result=>({...result,data:result.count}))
+      }, (key, result) => {
+        if(!current())return;
+        const failureKey=key==='total'?'upcoming_count':'today_count';
+        if(result.error){(key==='total'?failTotal:failToday)(key==='total'?totalTicket:todayTicket,result.error);reportFailure(failureKey,result.error);}
+        else{(key==='total'?confirmTotal:confirmToday)(key==='total'?totalTicket:todayTicket,result.data||0);clearFailure(failureKey);}
       });
-      if(!current())return;
-      if(counts.total.error)reportFailure('upcoming_count',counts.total.error);else{clearFailure('upcoming_count');setAppointmentsTotalCount(counts.total.data||0);}
-      if(counts.today.error)reportFailure('today_count',counts.today.error);else{clearFailure('today_count');setAppointmentsTodayCount(counts.today.data||0);}
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_appointments', duration_ms: Math.round(performance.now() - started), result_count: data?.length || 0 });
     } catch(error){
       if(!current())return;
-      reportFailure('appointments',controller.signal.aborted?controller.signal.reason:error);
+      const failure=controller.signal.aborted?controller.signal.reason:error;failAppointments(readTicket,failure);failTotal(totalTicket,failure);failToday(todayTicket,failure);reportFailure('appointments',failure);
     } finally {
       clearTimeout(timeout);
-      if(current())setAppointmentsLoading(false);
-    }
-  }, [user?.id, clearFailure, reportFailure]);
 
-  const fetchNoShowStats = useCallback(async () => {
+    }
+  }, [user?.id, clearFailure, reportFailure, beginAppointments, confirmAppointments, failAppointments, beginTotal, confirmTotal, failTotal, beginToday, confirmToday, failToday]), appointmentsResource.scopeKey, ['clinical']);
+
+  const fetchNoShowStats = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.noShow;
     const current=()=>owner.current===account&&requests.current.noShow===ticket;
     clearFailure('noShow');
@@ -262,7 +276,7 @@ export function useDashboardController({ user }) {
     controllers.current.noShow?.abort();const controller=new AbortController();controllers.current.noShow=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
     const started = performance.now();
-    setNoShowLoading(true);
+    const readTicket=beginNoShow();
     try {
       const nowIso = new Date().toISOString();
       const sinceIso = new Date(Date.now() - noShowPeriodDays * 24 * 60 * 60 * 1000).toISOString();
@@ -300,22 +314,23 @@ export function useDashboardController({ user }) {
         eligibleCount,
         noShowRate
       });
+      confirmNoShow(readTicket,true);
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_no_show', duration_ms: Math.round(performance.now() - started), result_count: noShowCount + completedCount + (typeof canceledCount==='number'?canceledCount:0) });
     } catch(error){
       if(!current())return;
-      reportFailure('noShow',controller.signal.aborted?controller.signal.reason:error);
+      const failure=controller.signal.aborted?controller.signal.reason:error;failNoShow(readTicket,failure);reportFailure('noShow',failure);
     } finally {
       clearTimeout(timeout);
-      if(current())setNoShowLoading(false);
+
     }
-  }, [user?.id, noShowPeriodDays, clearFailure, reportFailure]);
+  }, [user?.id, noShowPeriodDays, clearFailure, reportFailure, beginNoShow, confirmNoShow, failNoShow]), noShowResource.scopeKey, ['clinical']);
 
   useEffect(()=>{if(user?.id)fetchStats();},[user?.id,fetchStats]);
   useEffect(()=>{if(user?.id)fetchAppointments();},[user?.id,fetchAppointments]);
   useEffect(()=>{if(user?.id)fetchNoShowStats();},[user?.id,fetchNoShowStats]);
   useEffect(()=>{
     if(!user?.id)return;
-    const refresh=()=>fetchStats();
+    const refresh=()=>{ void fetchStats.invalidate(); };
     const unsubscribe=subscribeDomain(user.id,'access',refresh);
     window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
     return()=>{unsubscribe();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
@@ -323,21 +338,21 @@ export function useDashboardController({ user }) {
   const retry=()=>{fetchStats();fetchAppointments();fetchNoShowStats();};
 
   return {
-    failures, retry,
-    patients:dataOwner===user?.id?patients:[],
-    appointments:dataOwner===user?.id?appointments:[],
-    appointmentsTodayCount,
-    appointmentsTotalCount,
+    failures, retry, resources:{stats:statsResource,appointments:appointmentsResource,noShow:noShowResource,total:totalResource,today:todayResource},
+    patients:dataOwner===user?.id&&statsResource.hasSnapshot?patients:[],
+    appointments:dataOwner===user?.id&&appointmentsResource.hasSnapshot?appointments:[],
+    appointmentsTodayCount:todayResource.data,
+    appointmentsTotalCount:totalResource.data,
     noShowPeriodDays,
     setNoShowPeriodDays,
-    noShowStats,
-    activePatients24h,
-    adherencePercent24h,
-    adherentPatients24h,
-    newPatients30Days,
-    patients90DaysSeries,
-    active24hSeries,
-    adherence24hSeries,
+    noShowStats:noShowResource.hasSnapshot?noShowStats:{noShowCount:0,completedCount:0,canceledCount:0,eligibleCount:0,noShowRate:0},
+    activePatients24h:statsResource.hasSnapshot?activePatients24h:0,
+    adherencePercent24h:statsResource.hasSnapshot?adherencePercent24h:'--%',
+    adherentPatients24h:statsResource.hasSnapshot?adherentPatients24h:0,
+    newPatients30Days:statsResource.hasSnapshot?newPatients30Days:0,
+    patients90DaysSeries:statsResource.hasSnapshot?patients90DaysSeries:[],
+    active24hSeries:statsResource.hasSnapshot?active24hSeries:[],
+    adherence24hSeries:statsResource.hasSnapshot?adherence24hSeries:[],
     statsLoading,
     appointmentsLoading,
     noShowLoading

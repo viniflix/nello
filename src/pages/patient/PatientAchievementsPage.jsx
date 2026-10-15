@@ -1,3 +1,5 @@
+import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
@@ -55,6 +57,19 @@ function formatCriteria(criteria) {
  */
 export default function PatientAchievementsPage() {
   const { user } = useAuth();
+  return <PatientAchievementsPageContent key={user?.id || 'signed-out'} />;
+}
+
+function PatientAchievementsPageContent() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [dataRevision, setDataRevision] = useState(0);
+  const readSource = useCoordinatedSources(JSON.stringify([userId,'patient.achievements']));
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const off = ['clinical', 'access'].map(domain => subscribeDomain(userId, domain, refresh));
+    return () => off.forEach(unsubscribe => unsubscribe());
+  }, [userId]);
   const [allAchievements, setAllAchievements] = useState([]);
   const [unlockedIds, setUnlockedIds] = useState(new Set());
   const [achievementDates, setAchievementDates] = useState({});
@@ -62,16 +77,18 @@ export default function PatientAchievementsPage() {
   const [stats, setStats] = useState({ total: 0, unlocked: 0 });
 
   useEffect(() => {
+    let cancelled = false;
     const fetchAchievements = async () => {
-      if (!user) return;
+      if (!userId) return;
 
       setLoading(true);
 
       // Query 1: Buscar todas as conquistas
-      const { data: achievementsData, error: achievementsError } = await supabase
+      const { data: achievementsData, error: achievementsError } = await readSource('0', () => supabase
         .from('achievements')
         .select("id,name,description,icon_name,criteria")
-        .order('id', { ascending: true });
+        .order('id', { ascending: true }));
+      if (cancelled) return;
 
       if (achievementsError) {
         logDiagnostic('error', 'pages/patient/PatientAchievementsPage.jsx:76', 'Erro ao buscar conquistas:', achievementsError);
@@ -81,10 +98,11 @@ export default function PatientAchievementsPage() {
       }
 
       // Query 2: Buscar conquistas desbloqueadas pelo usuário
-      const { data: unlockedData, error: unlockedError } = await supabase
+      const { data: unlockedData, error: unlockedError } = await readSource('1', () => supabase
         .from('user_achievements')
         .select('achievement_id, achieved_at')
-        .eq('user_id', user.id);
+        .eq('user_id', userId));
+      if (cancelled) return;
 
       if (unlockedError) {
         logDiagnostic('error', 'pages/patient/PatientAchievementsPage.jsx:89', 'Erro ao buscar conquistas desbloqueadas:', unlockedError);
@@ -104,7 +122,8 @@ export default function PatientAchievementsPage() {
     };
 
     fetchAchievements();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [userId, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active, readSource]);
 
   const getIcon = (iconName) => {
     const Icon = ICON_MAP[iconName] || Award;

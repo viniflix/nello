@@ -1,6 +1,7 @@
 import { PrivateImage } from '@/components/ui/private-image';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Search, User as UserIcon, Loader2, X, PlusCircle } from 'lucide-react';
 import { supabase } from '@/infrastructure/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,31 +16,55 @@ import {
 } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 
-const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
+const NewChatModal = props => {
   const { user } = useAuth();
+  return <NewChatModalContent key={user?.id || 'signed-out'} {...props} />;
+};
+
+const NewChatModalContent = ({ open, onOpenChange, onSelectPatient }) => {
+  const { user } = useAuth();
+  const userId = user?.id;
   const [patients, setPatients] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
+  const [dataRevision, setDataRevision] = useState(0);
   const [search, setSearch] = useState('');
+  const requestGeneration = useRef(0);
 
   useEffect(() => {
-    if (open && user) {
-      fetchPatients();
-    }
-  }, [open, user]);
-
-  const fetchPatients = async () => {
-    setLoading(true);
-    const { data, error } = await supabase.rpc('get_patients_for_new_chat', {
-      p_nutritionist_id: user.id
+    return subscribeDomain(userId, 'access', () => {
+      requestGeneration.current += 1;
+      setPatients([]);
+      setDataRevision(value => value + 1);
     });
+  }, [userId]);
 
-    if (!error && data) {
-      setPatients(data);
-    } else {
-      logDiagnostic('error', 'components/nutritionist/NewChatModal.jsx:37', 'Error fetching patients for chat:', error);
-    }
-    setLoading(false);
-  };
+  useEffect(() => {
+    if (!open || !userId) return;
+    let cancelled = false;
+    const generation = ++requestGeneration.current;
+    const isCurrent = () => !cancelled && generation === requestGeneration.current;
+    setLoading(true);
+    setLoadError(false);
+    const fetchPatients = async () => {
+      try {
+        const { data, error } = await supabase.rpc('get_patients_for_new_chat', {
+          p_nutritionist_id: userId
+        });
+        if (!isCurrent()) return;
+        if (error) throw error;
+        setPatients(data || []);
+      } catch (error) {
+        if (!isCurrent()) return;
+        setLoadError(true);
+        logDiagnostic('error', 'components/nutritionist/NewChatModal.jsx', 'Error fetching patients for chat:', error?.code || 'unknown');
+      } finally {
+        if (isCurrent()) setLoading(false);
+      }
+    };
+    void fetchPatients();
+    return () => { cancelled = true; };
+  }, [open, userId, dataRevision]);
 
   const filteredPatients = patients.filter(p =>
     p.name.toLowerCase().includes(search.toLowerCase())
@@ -72,6 +97,11 @@ const NewChatModal = ({ open, onOpenChange, onSelectPatient }) => {
           {loading ? (
             <div className="flex items-center justify-center p-12">
               <Loader2 className="w-8 h-8 animate-spin text-primary" />
+            </div>
+          ) : loadError ? (
+            <div className="p-8 space-y-3">
+              <p role="alert" className="text-sm text-destructive">Não foi possível carregar os pacientes.</p>
+              <Button variant="outline" onClick={() => setDataRevision(value => value + 1)}>Tentar novamente</Button>
             </div>
           ) : filteredPatients.length > 0 ? (
             <div className="divide-y divide-border/50">

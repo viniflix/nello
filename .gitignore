@@ -72,3 +72,7 @@ dist-ssr/
 /AGENTS.md
 
 .qa-security/
+
+# Default Playwright output paths from ad hoc local runs.
+/test-results/
+/playwright-report/

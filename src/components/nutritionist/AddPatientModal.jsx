@@ -3,6 +3,7 @@ import { track, Events } from '@/infrastructure/analytics/posthog';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
 import InputMask from 'react-input-mask';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/infrastructure/supabase/client';
@@ -148,9 +149,10 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
     useEffect(() => {
         if (!isOpen || !preserveExistingDraft) return;
         const previousDraft = structuredClone(usePatientFormStore.getState().formData);
+        const epoch = getPrivateSessionEpoch();
         usePatientFormStore.getState().resetForm();
         usePatientFormStore.getState().updateField('name', initialName || '');
-        return () => usePatientFormStore.setState({ formData: previousDraft });
+        return () => { if (epoch === getPrivateSessionEpoch()) usePatientFormStore.setState({ formData: previousDraft }); };
     }, [isOpen, preserveExistingDraft, initialName]);
 
     // Derive isOffline from email content
@@ -194,6 +196,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
 
     // (handleCepBlur ... sem mudanças)
     const handleCepBlur = async (cep) => {
+        const epoch = getPrivateSessionEpoch();
         const cleanedCep = cep.replace(/\D/g, '');
         if (cleanedCep.length !== 8) return;
         setCepLoading(true);
@@ -201,6 +204,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
             const response = await fetch(`https://viacep.com.br/ws/${cleanedCep}/json/`);
             if (!response.ok) throw new Error('CEP não encontrado');
             const data = await response.json();
+            if (epoch !== getPrivateSessionEpoch()) return;
             if (data.erro) {
                 toast({ title: "Erro", description: "CEP não encontrado.", variant: "destructive" });
             } else {
@@ -214,6 +218,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
     };
 
     const handleSavePatient = async () => {
+        const epoch = getPrivateSessionEpoch();
         if (!user) {
             toast({ title: "Erro", description: "Você não está logado.", variant: "destructive" });
             return;
@@ -281,6 +286,7 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
             const { data, error: functionError } = await supabase.functions.invoke('create-patient', {
                 body: JSON.stringify(body)
             });
+            if (epoch !== getPrivateSessionEpoch()) return;
 
             if (functionError) {
                 const errorData = functionError.context ? await functionError.context.json() : null;

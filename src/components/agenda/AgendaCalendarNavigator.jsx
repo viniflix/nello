@@ -13,15 +13,15 @@ export const agendaStatusLabels = {
 export function AgendaStatusLegend() {
   return <div className="agenda-status-legend" aria-label="Cores dos status">{Object.entries(agendaStatusLabels).map(([status, label]) => <span key={status}><i className={`agenda-status-dot agenda-color--${status}`} aria-hidden="true" />{label}</span>)}</div>;
 }
-export default function AgendaCalendarNavigator({ month, onMonthChange, selected, onSelect, appointments, error, loading, onRetry }) {
+export default function AgendaCalendarNavigator({ month, onMonthChange, selected, onSelect, appointments, error, loading, hasSnapshot = false, onRetry }) {
   const byDate = useMemo(() => {
     const map = {};
-    for (const row of error || loading ? [] : appointments || []) {
+    for (const row of (error || loading) && !hasSnapshot ? [] : appointments || []) {
       const key = civilDateInZone(row.appointment_time);
       (map[key] ||= []).push(row.status);
     }
     return map;
-  }, [appointments, error, loading]);
+  }, [appointments, error, loading, hasSnapshot]);
   const components = useMemo(() => ({
     IconLeft: () => <ChevronLeft className="h-4 w-4" aria-hidden="true" />,
     IconRight: () => <ChevronRight className="h-4 w-4" aria-hidden="true" />,

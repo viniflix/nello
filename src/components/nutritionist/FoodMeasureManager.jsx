@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { X, Plus, Trash2, Loader2, Info } from 'lucide-react';
 import {
   Dialog,
@@ -15,7 +15,9 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/infrastructure/supabase/client';
-import { getFoodMeasures } from '@/lib/supabase/foodService';
+import { useFoodMeasures } from '@/hooks/useFoodMeasures';
+import { invalidateReference, referenceScope } from '@/lib/utils/referenceCache';
+import MeasureLoadError from '@/components/nutrition/MeasureLoadError';
 import { mealItemFoodIds } from '@/lib/supabase/food-diary-queries';
 import { useToast } from '@/hooks/use-toast';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
@@ -29,40 +31,12 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
  */
 export default function FoodMeasureManager({ food, isOpen, onClose }) {
   const { toast } = useToast();
-  const [measures, setMeasures] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const {data:measures, isLoading:loading, error:loadError, refetch:loadMeasures} = useFoodMeasures(isOpen ? food?.id : null);
   const [saving, setSaving] = useState(false);
 
   // Form state for new measure
   const [newMeasureLabel, setNewMeasureLabel] = useState('');
   const [newMeasureGrams, setNewMeasureGrams] = useState('');
-
-  // Load measures when food changes
-  useEffect(() => {
-    if (food && isOpen) {
-      loadMeasures();
-    }
-  }, [food, isOpen]);
-
-  const loadMeasures = async () => {
-    if (!food?.id) return;
-
-    setLoading(true);
-    try {
-      const data = await getFoodMeasures(food.id);
-      setMeasures(data || []);
-    } catch (error) {
-      logDiagnostic('error', 'components/nutritionist/FoodMeasureManager.jsx:54', 'Erro ao carregar medidas:', error);
-      toast({
-        title: 'Erro',
-        description: 'Não foi possível carregar as medidas.',
-        variant: 'destructive'
-      });
-      setMeasures([]);
-    } finally {
-      setLoading(false);
-    }
-  };
 
   const handleAddMeasure = async () => {
     if (!newMeasureLabel.trim() || !newMeasureGrams || parseFloat(newMeasureGrams) <= 0) {
@@ -74,10 +48,12 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       return;
     }
 
+    const cacheScope = referenceScope();
+    const foodId = food?.id;
     setSaving(true);
     try {
       const ids = mealItemFoodIds(food.id, food.source || 'reference');
-      const { data, error } = await supabase
+      const { error } = await supabase
         .from('food_measures')
         .insert({
           ...ids,
@@ -89,7 +65,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
 
       if (error) throw error;
 
-      setMeasures(prev => [...prev, data]);
+      void invalidateReference('food', null, {id:foodId, source:'food_measures', scope:cacheScope});
       setNewMeasureLabel('');
       setNewMeasureGrams('');
 
@@ -114,6 +90,8 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
       return;
     }
 
+    const cacheScope = referenceScope();
+    const foodId = food?.id;
     setSaving(true);
     try {
       const { error } = await supabase
@@ -123,7 +101,7 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
 
       if (error) throw error;
 
-      setMeasures(prev => prev.filter(m => m.id !== measureId));
+      void invalidateReference('food', null, {id:foodId, source:'food_measures', scope:cacheScope});
 
       toast({
         title: 'Sucesso!',
@@ -144,13 +122,13 @@ export default function FoodMeasureManager({ food, isOpen, onClose }) {
   const handleClose = () => {
     setNewMeasureLabel('');
     setNewMeasureGrams('');
-    setMeasures([]);
     onClose();
   };
 
   return (
     <Dialog open={isOpen} onOpenChange={handleClose}>
       <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
+        <MeasureLoadError error={loadError} onRetry={loadMeasures} loading={loading}/>
         <DialogHeader>
           <DialogTitle>Gerenciar Alimento: {food?.name}</DialogTitle>
           <DialogDescription>

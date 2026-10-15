@@ -1,3 +1,4 @@
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
 import { formatDateToIsoDate } from '@/lib/utils/date';
 import React, { useEffect, useRef, useState } from 'react';
 import { Loader2 } from 'lucide-react';
@@ -11,6 +12,7 @@ import { decideAdminVerification } from '@/services/adminService';
 import { verificationDecision } from '@/portals/admin/model/verificationDecision';
 
 export default function VerificationReviewDialog({ verification, open, onOpenChange, onCompleted, canWrite = false }) {
+ const access=useAdminAccess();
   const [decision, setDecision] = useState('approved');
   const [reason, setReason] = useState('');
   const [sourceUrl, setSourceUrl] = useState('https://cfn.org.br/');
@@ -40,7 +42,8 @@ export default function VerificationReviewDialog({ verification, open, onOpenCha
   const actionable = canWrite && ['pending', 'approved'].includes(verification.status);
 
   const submit = async () => {
-    if (!actionable || submitting) return;
+    if (!actionable || submitting || !access.canAct()) return;
+    const accessGeneration = access.getGeneration();
     setError('');
     const current = generation.current;
     try {
@@ -49,7 +52,7 @@ export default function VerificationReviewDialog({ verification, open, onOpenCha
       if (intent.current?.fingerprint !== fingerprint) intent.current = { fingerprint, nonce: crypto.randomUUID() };
       setSubmitting(true);
       const result = await decideAdminVerification({ ...payload, nonce: intent.current.nonce });
-      if (current !== generation.current) return;
+      if (current !== generation.current || !access.canAct() || accessGeneration !== access.getGeneration()) return;
       if (result.error) throw result.error;
       onOpenChange(false);
       onCompleted?.();
@@ -76,7 +79,7 @@ export default function VerificationReviewDialog({ verification, open, onOpenCha
           </>}
           {error ? <p role="alert" className="text-sm text-destructive">{error}</p> : null}
         </div>
-        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>{actionable ? 'Cancelar' : 'Fechar'}</Button>{actionable && <Button onClick={submit} disabled={submitting}>{submitting ? <Loader2 className="animate-spin" /> : null} Registrar decisão</Button>}</DialogFooter>
+        <DialogFooter><Button variant="outline" onClick={() => onOpenChange(false)}>{actionable ? 'Cancelar' : 'Fechar'}</Button>{actionable && <Button onClick={submit} disabled={submitting || !access.canAct()}>{submitting ? <Loader2 className="animate-spin" /> : null} Registrar decisão</Button>}</DialogFooter>
       </DialogContent>
     </Dialog>
   );

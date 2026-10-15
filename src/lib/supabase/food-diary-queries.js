@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { format, subDays } from 'date-fns';
@@ -113,13 +115,13 @@ export const getPatientMeals = async (patientId, filters = {}, limit = 50, offse
  * Busca histórico de auditoria de uma refeição específica
  * @param {number} mealId - ID da refeição
  */
-export const getMealAuditHistory = async (mealId) => {
+export const getMealAuditHistory = async (mealId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_audit_log')
             .select("id,patient_id,meal_id,action,meal_type,meal_date,meal_time,details,created_at,care_episode_id")
             .eq('meal_id', mealId)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
 
@@ -171,7 +173,7 @@ export const getPatientAuditHistory = async (patientId, filters = {}, limit = 10
  * @param {string} patientId - ID do paciente
  * @param {number} days - Número de dias para calcular (7, 30, etc.)
  */
-export const calculateDiaryAdherence = async (patientId, days = 30) => {
+export const calculateDiaryAdherence = async (patientId, days = 30, readOptions = {}) => {
     try {
         if (!Number.isInteger(days) || days < 1) {
             throw new Error('O período do diário deve ser um número inteiro positivo de dias.');
@@ -182,13 +184,13 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
         const startDateStr = format(subDays(referenceDate, days - 1), 'yyyy-MM-dd');
 
         // Buscar todas as refeições no período
-        const { data: meals, error } = await supabase
+        const { data: meals, error } = await readRequest(() => supabase
             .from('meals')
             .select('meal_date')
             .eq('patient_id', patientId)
             .is('deleted_at', null)
             .gte('meal_date', startDateStr)
-            .lte('meal_date', today);
+            .lte('meal_date', today), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
 
@@ -232,14 +234,14 @@ export const calculateDiaryAdherence = async (patientId, days = 30) => {
  * @param {string} startDate - Data inicial (YYYY-MM-DD)
  * @param {string} endDate - Data final (YYYY-MM-DD)
  */
-export const getNutritionalSummary = async (patientId, startDate, endDate) => {
+export const getNutritionalSummary = async (patientId, startDate, endDate, readOptions = {}) => {
     try {
-        const { data: meals, error } = await supabase
+        const { data: meals, error } = await readRequest(() => supabase
             .from('meals')
             .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id,\n                meal_items (\n                    quantity,\n                    calories,\n                    protein,\n                    carbs,\n                    fat\n                )\n            ")
             .eq('patient_id', patientId)
             .gte('meal_date', startDate)
-            .lte('meal_date', endDate);
+            .lte('meal_date', endDate), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
 
@@ -288,14 +290,14 @@ export const getNutritionalSummary = async (patientId, startDate, endDate) => {
  * @param {string} patientId - ID do paciente
  * @param {number} limit - Limite de resultados
  */
-export const getRecentDiaryActivity = async (patientId, limit = 5) => {
+export const getRecentDiaryActivity = async (patientId, limit = 5, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_audit_log')
             .select("id,patient_id,meal_id,action,meal_type,meal_date,meal_time,details,created_at,care_episode_id")
             .eq('patient_id', patientId)
             .order('created_at', { ascending: false })
-            .limit(limit);
+            .limit(limit), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
 
@@ -346,13 +348,13 @@ export const formatAuditAction = (auditLog) => {
  * Busca preferências de lembrete do paciente.
  * Retorna defaults quando ainda não existe registro.
  */
-export const getPatientReminderPreferences = async (patientId) => {
+export const getPatientReminderPreferences = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('patient_reminder_preferences')
             .select("id,patient_id,daily_log_enabled,measurement_enabled,daily_log_time,measurement_time,channel_in_app,timezone,quiet_hours_start,quiet_hours_end,created_at,updated_at")
             .eq('patient_id', patientId)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
         return {

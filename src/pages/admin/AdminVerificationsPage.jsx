@@ -19,7 +19,7 @@ export default function AdminVerificationsPage() {
   const [selectedId, setSelectedId] = useState(null);
   const [page, setPage] = useState(1);
 
-  const query = useAdminSource(['verifications', status, role, page], () => getAdminVerificationQueue({ status: status === 'all' ? null : status, role: role === 'all' ? null : role, page }));
+  const query = useAdminSource(['verifications', status, role, page], options => getAdminVerificationQueue({ status: status === 'all' ? null : status, role: role === 'all' ? null : role, page }, options));
   const items = query.data?.items || [];
   const selected = items.find(item => item.id === selectedId) || null;
   const loading = query.isPending && !query.data;

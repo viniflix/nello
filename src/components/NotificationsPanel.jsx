@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
@@ -129,7 +130,7 @@ const NotificationsPanel = ({ isOpen, setIsOpen, onCloseAutoFocus }) => {
   const navigate = useNavigate();
   const [cursors,setCursors]=React.useState([null]);
   React.useEffect(()=>{setCursors([null]);},[user?.id]);
-  const { notifications, senderProfiles, loading, hasMore, error: notificationsError } = useNotificationsData({cursor:cursors.at(-1)});
+  const { resource, countResource, refresh, notifications, senderProfiles, loading, hasMore, error: notificationsError } = useNotificationsData({cursor:cursors.at(-1)});
   const userType = user?.profile?.user_type;
 
   const handleMarkAsRead = async (id) => {
@@ -206,7 +207,9 @@ const NotificationsPanel = ({ isOpen, setIsOpen, onCloseAutoFocus }) => {
           )}
         </CardHeader>
         <CardContent className="max-h-[60dvh] space-y-3 overflow-y-auto">
-          {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
+          <ResourceStatus resource={resource} label="notificações" onRetry={refresh} />
+          <ResourceStatus resource={countResource} label="contagem" onRetry={refresh} />
+          {notificationsError && !resource?.hasSnapshot ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
             <p>Carregando...</p>
           ) : notifications.length > 0 ? (
             notifications.map((notification) => {

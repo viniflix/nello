@@ -1,4 +1,4 @@
-import React, { Suspense } from 'react';
+import React from 'react';
 import { Route, Navigate } from 'react-router-dom';
 import { ProtectedRoute } from './routeGuards';
 import AdminAccessGate from '@/portals/admin/components/AdminAccessGate.jsx';
@@ -21,28 +21,24 @@ const AdminAnalyticsPage = route('analytics', () => import('@/pages/admin/AdminA
 const AdminSupportPage = route('support', () => import('@/pages/admin/AdminSupportPage.jsx'));
 const AdminIntelligencePage = route('intelligence', () => import('@/pages/admin/AdminIntelligencePage.jsx'));
 
-function LoadingFallback() {
-  return <div className="flex items-center justify-center min-h-dvh"><div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full" /></div>;
-}
-
 export const adminRoutes = (
   <>
     <Route path="/admin" element={<Navigate to="/admin/dashboard" replace />} />
     <Route element={<ProtectedRoute><AdminAccessGate><AdminLayout /></AdminAccessGate></ProtectedRoute>}>
-      <Route path="/admin/dashboard" element={<Suspense fallback={<LoadingFallback />}><AdminDashboard /></Suspense>} />
-      <Route path="/admin/bugs" element={<Suspense fallback={<LoadingFallback />}><AdminBugReportsPage /></Suspense>} />
-      <Route path="/admin/users" element={<Suspense fallback={<LoadingFallback />}><AdminUsersPage /></Suspense>} />
-      <Route path="/admin/users/:id" element={<Suspense fallback={<LoadingFallback />}><AdminNutritionistDetailPage /></Suspense>} />
-      <Route path="/admin/financial" element={<Suspense fallback={<LoadingFallback />}><AdminFinancialPage /></Suspense>} />
-      <Route path="/admin/study" element={<Suspense fallback={<LoadingFallback />}><AdminStudyPage /></Suspense>} />
-      <Route path="/admin/operations" element={<Suspense fallback={<LoadingFallback />}><AdminOperationsPage /></Suspense>} />
-      <Route path="/admin/security" element={<Suspense fallback={<LoadingFallback />}><AdminSecurityPage /></Suspense>} />
-      <Route path="/admin/verifications" element={<Suspense fallback={<LoadingFallback />}><AdminVerificationsPage /></Suspense>} />
-      <Route path="/admin/privacy" element={<Suspense fallback={<LoadingFallback />}><AdminPrivacyRequestsPage /></Suspense>} />
-      <Route path="/admin/integrations" element={<Suspense fallback={<LoadingFallback />}><AdminIntegrationsPage /></Suspense>} />
-      <Route path="/admin/analytics" element={<Suspense fallback={<LoadingFallback />}><AdminAnalyticsPage /></Suspense>} />
-      <Route path="/admin/support" element={<Suspense fallback={<LoadingFallback />}><AdminSupportPage /></Suspense>} />
-      <Route path="/admin/intelligence" element={<Suspense fallback={<LoadingFallback />}><AdminIntelligencePage /></Suspense>} />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route path="/admin/bugs" element={<AdminBugReportsPage />} />
+      <Route path="/admin/users" element={<AdminUsersPage />} />
+      <Route path="/admin/users/:id" element={<AdminNutritionistDetailPage />} />
+      <Route path="/admin/financial" element={<AdminFinancialPage />} />
+      <Route path="/admin/study" element={<AdminStudyPage />} />
+      <Route path="/admin/operations" element={<AdminOperationsPage />} />
+      <Route path="/admin/security" element={<AdminSecurityPage />} />
+      <Route path="/admin/verifications" element={<AdminVerificationsPage />} />
+      <Route path="/admin/privacy" element={<AdminPrivacyRequestsPage />} />
+      <Route path="/admin/integrations" element={<AdminIntegrationsPage />} />
+      <Route path="/admin/analytics" element={<AdminAnalyticsPage />} />
+      <Route path="/admin/support" element={<AdminSupportPage />} />
+      <Route path="/admin/intelligence" element={<AdminIntelligencePage />} />
     </Route>
   </>
 );

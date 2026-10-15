@@ -21,7 +21,7 @@ describe('AdminBugReportsPage', () => {
   it('consulta a Edge Function por POST e não inventa saúde quando Sentry falha', async () => {
     mocks.getPage.mockResolvedValue({ data: null, error: new Error('unavailable') });
     show();
-    await waitFor(() => expect(mocks.getPage).toHaveBeenCalledWith({ hours: 24, environment: 'production', release: '', cursor: '' }));
+    await waitFor(() => expect(mocks.getPage).toHaveBeenCalledWith({ hours: 24, environment: 'production', release: '', cursor: '' }, { signal: expect.any(AbortSignal) }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível consultar o Sentry');
     expect(screen.queryByText(/Taxa de erro/)).not.toBeInTheDocument();
   });

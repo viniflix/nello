@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
@@ -5,12 +7,12 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
  * Busca permissões por role
  * @param {string} role - nutritionist | patient | secretary | team | super_admin
  */
-export const getPermissionsByRole = async (role) => {
+export const getPermissionsByRole = async (role, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('permissions')
             .select('role,module,can_view,can_edit,can_delete')
-            .eq('role', role).order('module').limit(100);
+            .eq('role', role).order('module').limit(100), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || [], error: null };

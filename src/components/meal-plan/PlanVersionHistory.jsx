@@ -1,11 +1,12 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import React from 'react';
 import {History,ChevronUp,ChevronDown} from 'lucide-react';
 import {Badge} from '@/components/ui/badge';
 import {Button} from '@/components/ui/button';
-export default function PlanVersionHistory({mealPlanVersions=[],versionsLoading=false,versionsError=false,retryContext,versionsExpanded,setVersionsExpanded,selectedVersionId,setSelectedVersionId,restoringVersion,handleRestoreVersion,currentMetrics,baseMetrics,buildDelta}) {
-if (versionsLoading) return <div role="status" className="rounded-2xl border bg-white p-5 text-sm text-muted-foreground">Carregando histórico de versões…</div>;
-if (versionsError) return <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Não foi possível carregar o histórico. <Button variant="outline" size="sm" onClick={retryContext}>Tentar novamente</Button></div>;
-return <section aria-label="Histórico de versões" className="rounded-2xl border bg-white p-4 sm:p-5">                {/* Histórico de Versões */}
+export default function PlanVersionHistory({resource,mealPlanVersions=[],versionsLoading=false,versionsError=false,retryContext,versionsExpanded,setVersionsExpanded,selectedVersionId,setSelectedVersionId,restoringVersion,handleRestoreVersion,currentMetrics,baseMetrics,buildDelta}) {
+if (versionsLoading && !resource?.hasSnapshot) return <div role="status" className="rounded-2xl border bg-white p-5 text-sm text-muted-foreground">Carregando histórico de versões…</div>;
+if (versionsError && !resource?.hasSnapshot) return <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Não foi possível carregar o histórico. <Button variant="outline" size="sm" onClick={retryContext}>Tentar novamente</Button></div>;
+return <section aria-label="Histórico de versões" className="rounded-2xl border bg-white p-4 sm:p-5"><ResourceStatus resource={resource} label="versões" onRetry={retryContext} />                {/* Histórico de Versões */}
                 {mealPlanVersions.length > 0 && (
                     <div>
                         <button
@@ -46,7 +47,7 @@ return <section aria-label="Histórico de versões" className="rounded-2xl borde
                                     </div>
                                     <Button
                                         variant="outline"
-                                        disabled={!selectedVersionId || restoringVersion}
+                                        disabled={!selectedVersionId || restoringVersion || (resource && !resource.canAct)}
                                         onClick={handleRestoreVersion}
                                     >
                                         {restoringVersion ? 'Restaurando...' : 'Restaurar versão'}

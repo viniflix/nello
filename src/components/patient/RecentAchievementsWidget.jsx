@@ -1,3 +1,5 @@
+import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
@@ -26,15 +28,29 @@ const ICON_MAP = {
  */
 export default function RecentAchievementsWidget() {
   const { user } = useAuth();
+  return <RecentAchievementsWidgetContent key={user?.id || 'signed-out'} />;
+}
+
+function RecentAchievementsWidgetContent() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [dataRevision, setDataRevision] = useState(0);
+  const readSource = useCoordinatedSources(JSON.stringify([userId,'patient.recentAchievements']));
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const off = ['clinical', 'access'].map(domain => subscribeDomain(userId, domain, refresh));
+    return () => off.forEach(unsubscribe => unsubscribe());
+  }, [userId]);
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
     const fetchRecentAchievements = async () => {
-      if (!user) return;
+      if (!userId) return;
 
       setLoading(true);
-      const { data, error } = await supabase
+      const { data, error } = await readSource('0', () => supabase
         .from('user_achievements')
         .select(`
           achieved_at,
@@ -44,9 +60,10 @@ export default function RecentAchievementsWidget() {
             icon_name
           )
         `)
-        .eq('user_id', user.id)
+        .eq('user_id', userId)
         .order('achieved_at', { ascending: false })
-        .limit(3);
+        .limit(3));
+      if (cancelled) return;
 
       if (error) {
         logDiagnostic('error', 'components/patient/RecentAchievementsWidget.jsx:51', 'Erro ao buscar conquistas:', error);
@@ -57,7 +74,8 @@ export default function RecentAchievementsWidget() {
     };
 
     fetchRecentAchievements();
-  }, [user]);
+    return () => { cancelled = true; };
+  }, [userId, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active, readSource]);
 
   const getIcon = (iconName) => {
     const Icon = ICON_MAP[iconName] || Award;

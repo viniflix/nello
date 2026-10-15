@@ -128,7 +128,7 @@
 .landing-capture-patient .product-screenshot img{height:100%;width:auto;max-width:100%;object-fit:contain}
 .landing-capture-workspace.landing-demo-workspace{animation:none}
 .landing-motion-paused *,.landing-motion-paused *:before,.landing-motion-paused *:after{transition:none!important}
-[data-tab-hidden] *,.landing-motion-offscreen *,.landing-motion-offscreen *:before,.landing-motion-offscreen *:after{animation-play-state:paused!important}
+[data-tab-hidden] *,.landing-motion-offscreen,.landing-motion-offscreen:before,.landing-motion-offscreen:after,.landing-motion-offscreen *,.landing-motion-offscreen *:before,.landing-motion-offscreen *:after{animation-play-state:paused!important}
 .landing-arrived .landing-hero h1>span,.landing-arrived .landing-hero h1>em,.landing-arrived .site-hero-actions,.landing-arrived .landing-demo{animation:none!important;translate:none;filter:none}
 .site-product-patient{width:min(100%,280px);justify-self:center;overflow:hidden}
 .landing-progress-capture{max-width:220px;transform:none}

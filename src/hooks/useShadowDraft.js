@@ -1,3 +1,7 @@
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
+import { useAccessEpoch } from './useAccessEpoch';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
+import { classifyFailure } from '@/lib/utils/failure';
 import { readMemoryDraft, writeMemoryDraft, removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { useDraftGuard } from './useDraftGuard';
 import { useCallback, useEffect, useRef, useState } from 'react';
@@ -9,6 +13,7 @@ const readLocal = readMemoryDraft;
 
 /** A private, versioned working copy. The caller decides when to publish it. */
 export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePayload, onSaved }) {
+  const accessEpoch = useAccessEpoch(ownerId);
   const callbacksRef = useRef({ preparePayload, onSaved });
   callbacksRef.current = { preparePayload, onSaved };
   const [status, setStatus] = useState('loading');
@@ -26,6 +31,15 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
   const blockedRef = useRef(false);
   const flushRef = useRef(null);
   const localKey = ownerId && draftKey ? localKeyFor(ownerId, draftKey) : null;
+  const session = useRef({key:localKey,epoch:getPrivateSessionEpoch()});
+  if (session.current.key !== localKey) session.current = {key:localKey,epoch:getPrivateSessionEpoch()};
+  const sessionEpoch = session.current.epoch;
+  const accessScope = useRef(accessEpoch);
+  const validatedAccess = useRef(accessEpoch);
+  if (accessScope.current !== accessEpoch) {
+    accessScope.current = accessEpoch; generationRef.current += 1; blockedRef.current = true; loadedRef.current = false;
+    clearTimeout(timerRef.current);
+  }
 
   useEffect(() => {
     const generation = ++generationRef.current;
@@ -58,8 +72,13 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
       } catch (caught) {
         error = caught;
       }
-      if (generationRef.current !== generation) return;
+      if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return;
       if (error) {
+        if (['forbidden','unauthenticated'].includes(classifyFailure(error))) {
+          blockedRef.current = true; latestRef.current = null; setRecovery(null); setReady(false); setStatus('error');
+          if (localKey) removeMemoryDraft(localKey);
+          return;
+        }
         // The local copy remains available if the network is down.
         if (local) {
           blockedRef.current = true;
@@ -67,6 +86,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
         }
         setStatus('error');
       } else {
+        validatedAccess.current = accessEpoch;
         loadedRef.current = true;
         revisionRef.current = data?.revision ?? null;
         remoteRef.current = data || null;
@@ -99,9 +119,11 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
       clearTimeout(timerRef.current);
       generationRef.current += 1;
     };
-  }, [ownerId, draftKey, enabled, localKey]);
+  }, [ownerId, draftKey, enabled, localKey, sessionEpoch, accessEpoch]);
 
   const flush = useCallback(async () => {
+    if (accessEpoch !== getAccessEpoch(ownerId)) return false;
+    if (sessionEpoch !== getPrivateSessionEpoch()) return false;
     if (!enabled || !ownerId || !draftKey) return false;
     if (blockedRef.current) return false;
     // A close/save request can arrive after the running request consumed the
@@ -118,7 +140,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
       } catch (caught) {
         error = caught;
       }
-      if (generationRef.current !== generation) return false;
+      if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
       if (error) { setStatus('error'); return false; }
       const local = readLocal(localKey);
       if (local?.revision !== (data?.revision ?? null)) {
@@ -155,7 +177,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
         } catch (caught) {
           error = caught;
         }
-        if (generationRef.current !== generation) return false;
+        if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
         if (error || !data) {
           latestRef.current = latestRef.current || snapshot;
           const conflict = error?.code === '23505' || (!error && !data);
@@ -165,13 +187,13 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
               const { data: remote } = await supabase.from('editor_shadow_drafts')
                 .select('payload, revision, updated_at')
                 .eq('owner_id', ownerId).eq('draft_key', draftKey).maybeSingle();
-              if (generationRef.current !== generation) return false;
+              if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
               if (remote) {
                 remoteRef.current = remote;
                 revisionRef.current = remote.revision;
               }
             } catch { /* Local working copy remains recoverable. */ }
-            if (generationRef.current !== generation) return false;
+            if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
             setRecovery({ payload: latestRef.current, source: 'device', conflict: true });
           }
           setStatus(conflict ? 'conflict' : 'error');
@@ -194,7 +216,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
     };
     const promise = run();
     promise.then((succeeded) => {
-      if (generationRef.current !== generation) return;
+      if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return;
       inFlightRef.current = null;
       if (succeeded && latestRef.current && !blockedRef.current && generationRef.current === generation) {
         timerRef.current = setTimeout(() => { void flushRef.current?.(); }, WAIT_MS);
@@ -202,10 +224,12 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
     });
     inFlightRef.current = promise;
     return promise;
-  }, [enabled, ownerId, draftKey, localKey]);
+  }, [enabled, ownerId, draftKey, localKey, sessionEpoch, accessEpoch]);
   flushRef.current = flush;
 
   const queue = useCallback((payload) => {
+    if (accessEpoch !== getAccessEpoch(ownerId)) return;
+    if (sessionEpoch !== getPrivateSessionEpoch()) return;
     if (!enabled || !ownerId || !draftKey) return;
     latestRef.current = payload;
     let stored = false;
@@ -216,13 +240,15 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
     setStatus(blockedRef.current ? 'conflict' : stored ? 'local' : 'error');
     clearTimeout(timerRef.current);
     if (!blockedRef.current) timerRef.current = setTimeout(() => { void flush(); }, WAIT_MS);
-  }, [enabled, ownerId, draftKey, localKey, flush]);
+  }, [enabled, ownerId, draftKey, localKey, flush, sessionEpoch, accessEpoch]);
 
   const discard = useCallback(async () => {
+    if (accessEpoch !== getAccessEpoch(ownerId) || validatedAccess.current !== accessEpoch) return false;
+    if (sessionEpoch !== getPrivateSessionEpoch()) return false;
     const generation = generationRef.current;
     clearTimeout(timerRef.current);
     if (inFlightRef.current) await inFlightRef.current;
-    if (generationRef.current !== generation) return false;
+    if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
     if (!ownerId || !draftKey) return false;
     if (revisionRef.current !== null) {
       let data;
@@ -234,7 +260,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
       } catch (caught) {
         error = caught;
       }
-      if (generationRef.current !== generation) return false;
+      if (accessEpoch !== getAccessEpoch(ownerId) || sessionEpoch !== getPrivateSessionEpoch() || generationRef.current !== generation) return false;
       if (error) { setStatus('error'); return false; }
       if (!data) {
         setStatus('conflict');
@@ -251,18 +277,22 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
     setRecovery(null);
     setStatus('idle');
     return true;
-  }, [ownerId, draftKey, localKey]);
+  }, [ownerId, draftKey, localKey, sessionEpoch, accessEpoch]);
 
   const restore = useCallback(() => {
+    if (accessEpoch !== getAccessEpoch(ownerId) || validatedAccess.current !== accessEpoch) return false;
+    if (sessionEpoch !== getPrivateSessionEpoch()) return false;
     if (!recovery) return null;
     const value = recovery.payload;
     setRecovery(null);
     blockedRef.current = false;
     if (recovery.source === 'device') queue(value);
     return value;
-  }, [recovery, queue]);
+  }, [recovery, queue, sessionEpoch, accessEpoch, ownerId]);
 
   const discardRecovery = useCallback(async () => {
+    if (accessEpoch !== getAccessEpoch(ownerId) || validatedAccess.current !== accessEpoch) return false;
+    if (sessionEpoch !== getPrivateSessionEpoch()) return false;
     if (recovery?.source === 'device') {
       clearTimeout(timerRef.current);
       latestRef.current = null;
@@ -282,7 +312,7 @@ export function useShadowDraft({ ownerId, draftKey, enabled = true, preparePaylo
     const removed = await discard();
     if (removed && currentWork) queue(currentWork);
     return removed;
-  }, [discard, queue, recovery, localKey]);
+  }, [discard, queue, recovery, localKey, sessionEpoch, accessEpoch]);
 
-  return { status, recovery, lastSavedAt, ready, queue, flush, discard, discardRecovery, restore };
+  return { status, recovery: validatedAccess.current === accessEpoch ? recovery : null, lastSavedAt, ready: ready && validatedAccess.current === accessEpoch, queue, flush, discard, discardRecovery, restore };
 }

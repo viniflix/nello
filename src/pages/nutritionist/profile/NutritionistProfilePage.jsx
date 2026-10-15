@@ -19,6 +19,11 @@ import AccountEmailChange from '@/components/profile/AccountEmailChange';
 import { readAgendaReturn } from '@/lib/agenda/navigation';
 
 const NutritionistProfilePage = () => {
+    const { user } = useAuth();
+    return <NutritionistProfileContent key={user?.id || 'signed-out'} />;
+};
+
+const NutritionistProfileContent = () => {
     const { user, updateUserProfile } = useAuth();
     const [searchParams, setSearchParams] = useSearchParams();
     const location = useLocation();
@@ -29,6 +34,8 @@ const NutritionistProfilePage = () => {
     const activeTab = ['personal', 'agenda', 'financial', 'documents', 'protocols', 'account'].includes(requestedTab) ? requestedTab : 'personal';
     const [loading, setLoading] = useState(true);
     const [profile, setProfile] = useState(null);
+    const userId = user?.id;
+    const userProfile = user?.profile;
 
     useEffect(() => {
         if (!loading && activeTab === 'account' && location.hash === '#professional-verification') {
@@ -37,16 +44,16 @@ const NutritionistProfilePage = () => {
     }, [loading, activeTab, location.hash]);
 
     useEffect(() => {
-        if (user) {
-            if (user.profile) {
-                setProfile(user.profile);
+        if (userId) {
+            if (userProfile) {
+                setProfile(userProfile);
             } else {
                 // Se não houver profile, criar um objeto vazio para evitar erro
                 setProfile({});
             }
             setLoading(false);
         }
-    }, [user]);
+    }, [userId, userProfile]);
 
     const handleProfileUpdate = (updatedProfile) => {
         setProfile(previous => ({ ...previous, ...updatedProfile }));

@@ -26,6 +26,11 @@ import { appointmentMoveDraft } from '@/lib/agenda/schedule-layout';
 import { useAgendaController } from '@/hooks/useAgendaController';
 
 export default function AgendaPage() {
+  const { user } = useAuth();
+  return <AgendaPageContent key={user?.id || 'signed-out'} />;
+}
+
+function AgendaPageContent() {
     const { user } = useAuth();
     const navigate = useNavigate();
     const { toast } = useToast();

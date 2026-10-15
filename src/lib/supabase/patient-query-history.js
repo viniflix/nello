@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
@@ -10,16 +12,16 @@ import { isUuid } from '@/lib/utils/patientRoutes';
 
 export let hasActivityLogTable = true;
 
-export const getProgressPhotoEventsFromAudit = async (patientId) => {
+export const getProgressPhotoEventsFromAudit = async (patientId, readOptions = {}) => {
     if (!hasActivityLogTable || !patientId) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
         .from('activity_log')
         .select('id, event_name, occurred_at, payload')
         .eq('patient_id', patientId)
         .in('event_name', ['progress_photo.added', 'progress_photo.edited', 'progress_photo.deleted'])
         .order('occurred_at', { ascending: false })
-        .limit(20);
+        .limit(20), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
     if (error) {
         const msg = String(error?.message || '').toLowerCase();
@@ -45,16 +47,16 @@ export const getProgressPhotoEventsFromAudit = async (patientId) => {
     return data || [];
 };
 
-export const resolvePatientId = async (slugOrId, nutritionistId) => {
+export const resolvePatientId = async (slugOrId, nutritionistId, readOptions = {}) => {
     if (!slugOrId || !nutritionistId) return { patientId: null, error: null };
     if (isUuid(slugOrId)) return { patientId: slugOrId, error: null };
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('user_profiles')
             .select('id')
             .eq('slug', slugOrId)
             .eq('nutritionist_id', nutritionistId)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
         return { patientId: data?.id || null, error: null };
     } catch (err) {
@@ -63,11 +65,11 @@ export const resolvePatientId = async (slugOrId, nutritionistId) => {
     }
 };
 
-export const getPatientProfile = async (patientId, nutritionistId) => {
+export const getPatientProfile = async (patientId, nutritionistId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase.rpc('get_care_patient_profile', {
+        const { data, error } = await readRequest(() => supabase.rpc('get_care_patient_profile', {
             p_patient_id: patientId
-        });
+        }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         if (!data) throw new Error('Perfil de atendimento não encontrado.');
@@ -95,15 +97,15 @@ export const updatePatientProfile = async (patientId, updateData) => {
     }
 };
 
-export const getLatestMetrics = async (patientId) => {
+export const getLatestMetrics = async (patientId, readOptions = {}) => {
     try {
         // 1. Buscar registros antropométricos (growth_records) - colunas essenciais para compatibilidade
-        const { data: growthRows } = await supabase
+        const { data: growthRows } = await readRequest(() => supabase
             .from('growth_records')
             .select('weight, height, record_date')
             .eq('patient_id', patientId)
             .order('record_date', { ascending: false })
-            .limit(2);
+            .limit(2), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         const growthData = growthRows?.[0] || null;
         const previousGrowthData = growthRows?.[1] || null;
@@ -113,11 +115,11 @@ export const getLatestMetrics = async (patientId) => {
 
         // 2. Fallback: user_profiles
         if (!weight || !height) {
-            const { data: profileData } = await supabase
+            const { data: profileData } = await readRequest(() => supabase
                 .from('user_profiles')
                 .select('weight, height')
                 .eq('id', patientId)
-                .single();
+                .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
             weight = weight || profileData?.weight;
             height = height || profileData?.height;
@@ -128,14 +130,14 @@ export const getLatestMetrics = async (patientId) => {
         // 4. Anamnese: peso, objetivo e data_nascimento (ecossistema integrado)
         let goalFromAnamnesis = null;
         let birthDateFromAnamnesis = null;
-        const { data: anamnesisDataFull } = await supabase
+        const { data: anamnesisDataFull } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select('content')
             .eq('patient_id', patientId)
             .order('date', { ascending: false })
             .order('version', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         const content = anamnesisDataFull?.content || {};
         const objetivoTexto = content?.objetivos?.objetivo_principal;
@@ -161,24 +163,24 @@ export const getLatestMetrics = async (patientId) => {
         }
 
         // Buscar última consulta
-        const { data: lastAppointment } = await supabase
+        const { data: lastAppointment } = await readRequest(() => supabase
             .from('appointments')
             .select('start_time, status')
             .eq('patient_id', patientId)
             .lte('start_time', new Date().toISOString())
             .order('start_time', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         // Buscar próxima consulta
-        const { data: nextAppointment } = await supabase
+        const { data: nextAppointment } = await readRequest(() => supabase
             .from('appointments')
             .select('start_time, status')
             .eq('patient_id', patientId)
             .gte('start_time', new Date().toISOString())
             .order('start_time', { ascending: true })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         const metrics = {
             weight: weight || null,
@@ -204,7 +206,7 @@ export const getLatestMetrics = async (patientId) => {
     }
 };
 
-export const getPatientActivities = async (patientId, limit = 10) => {
+export const getPatientActivities = async (patientId, limit = 10, {signal} = {}) => {
     if (!patientId) return { data: [], error: null };
     try {
         const activities = [];
@@ -212,16 +214,16 @@ export const getPatientActivities = async (patientId, limit = 10) => {
         // These sources are independent. Read them together so the feed waits for
         // one network round trip rather than seven consecutive round trips.
         const [mealAuditResult, weightResult, anamnesisResult, energyResult, photoEvents, achievementsResult, appointmentsResult] = await Promise.all([
-            supabase.from('meal_audit_log').select('id, action, meal_type, details, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(30),
-            supabase.from('growth_records').select('id, weight, height, record_date, created_at').eq('patient_id', patientId).order('record_date', { ascending: false }).limit(20),
-            supabase.from('anamnesis_records').select('id, date, created_at').eq('patient_id', patientId).order('date', { ascending: false }).limit(15),
-            supabase.from('energy_expenditure_calculations').select('id, created_at, final_planned_kcal').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5),
-            getProgressPhotoEventsFromAudit(patientId).catch((error) => {
+            readRequest(() => supabase.from('meal_audit_log').select('id, action, meal_type, details, created_at').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(30), {signal}),
+            readRequest(() => supabase.from('growth_records').select('id, weight, height, record_date, created_at').eq('patient_id', patientId).order('record_date', { ascending: false }).limit(20), {signal}),
+            readRequest(() => supabase.from('anamnesis_records').select('id, date, created_at').eq('patient_id', patientId).order('date', { ascending: false }).limit(15), {signal}),
+            readRequest(() => supabase.from('energy_expenditure_calculations').select('id, created_at, final_planned_kcal').eq('patient_id', patientId).order('created_at', { ascending: false }).limit(5), {signal}),
+            getProgressPhotoEventsFromAudit(patientId,{signal}).catch((error) => {
                 logSupabaseError("erro_ao_buscar_auditoria_de_fotos_no_activity_log", error);
                 return [];
             }),
-            supabase.from('user_achievements').select('id, achievement_id, achieved_at, achievements(name)').eq('user_id', patientId).order('achieved_at', { ascending: false }).limit(15),
-            supabase.from('appointments').select('id, start_time, status, notes').eq('patient_id', patientId).order('start_time', { ascending: false }).limit(15),
+            readRequest(() => supabase.from('user_achievements').select('id, achievement_id, achieved_at, achievements(name)').eq('user_id', patientId).order('achieved_at', { ascending: false }).limit(15), {signal}),
+            readRequest(() => supabase.from('appointments').select('id, start_time, status, notes').eq('patient_id', patientId).order('start_time', { ascending: false }).limit(15), {signal}),
         ]);
 
         // Buscar auditoria de refeições (CREATE, UPDATE, DELETE)

@@ -1,10 +1,12 @@
+import {readRequest} from '@/lib/supabase/readRequest';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { normalizeProgressiveProfilePayload } from '../model/progressiveProfileSchema';
 
-const callRpc = async (rpcName, payload, errorContext) => {
+const callRpc = async (rpcName, payload, errorContext, {signal} = {}) => {
   try {
-    const { data, error } = await supabase.rpc(rpcName, payload);
+    const { data, error } = await (['get_patient_record_foundation','list_patient_legal_guardians'].includes(rpcName)
+      ? readRequest(() => supabase.rpc(rpcName, payload), {signal}) : supabase.rpc(rpcName, payload));
     if (error) logSupabaseError(errorContext, error);
     return { data, error };
   } catch (error) {
@@ -13,10 +15,10 @@ const callRpc = async (rpcName, payload, errorContext) => {
   }
 };
 
-export const getPatientRecordFoundation = (patientId) => callRpc(
+export const getPatientRecordFoundation = (patientId, options) => callRpc(
   'get_patient_record_foundation',
   { p_patient_id: patientId },
-  "erro_ao_buscar_fundacao_do_prontuario",
+  "erro_ao_buscar_fundacao_do_prontuario", options,
 );
 
 export const updatePatientProgressiveProfile = (patientId, changes, source) => {
@@ -32,10 +34,10 @@ export const updatePatientProgressiveProfile = (patientId, changes, source) => {
   }
 };
 
-export const listPatientLegalGuardians = (patientId, episodeId) => callRpc(
+export const listPatientLegalGuardians = (patientId, episodeId, options) => callRpc(
   'list_patient_legal_guardians',
   { p_patient_id: patientId, p_episode_id: episodeId },
-  "erro_ao_buscar_responsaveis_legais",
+  "erro_ao_buscar_responsaveis_legais", options,
 );
 
 export const savePatientLegalGuardian = (patientId, episodeId, payload) => callRpc(

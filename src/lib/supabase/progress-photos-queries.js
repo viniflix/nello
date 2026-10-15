@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { insertIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { formatDateToIsoDate } from '@/lib/utils/date';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
@@ -13,15 +15,15 @@ export function normalizePatientPhotoPath(value) {
     return parsePrivateFile(value, BUCKET)?.path || null;
 }
 
-export async function getActiveCareEpisodeId(patientId) {
+export async function getActiveCareEpisodeId(patientId, readOptions = {}) {
     if (!patientId) return { data: null, error: new Error('Paciente não informado.') };
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('care_episodes')
             .select('id')
             .eq('patient_id', patientId)
             .eq('status', 'active')
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
         if (!data?.id) throw new Error('Não há acompanhamento ativo para vincular esta foto.');
         return { data: data.id, error: null };
@@ -44,17 +46,17 @@ export async function createPatientPhotoSignedUrl(value) {
  * Lista fotos de progresso do paciente, ordenadas por data (mais antiga primeiro para "antes/depois").
  * @param {{ patientId: string, limit?: number }} opts
  */
-export async function getProgressPhotos({ patientId, limit = 100 }) {
+export async function getProgressPhotos({ patientId, limit = 100 }, readOptions = {}) {
     if (!patientId) return { data: [], error: null };
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('progress_photos')
             .select("id,patient_id,photo_url,photo_date,uploaded_by,notes,created_at,care_episode_id,storage_path,status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order('photo_date', { ascending: true })
             .order('created_at', { ascending: true })
-            .limit(limit);
+            .limit(limit), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
 
         const resolved = await Promise.all((data || []).map(async (photo) => {
@@ -199,12 +201,12 @@ export async function uploadProgressPhoto({
  * Usado para "peso no antes" e "peso no depois" no card de fotos.
  * @param {{ patientId: string, date: string (YYYY-MM-DD) }} opts
  */
-export async function getWeightClosestToDate({ patientId, date }) {
+export async function getWeightClosestToDate({ patientId, date }, readOptions = {}) {
     if (!patientId || !date) return { data: null, error: null };
     try {
         const d = new Date(date);
         const dateStr = formatDateToIsoDate(d);
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('growth_records')
             .select('weight, record_date')
             .eq('patient_id', patientId)
@@ -212,11 +214,11 @@ export async function getWeightClosestToDate({ patientId, date }) {
             .lte('record_date', dateStr)
             .order('record_date', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
         if (data) return { data: { weight: parseFloat(data.weight), record_date: data.record_date }, error: null };
         // Se não houver peso até a data, pegar o mais próximo depois
-        const { data: after } = await supabase
+        const { data: after } = await readRequest(() => supabase
             .from('growth_records')
             .select('weight, record_date')
             .eq('patient_id', patientId)
@@ -224,7 +226,7 @@ export async function getWeightClosestToDate({ patientId, date }) {
             .gte('record_date', dateStr)
             .order('record_date', { ascending: true })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
         return { data: after ? { weight: parseFloat(after.weight), record_date: after.record_date } : null, error: null };
     } catch (e) {
         logSupabaseError('getWeightClosestToDate', e);

@@ -1,11 +1,11 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 /**
  * Hook para buscar medidas genéricas (household_measures)
  * e combinar com medidas personalizadas do nutricionista.
  * Usa padrão useState + useEffect (sem React Query)
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useCallback, useMemo } from 'react';
+import { useReferenceResource } from './useReferenceResource';
 import { useActiveCustomMeasures } from '@/hooks/useCustomMeasures';
 import { getAllHouseholdMeasures } from '@/lib/supabase/food-measures-queries';
 
@@ -15,37 +15,7 @@ import { getAllHouseholdMeasures } from '@/lib/supabase/food-measures-queries';
  * @returns {object} { data, isLoading, error, refetch }
  */
 export const useHouseholdMeasures = (options = {}) => {
-  const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState(null);
-
-  const loadMeasures = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      const result = await getAllHouseholdMeasures();
-      if (result.error) throw result.error;
-      setData(result.data || []);
-    } catch (err) {
-      logDiagnostic('error', 'hooks/useHouseholdMeasures.js:30', 'Erro ao carregar medidas caseiras:', err);
-      setError(err);
-      setData([]);
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    loadMeasures();
-  }, [loadMeasures]);
-
-  return {
-    data,
-    isLoading,
-    error,
-    refetch: loadMeasures
-  };
+  return useReferenceResource('household', null, null, signal => getAllHouseholdMeasures({signal, cache:false}));
 };
 
 /**
@@ -121,6 +91,7 @@ export const useAllMeasures = () => {
     customMeasures,
     isLoading: system.isLoading || custom.isLoading,
     error: system.error || custom.error,
+    scope: custom.scope,
     refetch: load,
   };
 };

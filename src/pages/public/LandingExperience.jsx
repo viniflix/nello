@@ -13,6 +13,8 @@ const examples = {
 
 export function useLandingMotion() {
   const root = useRef(null);
+  const journeyInView = useRef(false);
+  const scheduleJourney = useRef(null);
   const [reduced, setReduced] = useState(false);
   const [arrived, setArrived] = useState(false);
 
@@ -36,13 +38,18 @@ export function useLandingMotion() {
     const observer = 'IntersectionObserver' in window ? new IntersectionObserver(entries => {
       entries.forEach(entry => {
         entry.target.classList.toggle('landing-motion-offscreen', !entry.isIntersecting);
+        if (entry.target.classList.contains('landing-journey')) {
+          journeyInView.current = entry.isIntersecting;
+          scheduleJourney.current?.();
+        }
         if (entry.target.classList.contains('landing-hero-copy')) {
           element.toggleAttribute('data-hero-away', !entry.isIntersecting);
 
         }
       });
     }) : null;
-    element.querySelectorAll('.landing-hero, .landing-hero-copy, .landing-phone-scene, .landing-journey, .landing-final-cta').forEach(scene => observer?.observe(scene));
+    journeyInView.current = !observer;
+    element.querySelectorAll('.landing-hero, .landing-hero-copy, .landing-phone-scene, .landing-journey, .landing-final-cta, .landing-scroll-cue, .landing-float, .landing-star').forEach(scene => observer?.observe(scene));
     return () => { document.removeEventListener('visibilitychange', sync); observer?.disconnect(); };
   }, []);
   useEffect(() => {
@@ -52,13 +59,14 @@ export function useLandingMotion() {
     const nodes = [...element.querySelectorAll('.landing-journey-node')];
     const reducedNow = reduced || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     const stopped = reducedNow;
+    if (reducedNow) nodes.forEach(node => node.removeAttribute('data-care-active'));
     let frame = 0;
     const update = () => {
       frame = 0;
       if (document.hidden) return;
       const height = document.documentElement.scrollHeight - window.innerHeight;
       if (!stopped) element.style.setProperty('--reading-progress', height > 0 ? String(Math.min(1, Math.max(0, window.scrollY / height))) : '0');
-      if (!journey || nodes.length < 2) return;
+      if (!journey || nodes.length < 2 || !journeyInView.current) return;
       const bounds = journey.getBoundingClientRect();
       const first = nodes[0].getBoundingClientRect();
       const mobile = window.matchMedia('(max-width: 760px)').matches;
@@ -73,18 +81,21 @@ export function useLandingMotion() {
       journey.style.setProperty('--care-progress', String(progress));
       nodes.forEach((node, index) => node.toggleAttribute('data-care-active', index === Math.round(progress * (nodes.length - 1))));
     };
-    const schedule = () => { if (!frame) frame = requestAnimationFrame(update); };
+    const schedule = () => { if (!document.hidden && !frame) frame = requestAnimationFrame(update); };
+    const visibility = () => { if (document.hidden) { cancelAnimationFrame(frame); frame = 0; } else schedule(); };
+    scheduleJourney.current = schedule;
     schedule();
     if (!stopped) window.addEventListener('scroll', schedule, { passive: true });
     window.addEventListener('resize', schedule);
-    document.addEventListener('visibilitychange', schedule);
+    document.addEventListener('visibilitychange', visibility);
     const observer = typeof ResizeObserver !== 'undefined' ? new ResizeObserver(schedule) : null;
     observer?.observe(element);
     return () => {
       cancelAnimationFrame(frame);
       window.removeEventListener('scroll', schedule);
       window.removeEventListener('resize', schedule);
-      document.removeEventListener('visibilitychange', schedule);
+      document.removeEventListener('visibilitychange', visibility);
+      if (scheduleJourney.current === schedule) scheduleJourney.current = null;
       observer?.disconnect();
     };
   }, [reduced]);

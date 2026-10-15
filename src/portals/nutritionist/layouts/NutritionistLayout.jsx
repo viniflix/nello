@@ -1,3 +1,4 @@
+import {OutletLoadingBoundary} from '@/components/ui/outlet-loading-boundary';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -22,7 +23,7 @@ const NutritionistLayout = () => {
       />
       <main id="main-content" tabIndex={-1} className={`flex-1 min-w-0 ${isChatPage ? 'flex min-h-0 flex-col' : ''}`}>
         <PortalBreadcrumbs />
-        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary></div>
+        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary><Outlet /></OutletLoadingBoundary></ClientErrorBoundary></div>
       </main>
     </div>
   );

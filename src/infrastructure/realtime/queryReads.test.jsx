@@ -1,0 +1,24 @@
+import {observeQueryReads} from './queryReads';
+import {currentReadSignal} from './readSignalState';
+import {clinicalQueryPredicate, resourceDomains} from './resourceDomains';
+import React from'react';import{act,renderHook,waitFor}from'@testing-library/react';import{QueryClient,QueryClientProvider,useQuery}from'@tanstack/react-query';import{expect,it,vi}from'vitest';import{invalidateQueryReads}from'./queryReads';import{invalidateDomain}from'./events';
+it('joins a pending query without cancelling and re-reads once after newer signals',async()=>{const pending=[];const read=vi.fn(()=>new Promise(r=>pending.push(r)));const client=new QueryClient({defaultOptions:{queries:{retry:false}}});const wrapper=({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>;const h=renderHook(()=>({...useQuery({queryKey:['templates','diet','qa-query'],queryFn:read})}),{wrapper});await waitFor(()=>expect(read).toHaveBeenCalledTimes(1));let tasks;act(()=>{tasks=Array.from({length:8},()=>invalidateQueryReads(client,{queryKey:['templates']},'qa-query'))});expect(read).toHaveBeenCalledTimes(1);await act(async()=>pending.shift()('old'));await waitFor(()=>expect(read).toHaveBeenCalledTimes(2));await act(async()=>pending.shift()('fresh'));await Promise.all(tasks);await waitFor(()=>expect(h.result.current.data).toBe('fresh'));h.unmount();client.clear()});
+it('a revoked epoch prevents queued query work from restoring private data',async()=>{let finish;const read=vi.fn(()=>new Promise(r=>finish=r));const client=new QueryClient();const wrapper=({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>;const h=renderHook(()=>({...useQuery({queryKey:['mealPlans','qa-access'],queryFn:read})}),{wrapper});await waitFor(()=>expect(read).toHaveBeenCalledTimes(1));const p=invalidateQueryReads(client,{queryKey:['mealPlans']},'qa-query-access');act(()=>invalidateDomain('qa-query-access','access'));await client.cancelQueries();client.removeQueries();await act(async()=>finish('old-private'));await p;expect(client.getQueryData(['mealPlans','qa-access'])).toBeUndefined();expect(read).toHaveBeenCalledTimes(1);h.unmount();client.clear()});
+
+it('a mutation refresh begun after the signal covers delayed delivery without another read',async()=>{
+ const client=new QueryClient({defaultOptions:{queries:{retry:false}}}),read=vi.fn(async()=> 'confirmed');const stop=observeQueryReads(client);
+ const wrapper=({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>;const h=renderHook(()=>useQuery({queryKey:['patient-hub-summary','qa-mutation'],queryFn:read}),{wrapper});await waitFor(()=>expect(h.result.current.data).toBe('confirmed'));
+ act(()=>invalidateDomain('qa-mutation','clinical'));const sequence=currentReadSignal();await act(async()=>client.refetchQueries({queryKey:['patient-hub-summary']}));expect(read).toHaveBeenCalledTimes(2);
+ await invalidateQueryReads(client,{queryKey:['patient-hub-summary']},'qa-mutation',sequence);expect(read).toHaveBeenCalledTimes(2);stop();h.unmount();client.clear();
+});
+it('keeps broad clinical coverage for every registered query root and inactive entries',async()=>{
+ const client=new QueryClient();for(const root of resourceDomains.clinical.roots)client.setQueryData([root,'qa-registry'],{confirmed:true});client.setQueryData(['legacy-unknown','qa-registry'],1);client.setQueryData(['profile','qa-registry'],1);client.setQueryData(['notifications','qa-registry'],1);
+ await invalidateQueryReads(client,{predicate:clinicalQueryPredicate},'qa-registry');for(const root of [...resourceDomains.clinical.roots,'legacy-unknown'])expect(client.getQueryState([root,'qa-registry']).isInvalidated).toBe(true);
+ expect(client.getQueryState(['profile','qa-registry']).isInvalidated).toBe(false);expect(client.getQueryState(['notifications','qa-registry']).isInvalidated).toBe(false);client.clear();
+});
+
+it('reconciles a signal when observation attaches after an untracked read already started',async()=>{
+ const finishes=[],read=vi.fn(()=>new Promise(resolve=>finishes.push(resolve)));const client=new QueryClient({defaultOptions:{queries:{retry:false}}});const wrapper=({children})=><QueryClientProvider client={client}>{children}</QueryClientProvider>;const h=renderHook(()=>useQuery({queryKey:['templates','qa-bootstrap'],queryFn:read}),{wrapper});await waitFor(()=>expect(read).toHaveBeenCalledTimes(1));
+ act(()=>invalidateDomain('qa-bootstrap','clinical'));const sequence=currentReadSignal(),stop=observeQueryReads(client);const work=invalidateQueryReads(client,{queryKey:['templates','qa-bootstrap']},'qa-bootstrap',sequence);
+ await act(async()=>finishes.shift()('old'));await waitFor(()=>expect(read).toHaveBeenCalledTimes(2));await act(async()=>finishes.shift()('fresh'));await work;await waitFor(()=>expect(h.result.current.data).toBe('fresh'));stop();h.unmount();client.clear();
+});

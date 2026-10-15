@@ -43,13 +43,15 @@ describe('useTemplates Hook', () => {
     // Setup default supabase mock chain
     const selectMock = vi.fn().mockReturnThis();
     const eqMock = vi.fn().mockReturnThis();
-    const orderMock = vi.fn().mockResolvedValue({ data: [{ id: '1', name: 'Test Template' }], error: null });
+    const orderMock = vi.fn().mockReturnThis();
+    const limitMock = vi.fn().mockResolvedValue({ data: [{ id: '1', name: 'Test Template' }], error: null });
     const deleteMock = vi.fn().mockReturnThis();
 
     supabase.from.mockReturnValue({
       select: selectMock,
       eq: eqMock,
       order: orderMock,
+      limit: limitMock,
       delete: deleteMock,
     });
   });
@@ -66,6 +68,9 @@ describe('useTemplates Hook', () => {
     expect(supabase.from).toHaveBeenCalledWith('diet_templates');
     expect(result.current.templates).toHaveLength(1);
     expect(result.current.templates[0].name).toBe('Test Template');
+    expect(result.current.error).toBeNull();expect(result.current.hasMore).toBe(false);
+    expect(supabase.from.mock.results[0].value.limit).toHaveBeenCalledWith(21);
+    expect(supabase.from.mock.results[0].value.eq).toHaveBeenCalledWith('user_id',mockUser.id);
   });
 
   it('should fetch meal templates when type is meal', async () => {
@@ -76,6 +81,7 @@ describe('useTemplates Hook', () => {
     });
 
     expect(supabase.from).toHaveBeenCalledWith('meal_templates');
+    expect(result.current.error).toBeNull();expect(result.current.templates[0].name).toBe('Test Template');
   });
 
   it('does not fetch nutrition templates while another protocol group is open', () => {

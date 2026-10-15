@@ -1,5 +1,6 @@
+import {executeRead,readPolicies} from '@/lib/utils/readPolicy';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Save, Loader2 } from 'lucide-react';
@@ -18,106 +19,108 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { useDraftGuard } from '@/hooks/useDraftGuard';
+import { failurePresentation } from '@/lib/utils/failure';
+import { invalidateDomain } from '@/infrastructure/realtime/events';
 
 /**
  * PatientEditProfilePage - Página de edição completa do perfil do paciente
  */
+const formFromProfile = profile => {
+  const fields = ['name', 'phone', 'birth_date', 'gender', 'height', 'weight'];
+  const addressFields = ['zipcode', 'street', 'number', 'complement', 'neighborhood', 'city', 'state'];
+  return Object.fromEntries([...fields.map(key => [key, String(profile?.[key] ?? '')]),
+    ...addressFields.map(key => [key, String(profile?.address?.[key] ?? '')])]);
+};
+const sameForm = (left, right) => JSON.stringify(left) === JSON.stringify(right);
+
 export default function PatientEditProfilePage() {
   const { user } = useAuth();
+  if (!user?.id || !user.profile) return <p role="status">Carregando perfil…</p>;
+  // Remount only for a different account, before any previous draft can render.
+  return <PatientProfileEditor key={user.id} user={user} />;
+}
+
+function PatientProfileEditor({ user }) {
+  const { updateUserProfile } = useAuth();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
   const [loadingCep, setLoadingCep] = useState(false);
-  const [formData, setFormData] = useState({
-    name: '',
-    phone: '',
-    birth_date: '',
-    gender: '',
-    height: '',
-    weight: '',
-    zipcode: '',
-    street: '',
-    number: '',
-    complement: '',
-    neighborhood: '',
-    city: '',
-    state: ''
-  });
+  const [base, setBase] = useState(() => formFromProfile(user.profile));
+  const [formData, setFormData] = useState(base);
+  const [external, setExternal] = useState(null);
+  const [saveError, setSaveError] = useState(null);
+  const dirty = !sameForm(formData, base);
+  const latestProfile = JSON.stringify(formFromProfile(user.profile));
+  const latest = JSON.parse(latestProfile);
+  const conflict = external || (dirty && !sameForm(latest, base) ? latest : null);
+  const mounted = useRef(false), saving = useRef(false), postal = useRef({ sequence: 0, controller: null });
+  const fields = useRef(formData); fields.current = formData;
+  useDraftGuard(dirty || loading);
 
   useEffect(() => {
-    if (user?.profile) {
-      const address = user?.profile?.address || {};
-      setFormData({
-        name: user?.profile?.name || '',
-        phone: user?.profile?.phone || '',
-        birth_date: user?.profile?.birth_date || '',
-        gender: user?.profile?.gender || '',
-        height: user?.profile?.height || '',
-        weight: user?.profile?.weight || '',
-        zipcode: address.zipcode || '',
-        street: address.street || '',
-        number: address.number || '',
-        complement: address.complement || '',
-        neighborhood: address.neighborhood || '',
-        city: address.city || '',
-        state: address.state || ''
-      });
-    }
-  }, [user]);
+    mounted.current = true;
+    const requests = postal.current;
+    return () => { mounted.current = false; requests.sequence += 1; requests.controller?.abort(); };
+  }, []);
+  useEffect(() => {
+    const updated = JSON.parse(latestProfile);
+    if (sameForm(updated, base)) { setExternal(null); return; }
+    if (saving.current) return;
+    if (dirty) setExternal(updated);
+    else { setBase(updated); setFormData(updated); setExternal(null); }
+  }, [latestProfile, base, dirty]);
 
   const handleChange = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
+    const next = { ...fields.current, [field]: value };
+    fields.current = next; setFormData(next); setSaveError(null);
   };
-
-  const handleCepChange = async (cep) => {
-    // Remove caracteres não numéricos
+  const leave = () => {
+    if (saving.current) return;
+    if (dirty && !window.confirm('Descartar as alterações deste perfil e voltar?')) return;
+    navigate('/patient/perfil');
+  };
+  const reviewExternal = keepDraft => {
+    const snapshot = formFromProfile(user.profile);
+    if (!keepDraft && dirty && !window.confirm('Descartar sua edição e usar o perfil atualizado?')) return;
+    setBase(snapshot); setExternal(null); setSaveError(null);
+    if (!keepDraft) { postal.current.controller?.abort(); postal.current.sequence += 1; setLoadingCep(false); setFormData(snapshot); fields.current = snapshot; }
+  };
+  const handleCepChange = async cep => {
     const cleanCep = cep.replace(/\D/g, '');
     handleChange('zipcode', cleanCep);
-
-    // Busca CEP apenas se tiver 8 dígitos
-    if (cleanCep.length === 8) {
-      setLoadingCep(true);
-      try {
-        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`);
-        const data = await response.json();
-
-        if (data.erro) {
-          toast({
-            title: 'CEP não encontrado',
-            description: 'Verifique o CEP digitado.',
-            variant: 'destructive'
-          });
-          return;
-        }
-
-        // Preencher campos automaticamente
-        setFormData(prev => ({
-          ...prev,
-          street: data.logradouro || '',
-          neighborhood: data.bairro || '',
-          city: data.localidade || '',
-          state: data.uf || ''
-        }));
-
-        toast({
-          title: 'CEP encontrado!',
-          description: 'Endereço preenchido automaticamente.'
-        });
-      } catch (error) {
-        logDiagnostic('error', 'pages/patient/PatientEditProfilePage.jsx:106', 'Erro ao buscar CEP:', error);
-        toast({
-          title: 'Erro',
-          description: 'Não foi possível buscar o CEP.',
-          variant: 'destructive'
-        });
-      } finally {
-        setLoadingCep(false);
+    postal.current.controller?.abort();
+    const sequence = ++postal.current.sequence;
+    setLoadingCep(false);
+    if (cleanCep.length !== 8) return;
+    const controller = new AbortController(); postal.current.controller = controller;
+    const before = { ...fields.current };
+    const current = () => mounted.current && postal.current.sequence === sequence && !controller.signal.aborted;
+    setLoadingCep(true);
+    try {
+      const data = await executeRead(async signal => {
+        const response = await fetch(`https://viacep.com.br/ws/${cleanCep}/json/`, { signal });
+        if (!response.ok) throw Object.assign(new Error('postal_source_unavailable'), {status:response.status});
+        return response.json();
+      }, {signal:controller.signal,policy:readPolicies.provider});
+      if (!current()) return;
+      if (data.erro) { toast({ title: 'CEP não encontrado', description: 'Verifique o CEP digitado.', variant: 'destructive' }); return; }
+      const next = { ...fields.current };
+      for (const [field, source] of [['street', 'logradouro'], ['neighborhood', 'bairro'], ['city', 'localidade'], ['state', 'uf']]) {
+        if (next[field] === before[field]) next[field] = data[source] || '';
       }
-    }
+      fields.current = next; setFormData(next);
+    } catch {
+      if (mounted.current && postal.current.sequence === sequence && (!controller.signal.aborted || controller.signal.reason?.name === 'TimeoutError')) {
+        toast({ title: 'CEP não consultado', description: 'Preencha o endereço ou tente novamente.', variant: 'destructive' });
+      }
+    } finally { if (mounted.current && postal.current.sequence === sequence) setLoadingCep(false); }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (saving.current || conflict || loadingCep || !mounted.current) return;
 
     // Validações básicas
     if (!formData.name.trim()) {
@@ -129,7 +132,7 @@ export default function PatientEditProfilePage() {
       return;
     }
 
-    setLoading(true);
+    saving.current = true; setLoading(true); setSaveError(null);
 
     try {
       // Preparar objeto de endereço
@@ -143,7 +146,7 @@ export default function PatientEditProfilePage() {
         state: formData.state || null
       };
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('user_profiles')
         .update({
           name: formData.name,
@@ -154,21 +157,24 @@ export default function PatientEditProfilePage() {
           weight: formData.weight ? parseFloat(formData.weight) : null,
           address: address
         })
-        .eq('id', user.id);
+        .eq('id', user.id).select('id,name,phone,birth_date,gender,height,weight,address').single();
 
+      if (!mounted.current) return;
       if (error) throw error;
+      if (!data || data.id !== user.id) throw new Error('profile_write_not_confirmed');
+      updateUserProfile(data);
+      invalidateDomain(user.id, 'profile');
+      setBase(formFromProfile(data));
 
       toast({
         title: 'Sucesso!',
         description: 'Suas informações foram atualizadas.'
       });
 
-      // Navegar de volta e recarregar para atualizar dados
       navigate('/patient/perfil');
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
     } catch (error) {
+      if (!mounted.current) return;
+      setSaveError(failurePresentation(error));
       logDiagnostic('error', 'pages/patient/PatientEditProfilePage.jsx:171', 'Erro ao atualizar perfil:', error);
       toast({
         title: 'Erro',
@@ -176,7 +182,8 @@ export default function PatientEditProfilePage() {
         variant: 'destructive'
       });
     } finally {
-      setLoading(false);
+      saving.current = false;
+      if (mounted.current) setLoading(false);
     }
   };
 
@@ -189,7 +196,7 @@ export default function PatientEditProfilePage() {
             variant="ghost"
             size="icon"
             aria-label="Voltar ao perfil"
-            onClick={() => navigate('/patient/perfil')}
+            onClick={leave}
           >
             <ArrowLeft className="w-5 h-5" />
           </Button>
@@ -201,6 +208,12 @@ export default function PatientEditProfilePage() {
           </div>
         </div>
 
+        {conflict && <section role="alert" className="mb-4 space-y-3 rounded-xl border p-4 text-sm">
+          <p>Seu perfil foi atualizado enquanto você editava. Sua edição foi preservada. Revise antes de salvar.</p>
+          <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={loading} onClick={() => reviewExternal(false)}>Usar perfil atualizado</Button>
+            <Button variant="outline" disabled={loading} onClick={() => reviewExternal(true)}>Manter minha edição</Button></div>
+        </section>}
+        {saveError && <p role="alert" className="mb-4 rounded-xl border p-3 text-sm">{saveError.message} Sua edição foi preservada.</p>}
         {/* Formulário */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
@@ -215,6 +228,7 @@ export default function PatientEditProfilePage() {
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
+                <fieldset disabled={loading} className="min-w-0 space-y-6">
                 {/* Nome Completo */}
                 <div className="space-y-2">
                   <Label htmlFor="name">Nome Completo *</Label>
@@ -317,7 +331,7 @@ export default function PatientEditProfilePage() {
                         maxLength={8}
                         value={formData.zipcode}
                         onChange={(e) => handleCepChange(e.target.value)}
-                        disabled={loadingCep}
+                        aria-busy={loadingCep}
                       />
                       {loadingCep && (
                         <div className="absolute right-3 top-1/2 -translate-y-1/2">
@@ -415,7 +429,7 @@ export default function PatientEditProfilePage() {
                     type="button"
                     variant="outline"
                     className="flex-1"
-                    onClick={() => navigate('/patient/perfil')}
+                    onClick={leave}
                     disabled={loading}
                   >
                     Cancelar
@@ -423,7 +437,7 @@ export default function PatientEditProfilePage() {
                   <Button
                     type="submit"
                     className="flex-1"
-                    disabled={loading}
+                    disabled={loading || loadingCep || Boolean(conflict) || ['forbidden', 'unauthenticated'].includes(saveError?.kind)}
                   >
                     {loading ? (
                       <>
@@ -438,6 +452,7 @@ export default function PatientEditProfilePage() {
                     )}
                   </Button>
                 </div>
+                </fieldset>
               </CardContent>
             </Card>
           </form>

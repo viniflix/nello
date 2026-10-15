@@ -1,10 +1,13 @@
+import {executeRead,readPolicies} from '@/lib/utils/readPolicy';
+import {readRequest} from './readRequest';
 import { agendaClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import {MAX_DATA_ROWS} from './bounded-pages';
 
 const PAGE_SIZE = 500;
 
-export async function fetchAppointmentsInPeriod(nutritionistId, start, end, select = 'id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,updated_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id,patient:user_profiles!appointments_patient_id_fkey(name,id),charge:financial_transactions!financial_transactions_appointment_id_fkey(id,amount,status,due_date,paid_at,transaction_date,updated_at)', operation = 'agenda_period') {
+export async function fetchAppointmentsInPeriod(nutritionistId, start, end, select = 'id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,updated_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id,patient:user_profiles!appointments_patient_id_fkey(name,id),charge:financial_transactions!financial_transactions_appointment_id_fkey(id,amount,status,due_date,paid_at,transaction_date,updated_at)', operation = 'agenda_period', {signal} = {}) {
+    return executeRead(async budget => {
     const started = performance.now();
     const rows = [];
     for (let offset = 0; ; offset += PAGE_SIZE) {
@@ -16,7 +19,7 @@ export async function fetchAppointmentsInPeriod(nutritionistId, start, end, sele
             .range(offset, offset + PAGE_SIZE - 1);
         if (start) query = query.gte('appointment_time', start.toISOString());
         if (end) query = query.lt('appointment_time', end.toISOString());
-        const { data, error } = await query;
+        const { data, error } = await readRequest(() => query, {signal:budget,policy:readPolicies.agendaPage});
         if (error) throw error;
         if (rows.length + (data?.length || 0) > MAX_DATA_ROWS) throw new Error('REPORT_ROW_LIMIT_REACHED');
         rows.push(...(data || []));
@@ -25,4 +28,5 @@ export async function fetchAppointmentsInPeriod(nutritionistId, start, end, sele
             return rows;
         }
     }
+    }, {signal,policy:readPolicies.agenda});
 }

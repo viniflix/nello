@@ -1,5 +1,7 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { Target, TrendingDown, TrendingUp, Scale, Activity } from 'lucide-react';
@@ -26,13 +28,17 @@ import { failurePresentation } from '@/lib/utils/failure';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 
-export function useGoalsPageController() {
+export function useGoalsPageController({ actorId = null } = {}) {
 
     const { patientId, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
 
-    const [loading, setLoading] = useState(true);
+    const resource = useResourceSnapshot(JSON.stringify([actorId, patientId]), null);
+    const { begin, succeed, fail, current } = resource;
+    const loading = Boolean(patientId) && resource.initialLoading;
+    const initialFormScope = useRef(null);
+    const touched = useRef(false);
     const [loadError, setLoadError] = useState(null);
     const [submitting, setSubmitting] = useState(false);
     const [patientName, setPatientName] = useState('');
@@ -76,18 +82,9 @@ export function useGoalsPageController() {
         getNutritionistId();
     }, []);
 
-    // Carregar dados
-    useEffect(() => {
-        if (!patientId) {
-            setLoading(false);
-            return;
-        }
-        loadData();
-    }, [patientId]);
-
-    const loadData = async () => {
+    const loadData = useCoordinatedLoader(useCallback(async () => {
         if (!patientId) return;
-        setLoading(true);
+        const ticket = begin();
         setLoadError(null);
         try {
             // Buscar nome do paciente
@@ -96,26 +93,23 @@ export function useGoalsPageController() {
                 .select('name')
                 .eq('id', patientId)
                 .single();
+            if (!current(ticket)) return;
             if (profileError) throw profileError;
 
-            if (profile) {
-                setPatientName(profile.name);
-            }
 
             // Buscar meta ativa
             const { data: active, error: activeError } = await getActiveGoal(patientId);
             if (activeError) throw activeError;
-            setActiveGoal(active);
 
             // Buscar metas anteriores
             const { data: past, error: pastError } = await getPatientGoals(patientId, {
                 status: ['completed', 'cancelled', 'paused']
             });
             if (pastError) throw pastError;
-            setPastGoals(past || []);
+            if (!current(ticket)) return;
 
             // Se não tem meta ativa, abrir formulário e puxar peso
-            if (!active) {
+            if (!active && !touched.current && initialFormScope.current !== ticket.key) {
                 // Puxar peso mais recente do paciente (tabela correta: growth_records)
                 const { data: latestRecord, error: recordError } = await supabase
                     .from('growth_records')
@@ -124,6 +118,7 @@ export function useGoalsPageController() {
                     .order('record_date', { ascending: false })
                     .limit(1)
                     .maybeSingle();
+                if (!current(ticket)) return;
                 if (recordError) throw recordError;
 
                 if (latestRecord && latestRecord.weight) {
@@ -133,15 +128,22 @@ export function useGoalsPageController() {
                     }));
                 }
 
+                initialFormScope.current = ticket.key;
                 setShowForm(true);
             }
+            if (!current(ticket)) return;
+            setPatientName(profile?.name || '');
+            setActiveGoal(active);
+            setPastGoals(past || []);
+            succeed(ticket, true);
         } catch (error) {
-            setShowForm(false);
+            if (!current(ticket)) return;
+            fail(ticket, error);
+            if (['forbidden', 'unauthenticated'].includes(failurePresentation(error).kind)) setShowForm(false);
             setLoadError({...failurePresentation(error),correlationId:captureOperationalError(error,{operation:'load_goals',module:'goals',source:'query'})});
-        } finally {
-            setLoading(false);
         }
-    };
+    }, [patientId, actorId, begin, succeed, fail, current]), resource.scopeKey, ['clinical']);
+    useEffect(() => { if (patientId) void loadData(); }, [patientId, loadData]);
 
     // Calcular viabilidade em tempo real
     useEffect(() => {
@@ -231,6 +233,7 @@ export function useGoalsPageController() {
     }, [formData.initial_weight, formData.target_weight, formData.start_date]);
 
     const handleInputChange = (field, value) => {
+        touched.current = true;
         setFormData(prev => ({ ...prev, [field]: value }));
     };
 
@@ -428,5 +431,5 @@ export function useGoalsPageController() {
     };
 
     
-return {loading,loadError,loadData,navigate,patientId,paramValue,patientName,activeGoal,showForm,setShowForm,formData,handleInputChange,deadlineRecommendation,loadingViability,viabilityPreview,getViabilityColor,getViabilityLabel,handleCreateGoal,submitting,showImpactConfirm,setShowImpactConfirm,handleConfirmCreateWithImpact,setShowProgressModal,handleCompleteGoal,handlePauseGoal,setShowCancelDialog,pastGoals,showProgressModal,newWeight,setNewWeight,handleUpdateProgress,showCancelDialog,handleCancelGoal};
+return {resource,loading,loadError,loadData,navigate,patientId,paramValue,patientName,activeGoal,showForm,setShowForm,formData,handleInputChange,deadlineRecommendation,loadingViability,viabilityPreview,getViabilityColor,getViabilityLabel,handleCreateGoal,submitting,showImpactConfirm,setShowImpactConfirm,handleConfirmCreateWithImpact,setShowProgressModal,handleCompleteGoal,handlePauseGoal,setShowCancelDialog,pastGoals,showProgressModal,newWeight,setNewWeight,handleUpdateProgress,showCancelDialog,handleCancelGoal};
 }

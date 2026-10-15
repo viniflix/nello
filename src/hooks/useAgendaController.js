@@ -1,3 +1,5 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useToast } from '@/components/ui/use-toast';
@@ -16,22 +18,16 @@ import { civilDateInZone, civilDateToDate, getTodayIsoDate } from '@/lib/utils/d
 
 export function useAgendaController({ user, returnView = null }) {
     const { toast } = useToast();
+    const userId = user?.id;
     
-    const [appointments, setAppointments] = useState([]);
-    const [summaryAppointments, setSummaryAppointments] = useState([]);
-    const [summaryReady, setSummaryReady] = useState(false);
     const [agendaRevision, setAgendaRevision] = useState(0);
     const loadSequence = useRef(0);
+    const readers = useRef({period:null,calendar:null,summary:null});
     const references = useAgendaReferences(user?.id);
     const { patients, services } = references;
     const [selectedDate, setSelectedDate] = useState(() => returnView?.date ? civilDateToDate(returnView.date) : null); // null = todos os dias
     const [isFormOpen, setIsFormOpen] = useState(false);
     const [editingAppointment, setEditingAppointment] = useState(null);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(false);
-    const [summaryError, setSummaryError] = useState(false);
-    const [calendarError, setCalendarError] = useState(false);
-    const [calendarLoading, setCalendarLoading] = useState(true);
     const [exporting, setExporting] = useState(false);
     const exportLock = useRef(false);
     const [periodDate, setPeriodDate] = useState(() => returnView?.periodDate ? civilDateToDate(returnView.periodDate) : agendaToday());
@@ -44,7 +40,6 @@ export function useAgendaController({ user, returnView = null }) {
     const [appointmentToDelete, setAppointmentToDelete] = useState(null);
     const [mobileCalendarOpen, setMobileCalendarOpen] = useState(false); // Modal do calendário mobile
     const [calendarMonth, setCalendarMonth] = useState(() => startOfMonth(returnView?.date ? civilDateToDate(returnView.date) : returnView?.periodDate ? civilDateToDate(returnView.periodDate) : agendaToday()));
-    const [calendarAppointments, setCalendarAppointments] = useState([]);
     const [exportDialogOpen, setExportDialogOpen] = useState(false); // Modal de exportação PDF
     const [exportPeriodType, setExportPeriodType] = useState('week'); // 'week' ou 'month'
     const [exportWeekStart, setExportWeekStart] = useState(startOfWeek(agendaToday(), { locale: ptBR }));
@@ -53,7 +48,10 @@ export function useAgendaController({ user, returnView = null }) {
     const [anamnesisModal, setAnamnesisModal] = useState({ open: false, patientId: null, patientName: '' });
 
     useEffect(() => {
-        if (selectedDate) setCalendarMonth(startOfMonth(selectedDate));
+        if (selectedDate) {
+            const month = startOfMonth(selectedDate);
+            setCalendarMonth(previous => calendarDateKey(previous) === calendarDateKey(month) ? previous : month);
+        }
     }, [selectedDate]);
 
     const normalizeAppointment = useCallback((appointment) => {
@@ -71,65 +69,77 @@ export function useAgendaController({ user, returnView = null }) {
         };
     }, []);
 
-    const loadData = useCallback(async () => {
-        if (!user) return;
+    const selectedDateKey = selectedDate ? calendarDateKey(selectedDate) : null;
+    const periodDateKey = calendarDateKey(periodDate);
+    const calendarMonthKey = calendarDateKey(startOfMonth(calendarMonth));
+    const appointmentsResource = useResourceSnapshot(JSON.stringify([userId, filterView, selectedDateKey, periodDateKey]), []);
+    const calendarResource = useResourceSnapshot(JSON.stringify([userId, calendarMonthKey]), []);
+    const summaryResource = useResourceSnapshot(JSON.stringify([userId, getTodayIsoDate()]), []);
+    const { begin: beginAppointments, succeed: confirmAppointments, fail: failAppointments, invalidate: invalidateAppointments } = appointmentsResource;
+    const { begin: beginCalendar, succeed: confirmCalendar, fail: failCalendar, invalidate: invalidateCalendar } = calendarResource;
+    const { begin: beginSummary, succeed: confirmSummary, fail: failSummary, invalidate: invalidateSummary } = summaryResource;
+    const appointments = appointmentsResource.data;
+    const calendarAppointments = calendarResource.data;
+    const summaryAppointments = summaryResource.data;
+    const loading = appointmentsResource.initialLoading;
+    const loadError = Boolean(appointmentsResource.error);
+    const calendarLoading = calendarResource.pending;
+    const calendarError = Boolean(calendarResource.error);
+    const summaryReady = summaryResource.hasSnapshot;
+    const summaryError = Boolean(summaryResource.error);
+    const loadData = useCoordinatedLoader(useCallback(async () => {
+        if (!userId) return;
+        readers.current.period?.abort(); const controller=new AbortController(); readers.current.period=controller;
         const sequence = ++loadSequence.current;
-        setLoading(true);
-        setLoadError(false);
-        const { start, end } = agendaPeriod(filterView, selectedDate, new Date(), periodDate);
+        const ticket = beginAppointments();
+        const { start, end } = agendaPeriod(filterView, selectedDateKey ? civilDateToDate(selectedDateKey) : null, new Date(), civilDateToDate(periodDateKey));
         try {
-            const apptsData = await fetchAppointmentsInPeriod(user.id, start, end);
-            if (sequence === loadSequence.current) setAppointments(apptsData.map(normalizeAppointment));
+            const apptsData = await fetchAppointmentsInPeriod(userId, start, end, undefined, undefined, {signal:controller.signal});
+            if (sequence === loadSequence.current) confirmAppointments(ticket, apptsData.map(normalizeAppointment));
         } catch (error) {
-            if (sequence === loadSequence.current) { setLoadError(true); toast({ title: 'Erro', description: toPortugueseError(error, 'Não foi possível carregar a agenda.'), variant: 'destructive' }); }
-        } finally {
-            if (sequence === loadSequence.current) setLoading(false);
+            if (sequence === loadSequence.current) { failAppointments(ticket, error); }
         }
-    }, [user, toast, normalizeAppointment, selectedDate, filterView, periodDate]);
+    }, [userId, normalizeAppointment, selectedDateKey, filterView, periodDateKey, beginAppointments, confirmAppointments, failAppointments]), appointmentsResource.scopeKey, ['clinical']);
 
-    useEffect(() => {
-        let cancelled = false;
-        if (!user?.id) return;
-        setCalendarError(false);
-        setCalendarLoading(true);
-        fetchAppointmentsInPeriod(user.id, ...Object.values(agendaCivilRange(calendarMonth, new Date(calendarMonth.getFullYear(), calendarMonth.getMonth() + 1, 1))), 'id, appointment_time, status', 'agenda_calendar')
-            .then(rows => { if (!cancelled) setCalendarAppointments(rows); })
-            .catch(error => { if (!cancelled) { setCalendarError(true); logDiagnostic('error', 'hooks/useAgendaController.js:86', 'Falha ao carregar contagem do calendário', error); } })
-            .finally(() => { if (!cancelled) setCalendarLoading(false); });
-        return () => { cancelled = true; };
-    }, [user?.id, calendarMonth, agendaRevision]);
-
-    useEffect(() => {
-        if (!user?.id) return;
-        let cancelled = false;
-        setSummaryReady(false);
-        setSummaryError(false);
-        const now = agendaToday();
-        const weekStart = startOfWeek(now, { locale: ptBR });
-        const monthStart = startOfMonth(now);
-        const weekEnd = addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1);
-        const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
-        fetchAppointmentsInPeriod(
-            user.id,
-            ...Object.values(agendaCivilRange(weekStart < monthStart ? weekStart : monthStart, weekEnd > monthEnd ? weekEnd : monthEnd)),
-            'id, appointment_time',
-            'agenda_summary'
-        ).then(rows => {
-            if (!cancelled) {
-                setSummaryAppointments(rows);
-                setSummaryReady(true);
-            }
-        })
-            .catch(error => { if (!cancelled) { setSummaryError(true); logDiagnostic('error', 'hooks/useAgendaController.js:111', 'Falha ao carregar resumo da agenda', error); } });
-        return () => { cancelled = true; };
-    }, [user?.id, agendaRevision]);
+    const loadCalendar = useCoordinatedLoader(useCallback(async () => {
+        if (!userId) return;
+        readers.current.calendar?.abort(); const controller=new AbortController(); readers.current.calendar=controller;
+        const month = civilDateToDate(calendarMonthKey), ticket = beginCalendar();
+        try {
+            const rows = await fetchAppointmentsInPeriod(userId, ...Object.values(agendaCivilRange(month, new Date(month.getFullYear(), month.getMonth() + 1, 1))), 'id, appointment_time, status', 'agenda_calendar', {signal:controller.signal});
+            confirmCalendar(ticket, rows);
+        } catch (error) { failCalendar(ticket, error); }
+    }, [userId, calendarMonthKey, beginCalendar, confirmCalendar, failCalendar]), calendarResource.scopeKey);
+    const loadSummary = useCoordinatedLoader(useCallback(async () => {
+        if (!userId) return;
+        readers.current.summary?.abort(); const controller=new AbortController(); readers.current.summary=controller;
+        const ticket = beginSummary(), now = agendaToday();
+        const weekStart = startOfWeek(now, { locale: ptBR }), monthStart = startOfMonth(now);
+        const weekEnd = addDays(startOfDay(endOfWeek(now, { locale: ptBR })), 1), monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 1);
+        try {
+            const rows = await fetchAppointmentsInPeriod(userId, ...Object.values(agendaCivilRange(weekStart < monthStart ? weekStart : monthStart, weekEnd > monthEnd ? weekEnd : monthEnd)), 'id, appointment_time', 'agenda_summary', {signal:controller.signal});
+            confirmSummary(ticket, rows);
+        } catch (error) { failSummary(ticket, error); }
+    }, [userId, beginSummary, confirmSummary, failSummary]), summaryResource.scopeKey);
+    useEffect(() => { void loadCalendar(); return()=>readers.current.calendar?.abort(); }, [loadCalendar, agendaRevision]);
+    useEffect(() => { void loadSummary(); return()=>readers.current.summary?.abort(); }, [loadSummary, agendaRevision]);
 
     const dayAvailability = useAgendaDayAvailability(user?.id, calendarDateKey(selectedDate || periodDate));
-    useEffect(() => subscribeDomain(user?.id, 'clinical', () => setAgendaRevision(value => value + 1)), [user?.id]);
+    useEffect(() => {
+        const refresh = () => setAgendaRevision(value => value + 1);
+        const offAccess = subscribeDomain(userId, 'access', () => {
+            loadSequence.current += 1;
+            invalidateAppointments(); invalidateCalendar(); invalidateSummary(); setEditingAppointment(null); setIsFormOpen(false);
+            setAppointmentToDelete(null); setDeleteConfirmOpen(false);
+            setAnamnesisModal({ open: false, patientId: null, patientName: '' });
+            refresh();
+        });
+        return () => { offAccess(); };
+    }, [userId, invalidateAppointments, invalidateCalendar, invalidateSummary]);
 
     useEffect(() => {
         loadData();
-        return () => { loadSequence.current += 1; };
+        return () => { loadSequence.current += 1; readers.current.period?.abort(); };
     }, [loadData, agendaRevision]);
 
     const handleSaveAppointment = async (appointmentData, financialData) => {
@@ -432,6 +442,7 @@ export function useAgendaController({ user, returnView = null }) {
     };
 
     return {
+        appointmentsResource, calendarResource, summaryResource, refreshing: appointmentsResource.refreshing,
         periodDate, setPeriodDate, loadError, calendarError, calendarLoading, summaryError, exporting,
         appointmentDateKey: civilDateInZone,
         reloadOverview: () => setAgendaRevision(value => value + 1),

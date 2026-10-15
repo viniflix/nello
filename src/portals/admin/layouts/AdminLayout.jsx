@@ -1,3 +1,4 @@
+import {OutletLoadingBoundary} from '@/components/ui/outlet-loading-boundary';
 import ClientErrorBoundary from '@/components/ClientErrorBoundary';
 import React from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
@@ -15,7 +16,7 @@ const AdminLayout = () => {
       <AdminHeader />
       <main id="main-content" tabIndex={-1} className="flex-1 overflow-y-auto">
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8">
-          <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><Outlet /></ClientErrorBoundary>
+          <ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary><Outlet /></OutletLoadingBoundary></ClientErrorBoundary>
         </div>
       </main>
     </div>

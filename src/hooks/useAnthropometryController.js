@@ -1,3 +1,8 @@
+import { subscribeDomain } from '@/infrastructure/realtime/events';
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { observeResources } from '@/lib/utils/resourceReads';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
+import { settleResources } from '@/lib/utils/failure';
 import { downloadSavedClinicalPdf } from '@/lib/pdf/savedClinicalPdf';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo } from 'react';
@@ -20,10 +25,17 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 export const useAnthropometryController = ({ patientId, user, resolveLoading, resolveError }) => {
     const { toast } = useToast();
 
-    const [loading, setLoading] = useState(true);
+    const recordsResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'records']), []);
+    const chartResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'charts']), []);
+    const contextResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'context']), null);
+    const profileResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'profile']), null);
+    const { begin: beginProfile, succeed: confirmProfile, fail: failProfile } = profileResource;
+    const { begin: beginRecords, succeed: confirmRecords, fail: failRecords, current: currentRecords } = recordsResource;
+    const { begin: beginChart, succeed: confirmChart, fail: failChart } = chartResource;
+    const { begin: beginContext, succeed: confirmContext, fail: failContext } = contextResource;
+    const loading = Boolean(patientId) && recordsResource.initialLoading && chartResource.initialLoading;
     const [submitting, setSubmitting] = useState(false);
-    const [records, setRecords] = useState([]);
-    const [chartData, setChartData] = useState([]);
+    const records = recordsResource.data, chartData = chartResource.data;
     const [editingRecord, setEditingRecord] = useState(null);
     const [error, setError] = useState(null);
     const [latestRecord, setLatestRecord] = useState(null);
@@ -227,61 +239,54 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         return { status, score, reasons, weightDelta, bmiDelta, fatDelta };
     };
 
+    const readProfile = useCoordinatedLoader(useCallback(() => supabase.from('user_profiles').select('name, gender, birth_date, ethnicity').eq('id', patientId).single(), [patientId]), profileResource.scopeKey, []);
+    const readRecords = useCoordinatedLoader(useCallback(() => getAnthropometryRecords(patientId, { limit: 50 }), [patientId]), recordsResource.scopeKey, []);
+    const readCharts = useCoordinatedLoader(useCallback(() => getAnthropometryChartData(patientId), [patientId]), chartResource.scopeKey, []);
+    const readContext = useCoordinatedLoader(useCallback(async () => {
+        const results = await settleResources({goal: () => getActiveGoal(patientId), anamnesis: () => getLatestAnamnesis(patientId, true), longitudinal: () => getAnthropometryLongitudinalScore(patientId), syncFlags: () => getPatientModuleSyncFlags(patientId)});
+        return {data: results, error: Object.values(results).find(result => result.error)?.error};
+    }, [patientId]), contextResource.scopeKey, []);
     const loadData = useCallback(async () => {
         if (!patientId) {
-            setLoading(false);
             setError(resolveError?.message || 'Paciente não identificado.');
             return;
         }
 
-        setLoading(true);
+        const ticket = beginRecords(), chartTicket = beginChart(), contextTicket = beginContext();
+        const profileTicket = beginProfile();
         setError(null);
 
         try {
-            const { data: profile } = await supabase
-                .from('user_profiles')
-                .select('name, gender, birth_date, ethnicity')
-                .eq('id', patientId)
-                .single();
-            
-            if (profile) {
-                setPatientProfile(profile);
-                setPatientName(profile.name || '');
-            }
-
-            const [
-                recordsResult,
-                chartResult,
-                activeGoalResult,
-                latestAnamnesisResult,
-                longitudinalResult,
-                syncFlagsResult
-            ] = await Promise.all([
-                getAnthropometryRecords(patientId, { limit: 50 }),
-                getAnthropometryChartData(patientId),
-                getActiveGoal(patientId),
-                getLatestAnamnesis(patientId, true),
-                getAnthropometryLongitudinalScore(patientId),
-                getPatientModuleSyncFlags(patientId)
-            ]);
-
-            if (recordsResult.error) {
-                logDiagnostic('error', 'hooks/useAnthropometryController.js:267', 'Erro ao buscar registros:', recordsResult.error);
-                throw new Error('Erro ao buscar registros antropométricos');
-            }
-            if (chartResult.error) {
-                logDiagnostic('error', 'hooks/useAnthropometryController.js:271', 'Erro ao buscar dados de gráficos:', chartResult.error);
-                throw new Error('Erro ao buscar dados de gráficos');
-            }
-
-            setRecords(recordsResult.data || []);
-            setChartData(chartResult.data || []);
-            setLongitudinalScore(longitudinalResult.data || null);
-            setSyncFlags(syncFlagsResult.data || null);
-
-            let latest = null;
-            if (recordsResult.data && recordsResult.data.length > 0) {
-                latest = [...recordsResult.data].sort((a, b) => {
+            let latest = null, context = null, recordsConfirmed = false;
+            const updateObjective = () => {
+                if (!recordsConfirmed || !context) return;
+                const latestBmi = latest?.height && latest?.weight
+                    ? latest.weight / Math.pow(latest.height / 100, 2) : null;
+                setPatientObjective(resolveObjective(context.goal.data?.goal_type,
+                    context.anamnesis.data?.content?.objetivos?.objetivo_principal, latestBmi));
+            };
+            await observeResources({profile: readProfile, records: readRecords, charts: readCharts, context: readContext}, (key, result) => {
+                if (!currentRecords(ticket)) return;
+                if (key === 'profile') {
+                    if (!result.error) {confirmProfile(profileTicket, result.data);setPatientProfile(result.data);setPatientName(result.data?.name || '');}
+                    else failProfile(profileTicket, result.error);
+                } else if (key === 'charts') {
+                    if (result.error) failChart(chartTicket, result.error); else confirmChart(chartTicket, result.data || []);
+                } else if (key === 'context') {
+                    if (result.error) failContext(contextTicket, result.error);
+                    else {
+                        context = result.data;
+                        confirmContext(contextTicket, true);
+                        setLongitudinalScore(context.longitudinal.data || null);
+                        setSyncFlags(context.syncFlags.data || null);
+                        updateObjective();
+                    }
+                } else if (key === 'records') {
+                    if (result.error) {failRecords(ticket, result.error);return;}
+                    confirmRecords(ticket, result.data || []);
+            latest = null;
+            if (result.data && result.data.length > 0) {
+                latest = [...result.data].sort((a, b) => {
                     const dateA = new Date(a.record_date || 0).getTime();
                     const dateB = new Date(b.record_date || 0).getTime();
                     if (dateA !== dateB) return dateB - dateA;
@@ -308,13 +313,13 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
                 setIdealWeightRange(null);
             }
 
-            const latestBmi = latest?.height && latest?.weight
-                ? latest.weight / Math.pow(latest.height / 100, 2)
-                : null;
-            const anamnesisObjective = latestAnamnesisResult?.data?.content?.objetivos?.objetivo_principal;
-            const goalType = activeGoalResult?.data?.goal_type;
-            setPatientObjective(resolveObjective(goalType, anamnesisObjective, latestBmi));
+                    recordsConfirmed = true;
+                    updateObjective();
+                }
+            });
         } catch (err) {
+            if (!currentRecords(ticket)) return;
+            failRecords(ticket, err); failChart(chartTicket, err); failContext(contextTicket, err);
             logDiagnostic('error', 'hooks/useAnthropometryController.js:316', 'Erro ao carregar dados:', err);
             const errorMessage = err.message || 'Erro ao carregar dados';
             setError(errorMessage);
@@ -323,11 +328,10 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
                 description: errorMessage,
                 variant: 'destructive'
             });
-        } finally {
-            setLoading(false);
         }
-    }, [patientId, toast, resolveError]);
+    }, [patientId, user?.id, toast, resolveError, beginRecords, confirmRecords, failRecords, currentRecords, beginChart, confirmChart, failChart, beginContext, confirmContext, failContext, beginProfile, confirmProfile, failProfile, readProfile, readRecords, readCharts, readContext]);
 
+    useEffect(() => subscribeDomain(user?.id, 'clinical', () => { void loadData(); }), [user?.id, loadData]);
     useEffect(() => {
         if (resolveLoading) return;
         loadData();
@@ -517,6 +521,7 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
     }, [orderedRecords, historyFilter, getRecordSectionCount]);
 
     return {
+        resources: { records: recordsResource, charts: chartResource, context: contextResource, profile: profileResource },
         loading,
         submitting,
         error,
@@ -525,13 +530,13 @@ export const useAnthropometryController = ({ patientId, user, resolveLoading, re
         filteredRecords,
         chartData,
         editingRecord,
-        latestRecord,
-        idealWeightRange,
-        patientProfile,
-        patientName,
+        latestRecord: recordsResource.hasSnapshot ? latestRecord : null,
+        idealWeightRange: recordsResource.hasSnapshot ? idealWeightRange : null,
+        patientProfile: profileResource.hasSnapshot ? patientProfile : null,
+        patientName: profileResource.hasSnapshot ? patientName : '',
         patientObjective,
-        longitudinalScore,
-        syncFlags,
+        longitudinalScore: contextResource.hasSnapshot ? longitudinalScore : null,
+        syncFlags: contextResource.hasSnapshot ? syncFlags : null,
         selectedRecord,
         recordDetailOpen,
         compareRecordId,

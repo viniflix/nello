@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
@@ -79,13 +81,13 @@ export const saveReferenceValues = async (planId, values) => {
     }
 };
 
-export const getReferenceValues = async (planId) => {
+export const getReferenceValues = async (planId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plan_reference_values')
             .select("id,meal_plan_id,weight_kg,weight_type,total_energy_kcal,energy_source,macro_mode,protein_percentage,carbs_percentage,fat_percentage,protein_g_per_kg,carbs_g_per_kg,fat_g_per_kg,target_protein_g,target_carbs_g,target_fat_g,created_at,updated_at")
             .eq('meal_plan_id', planId)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
         return { data, error: null };
@@ -149,14 +151,14 @@ export const savePlanAsTemplate = async (planId, templateName, tags = []) => {
     }
 };
 
-export const getTemplates = async (nutritionistId) => {
+export const getTemplates = async (nutritionistId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('meal_plans')
             .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
             .eq('nutritionist_id', nutritionistId)
             .eq('is_template', true)
-            .order('created_at', { ascending: false });
+            .order('created_at', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (error) throw error;
         return { data: data || [], error: null };

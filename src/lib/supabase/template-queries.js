@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
@@ -62,14 +64,14 @@ export async function cloneMealTemplateToPlan(mealTemplateId, mealPlanId, mealTy
 /**
  * Helper to fetch food details from the 'foods' view by IDs.
  */
-export async function getFoodsMapByIds(foodIds) {
+export async function getFoodsMapByIds(foodIds, readOptions = {}) {
   const uniqueIds = [...new Set(foodIds.filter(Boolean))];
   if (uniqueIds.length === 0) return {};
 
-  const { data, error } = await supabase
+  const { data, error } = await readRequest(() => supabase
     .from('foods')
     .select('id, name, calories, protein, carbs, fat, fiber, group, is_active')
-    .in('id', uniqueIds);
+    .in('id', uniqueIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
   if (error) {
     logDiagnostic('error', 'lib/supabase/template-queries.js:74', 'Error fetching food details:', error);
@@ -111,9 +113,9 @@ export async function importDietTemplateMealsToPlan(templateId, planId, mealIds)
  * @param {string} templateId - UUID of the diet_template.
  * @returns {Promise<{data: object, error: null}>}
  */
-export async function getDietTemplateWithMeals(templateId) {
+export async function getDietTemplateWithMeals(templateId, readOptions = {}) {
   // Step 1: Fetch template and meals/foods structure without the join
-  const { data: template, error } = await supabase
+  const { data: template, error } = await readRequest(() => supabase
     .from('diet_templates')
     .select(`
       id, name, description, tags,
@@ -125,7 +127,7 @@ export async function getDietTemplateWithMeals(templateId) {
       )
     `)
     .eq('id', templateId)
-    .single();
+    .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
   if (error) throw error;
 
@@ -139,12 +141,12 @@ export async function getDietTemplateWithMeals(templateId) {
     (m.diet_template_foods || []).map(f => f.id));
   let substitutions = [];
   if (templateFoodIds.length) {
-    const { data, error: substitutesError } = await supabase.from('diet_template_food_substitutions')
-      .select('template_food_id, substitute_food_id, quantity, unit').in('template_food_id', templateFoodIds);
+    const { data, error: substitutesError } = await readRequest(() => supabase.from('diet_template_food_substitutions')
+      .select('template_food_id, substitute_food_id, quantity, unit').in('template_food_id', templateFoodIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
     if (substitutesError) throw substitutesError;
     substitutions = data || [];
   }
-  const foodsMap = await getFoodsMapByIds([...allFoodIds, ...substitutions.map(s => s.substitute_food_id)]);
+  const foodsMap = await getFoodsMapByIds([...allFoodIds, ...substitutions.map(s => s.substitute_food_id)],{signal:readOptions?.signal});
 
   const measureIds = [...new Set((template.diet_template_meals || [])
     .flatMap(m => m.diet_template_foods || [])
@@ -152,8 +154,8 @@ export async function getDietTemplateWithMeals(templateId) {
     .filter(unit => /^\d+$/.test(unit)))];
   let measuresMap = {};
   if (measureIds.length) {
-    const { data: measures, error: measureError } = await supabase.from('household_measures')
-      .select('id, name, grams_equivalent').in('id', measureIds.map(Number));
+    const { data: measures, error: measureError } = await readRequest(() => supabase.from('household_measures')
+      .select('id, name, grams_equivalent').in('id', measureIds.map(Number)), {signal:readOptions?.signal,policy:readPolicies.clinical});
     if (measureError) throw measureError;
     measuresMap = Object.fromEntries((measures || []).map(m => [String(m.id), m]));
   }

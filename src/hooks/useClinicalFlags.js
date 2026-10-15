@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {queryRead} from '@/lib/utils/readPolicy';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -13,17 +15,17 @@ export function useClinicalFlags(patientId) {
 
     const { data: flags, isLoading } = useQuery({
         queryKey: ['clinical_flags', patientId],
-        queryFn: async () => {
+        queryFn: queryRead(async ({signal}) => {
             if (!patientId) return {};
-            const { data, error } = await supabase
+            const { data, error } = await readRequest(() => supabase
                 .from('user_profiles')
                 .select('clinical_flags')
                 .eq('id', patientId)
-                .single();
+                .single(), {signal:signal});
 
             if (error) throw error;
             return data?.clinical_flags || {};
-        },
+        }),
         enabled: !!patientId,
     });
 

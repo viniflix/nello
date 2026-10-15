@@ -1,5 +1,4 @@
-import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { format } from 'date-fns';
@@ -8,17 +7,14 @@ import { BookMarked, UtensilsCrossed, CalendarClock, Bell, Clock, Info } from 'l
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/infrastructure/supabase/client';
-import { RESERVING_APPOINTMENT_STATUSES } from '@/lib/agenda/appointment-rules';
 import NextMealCard from '@/components/patient/NextMealCard';
 import PatientMetricsWidget from '@/components/patient/PatientMetricsWidget';
 import DailyAdherenceCard from '@/components/patient/DailyAdherenceCard';
 import RecentAchievementsWidget from '@/components/patient/RecentAchievementsWidget';
 import NotificationsPanel from '@/components/NotificationsPanel';
 import PatientPendingCheckinsWidget from '@/components/patient/PatientPendingCheckinsWidget';
-import { getActiveMealPlan } from '@/lib/supabase/meal-plan-queries';
 import { useNotifications } from '@/hooks/useNotifications';
-import { getMyCareRelationship } from '@/lib/supabase/patient-queries';
+import { usePatientHomeData } from './usePatientHomeData';
 
 /**
  * PatientHomePage - Aba 1: Início
@@ -26,135 +22,24 @@ import { getMyCareRelationship } from '@/lib/supabase/patient-queries';
 export default function PatientHomePage() {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [prescription, setPrescription] = useState(null);
-  const [nextAppointment, setNextAppointment] = useState(null);
-  const [todayMealsCount, setTodayMealsCount] = useState(0);
-  const [registeredMeals, setRegisteredMeals] = useState([]);
-  const [prescriptionGoal, setPrescriptionGoal] = useState(null); // Metas de macros
-  const [currentProgress, setCurrentProgress] = useState(null); // Progresso atual
-  const [linkStatus, setLinkStatus] = useState('active'); // pending | active | rejected
-  const [loading, setLoading] = useState(true);
   const [showNotifications, setShowNotifications] = useState(false);
-  const [isArchived, setIsArchived] = useState(false);
   const { unreadCount } = useNotifications();
-
-  const loadData = useCallback(async (signal) => {
-    if (!user) return;
-    setLoading(true);
-
-    const today = new Date();
-    const todayStr = format(today, 'yyyy-MM-dd');
-
-    // 0. O episódio é a fonte de verdade do vínculo; pending ainda vive na solicitação.
-    const { data: careRelationship, cancelled } = await getMyCareRelationship({ signal });
-    if (cancelled || signal?.aborted) return;
-    let resolvedLinkStatus = careRelationship?.status || 'unlinked';
-
-    if (user?.profile?.nutritionist_id) {
-        const { data: linkData } = await supabase
-            .from('nutritionist_patients')
-            .select('status')
-            .eq('nutritionist_id', user?.profile?.nutritionist_id)
-            .eq('patient_id', user?.id)
-            .maybeSingle();
-
-        if (linkData?.status === 'pending') resolvedLinkStatus = 'pending';
-
-        // Se estiver pendente, não precisa carregar o resto
-        if (resolvedLinkStatus === 'pending') {
-            setLinkStatus('pending');
-            setLoading(false);
-            return;
-        }
-    }
-
-    setIsArchived(resolvedLinkStatus === 'ended');
-    setLinkStatus(resolvedLinkStatus);
-
-    // 1. Buscar plano alimentar ativo do paciente usando o helper padrão
-    // Isso resolve o erro 400 de join inválido com a view 'foods'
-    const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
-
-    if (mealPlanError) {
-      logDiagnostic('error', 'pages/patient/PatientHomePage.jsx:77', 'Erro ao carregar plano alimentar:', mealPlanError);
-    }
-
-    setPrescription(mealPlanData);
-
-    // 2. Buscar próxima consulta
-    const { data: apptData } = await supabase
-      .from('appointments')
-      .select("id,nutritionist_id,patient_id,appointment_time,notes,status,reminder_sent_at,created_at,duration,appointment_type,start_time,unregistered_patient_name,care_episode_id")
-      .eq('patient_id', user.id)
-      .in('status', RESERVING_APPOINTMENT_STATUSES)
-      .gte('start_time', today.toISOString())
-      .order('start_time', { ascending: true })
-      .limit(1)
-      .maybeSingle();
-
-    setNextAppointment(apptData);
-
-    // 3. Buscar refeições registradas hoje (não deletadas)
-    const { data: mealsData, count } = await supabase
-      .from('meals')
-      .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id", { count: 'exact' })
-      .eq('patient_id', user.id)
-      .eq('meal_date', todayStr)
-      .is('deleted_at', null);
-
-    setTodayMealsCount(count || 0);
-    setRegisteredMeals(mealsData || []);
-
-    // 4. Definir metas nutricionais (prioridade: plano alimentar ativo > padrão)
-    if (mealPlanData && mealPlanData.daily_calories > 0) {
-      // Usar metas do plano alimentar ativo
-      setPrescriptionGoal({
-        calories: mealPlanData.daily_calories || 0,
-        protein: mealPlanData.daily_protein || 0,
-        carbs: mealPlanData.daily_carbs || 0,
-        fat: mealPlanData.daily_fat || 0
-      });
-    } else {
-      // Valores padrão para pacientes sem plano alimentar
-      setPrescriptionGoal({
-        calories: 2000,
-        protein: 0,
-        carbs: 0,
-        fat: 0
-      });
-    }
-
-    // 5. Calcular progresso atual (somar refeições de hoje)
-    if (mealsData && mealsData.length > 0) {
-      const progress = mealsData.reduce((acc, meal) => ({
-        calories: acc.calories + (meal.total_calories || 0),
-        protein: acc.protein + (meal.total_protein || 0),
-        carbs: acc.carbs + (meal.total_carbs || 0),
-        fat: acc.fat + (meal.total_fat || 0)
-      }), { calories: 0, protein: 0, carbs: 0, fat: 0 });
-
-      setCurrentProgress(progress);
-    } else {
-      // Se não há refeições, progresso é zero
-      setCurrentProgress({ calories: 0, protein: 0, carbs: 0, fat: 0 });
-    }
-
-    setLoading(false);
-  }, [user]);
-
-  useEffect(() => {
-    const controller = new AbortController();
-    loadData(controller.signal);
-    return () => controller.abort();
-  }, [loadData]);
+  const { prescription, nextAppointment, todayMealsCount, registeredMeals, prescriptionGoal,
+    currentProgress, prescriptionReady, mealsReady, linkStatus, loading, fetching, error, hasSnapshot, loadData } = usePatientHomeData(user);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
+      <div role="status" aria-label="Carregando início" className="flex items-center justify-center h-64">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
       </div>
     );
   }
+
+  if (!hasSnapshot && error) return <section role="alert" className="patient-page-content space-y-3">
+    <h1 className="patient-page-title">Não foi possível carregar o início</h1><p>{error.message}</p>
+    {error.retryable && <Button onClick={() => loadData()}>Tentar novamente</Button>}
+    {!error.retryable && <Button variant="outline" onClick={() => navigate('/patient/perfil')}>Voltar ao perfil</Button>}
+  </section>;
 
   const firstName = user?.profile?.name?.split(' ')[0] || 'Paciente';
 
@@ -166,6 +51,13 @@ export default function PatientHomePage() {
         transition={{ duration: 0.5 }}
         className="patient-page-content"
       >
+        <div className="mb-3 min-h-6">
+          {fetching && <p role="status" className="text-sm text-muted-foreground">Atualizando início…</p>}
+        </div>
+        {error && <div role="alert" className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-xl rounded-xl border bg-background p-3 text-sm shadow-sm">
+          <p>{error.message} A última consulta foi preservada; a atualização não foi confirmada.</p>
+          {error.retryable && <Button variant="outline" className="mt-2" onClick={() => loadData()}>Tentar novamente</Button>}
+        </div>}
         {/* Estado Pendente */}
         {linkStatus === 'pending' && (
             <motion.div
@@ -185,6 +77,7 @@ export default function PatientHomePage() {
                     variant="outline"
                     className="border-amber-300 text-amber-700 hover:bg-amber-100"
                     onClick={() => loadData()}
+                    disabled={fetching}
                 >
                     <Clock className="w-4 h-4 mr-2" /> Verificar novamente
                 </Button>
@@ -355,10 +248,10 @@ export default function PatientHomePage() {
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  {prescription?.meal_plan_meals && prescription.meal_plan_meals.length > 0 ? (
+                  {prescriptionReady === false ? <p role="status">Carregando plano alimentar…</p> : prescription?.meal_plan_meals && prescription.meal_plan_meals.length > 0 ? (
                     <NextMealCard
                       mealPlanMeals={prescription.meal_plan_meals}
-                      registeredMeals={registeredMeals}
+                      registeredMeals={registeredMeals || []}
                     />
                   ) : (
                     <div className="text-center py-8">
@@ -420,7 +313,7 @@ export default function PatientHomePage() {
                         ? 'bg-primary/10 text-primary'
                         : 'bg-gray-100 text-gray-500'
                     }`}>
-                      {todayMealsCount > 0
+                      {mealsReady === false ? 'Carregando…' : todayMealsCount > 0
                         ? `${todayMealsCount} ${todayMealsCount === 1 ? 'refeição' : 'refeições'}`
                         : 'Vazio'}
                     </div>
@@ -428,7 +321,7 @@ export default function PatientHomePage() {
                 </CardHeader>
                 <CardContent>
                   <p className="text-sm text-muted-foreground mb-3">
-                    {todayMealsCount > 0
+                    {mealsReady === false ? 'Carregando registros de hoje…' : todayMealsCount > 0
                       ? 'Continue registrando suas refeições'
                       : 'Comece registrando sua primeira refeição hoje'}
                   </p>

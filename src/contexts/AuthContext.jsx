@@ -1,6 +1,7 @@
+import {SectionLoading} from '@/components/ui/section-loading';
+import {isSessionIndependentPath,preservesPublicDraft} from '@/app/router/publicRoutePolicy';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
-import { Loader2 } from 'lucide-react';
 import { supabase } from '@/infrastructure/supabase/client';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
@@ -14,17 +15,13 @@ import { getMyProfessionalVerification } from '@/lib/supabase/verification-queri
 import { redeemPatientInvite } from '@/features/auth/authFlows';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import { clearPrivateDraftStorage } from '@/lib/utils/privateDraftStorage';
+import { setPrivateSessionOwner, getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
+import { useAccessEpoch } from '@/hooks/useAccessEpoch';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
 import { clearPasswordReminders } from '@/features/auth/passwordReminder';
 import { Button } from '@/components/ui/button';
 
-const AuthLoadingFallback = () => (
-  <div className="flex min-h-dvh items-center justify-center bg-background">
-    <div className="flex flex-col items-center gap-3">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Verificando sessão...</p>
-    </div>
-  </div>
-);
+const AuthLoadingFallback = () => <SectionLoading fullPage label="Verificando sessão..."/>;
 
 const AuthContext = createContext();
 
@@ -45,7 +42,11 @@ export function AuthProvider({ children }) {
   const { pathname } = useLocation();
   const processingSession = useRef(false);
   const identityRef = useRef(null);
+  const authEventEpoch = useRef(0);
+  const sessionClosed = useRef(false);
   const queryClient = useQueryClient();
+  const accessEpoch = useAccessEpoch(user?.id);
+  const profileSessionEpoch = getPrivateSessionEpoch();
 
   const clearPrivateClientState = useCallback(() => {
     clearPasswordReminders();
@@ -59,17 +60,19 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let active = true;
+    const sessionEpoch = getPrivateSessionEpoch();
     if (!user?.id || profile?.user_type !== 'nutritionist') return undefined;
+    setUser(previous => previous?.id === user.id ? {...previous, verification:null} : previous);
 
     getMyProfessionalVerification().then(({ data, error }) => {
-      if (!active || error || !data) return;
+      if (!active || sessionEpoch !== getPrivateSessionEpoch() || accessEpoch !== getAccessEpoch(user.id) || error || !data) return;
       setUser(previous => previous?.id === user.id
         ? { ...previous, verification: data }
         : previous);
     });
 
     return () => { active = false; };
-  }, [user?.id, profile?.user_type]);
+  }, [user?.id, profile?.user_type, accessEpoch, profileSessionEpoch]);
 
   // Sincronização em tempo real (Realtime)
 
@@ -87,9 +90,9 @@ export function AuthProvider({ children }) {
 
   // Sincroniza o perfil do React Query com o estado do usuário do contexto
   useEffect(() => {
-    if (profile && user?.id) {
+    if (profile && user?.id && profile.id === user.id) {
       setUser(prev => {
-        if (!prev) return null;
+        if (!prev || prev.id !== user.id) return prev;
         // Só atualiza se o perfil for diferente ou novo para evitar re-renders infinitos
         if (JSON.stringify(prev.profile) === JSON.stringify(profile)) return prev;
         return { ...prev, profile };
@@ -103,7 +106,10 @@ export function AuthProvider({ children }) {
     }
   }, [profile, user?.id, isProfileError, isOffline]);
 
-  const signOut = useCallback(async () => {
+  const signOut = useCallback(async (redirect = true) => {
+    sessionClosed.current = true;
+    authEventEpoch.current += 1;
+    pendingSessionRef.current = null;
     track(Events.AUTH_LOGOUT,{operation:'auth_session_end',outcome:'succeeded'});
     clearPrivateClientState();
     identityRef.current = null;
@@ -113,21 +119,30 @@ export function AuthProvider({ children }) {
     } catch (error) {
       logDiagnostic('error', 'contexts/AuthContext.jsx:131', 'Erro ao fazer logout:', error);
     }
-    navigate('/login', { replace: true });
+    if (redirect) navigate('/login', { replace: true });
   }, [navigate, clearPrivateClientState]);
+
+  const profileDeactivated = Boolean(user?.id && profile?.id === user.id && profile.is_active === false);
+  useEffect(() => {
+    if (profileDeactivated && !isProfileError && !isProfileFetching && !sessionClosed.current) {
+      void signOut(!isSessionIndependentPath(pathname));
+    }
+  }, [profileDeactivated, isProfileError, isProfileFetching, signOut, pathname]);
 
   // Auxiliar: processa a sessão (usado por getSession + onAuthStateChange)
   const pendingSessionRef = useRef(null);
 
   const processSession = useCallback(async (session, event) => {
-    pendingSessionRef.current = { session, event };
+    pendingSessionRef.current = { session, event, epoch: authEventEpoch.current };
     if (processingSession.current) return;
     processingSession.current = true;
 
     try {
       while (pendingSessionRef.current) {
-        const { session: nextSession, event: nextEvent } = pendingSessionRef.current;
+        const { session: nextSession, event: nextEvent, epoch } = pendingSessionRef.current;
         pendingSessionRef.current = null;
+        if (epoch !== authEventEpoch.current) continue;
+        if (sessionClosed.current && nextSession?.user && !['SIGNED_IN','PASSWORD_RECOVERY'].includes(nextEvent)) continue;
 
         if (!nextSession?.user) {
           if (identityRef.current || nextEvent === 'SIGNED_OUT') clearPrivateClientState();
@@ -140,6 +155,8 @@ export function AuthProvider({ children }) {
           clearPrivateClientState();
         }
         identityRef.current = nextSession.user.id;
+        sessionClosed.current = false;
+        setPrivateSessionOwner(nextSession.user.id);
 
         // Agora apenas definimos o usuário base. O perfil virá via useProfile hook.
         // Se já temos um perfil cacheado, mantemos para evitar UI flickering
@@ -155,6 +172,7 @@ export function AuthProvider({ children }) {
         if (pendingCode && nextEvent === 'SIGNED_IN' && !isPasswordRecoveryRoute) {
           try {
             const result = await redeemPatientInvite(supabase, pendingCode);
+            if (epoch !== authEventEpoch.current || identityRef.current !== nextSession.user.id) continue;
             if (result?.success) {
               queryClient.invalidateQueries({ queryKey: ['profile', nextSession.user.id] });
               localStorage.removeItem('pending_invite_code');
@@ -193,6 +211,7 @@ export function AuthProvider({ children }) {
 
   useEffect(() => {
     let mounted = true;
+    const initialEpoch = authEventEpoch.current;
 
     const initAuth = async () => {
       // Não usamos setLoading(true) aqui, initializing=true (default) é suficiente para o splash screen.
@@ -211,7 +230,7 @@ export function AuthProvider({ children }) {
 
         if (error) throw error;
 
-        if (!mounted) {
+        if (!mounted || initialEpoch !== authEventEpoch.current) {
           clearTimeout(failsafe);
           return;
         }
@@ -225,6 +244,7 @@ export function AuthProvider({ children }) {
           setUser(null);
         }
       } catch (err) {
+        if (!mounted || initialEpoch !== authEventEpoch.current) return;
         // GRACEFUL DEGRADATION: Se falhar por rede, mas houver uma sessão local, não desloga.
         const isNetworkError = !window.navigator.onLine || err.message?.includes('fetch');
         if (isNetworkError) {
@@ -249,12 +269,16 @@ export function AuthProvider({ children }) {
 
     initAuth();
 
-    let authEventEpoch = 0;
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!mounted) return;
-      const ticket = ++authEventEpoch;
+      const ticket = ++authEventEpoch.current;
+      if (session?.user?.id && identityRef.current && identityRef.current !== session.user.id) {
+        clearPrivateClientState(); identityRef.current = null; setUser(null);
+      }
 
       if (event === 'SIGNED_OUT') {
+        sessionClosed.current = true;
+        pendingSessionRef.current = null;
         clearPrivateClientState();
         identityRef.current = null;
         setUser(null);
@@ -264,11 +288,11 @@ export function AuthProvider({ children }) {
       // Auth notifications run under the SDK's session lock. Never await a
       // profile RPC inside that callback: the RPC needs the same lock.
       setTimeout(async () => {
-      if (!mounted || ticket !== authEventEpoch) return;
+      if (!mounted || ticket !== authEventEpoch.current) return;
       // NOVO: Refresh silencioso - atualiza o token sem disparar o loader ou re-buscar o perfil
       if (event === 'TOKEN_REFRESHED') {
         if (session?.user) {
-          if (identityRef.current && identityRef.current !== session.user.id) {
+          if (!identityRef.current || identityRef.current !== session.user.id) {
             await processSession(session, event);
           } else {
             setUser(prev => prev ? { ...session.user, profile: prev.profile, verification: prev.verification } : null);
@@ -314,7 +338,7 @@ export function AuthProvider({ children }) {
 
   const updateUserProfile = (newProfileData) => {
     setUser(currentUser => {
-        if (!currentUser) return null;
+        if (!currentUser || currentUser.id !== user?.id || profileSessionEpoch !== getPrivateSessionEpoch()) return currentUser;
         const updatedProfile = { ...currentUser.profile, ...newProfileData };
         return { ...currentUser, profile: updatedProfile };
     });
@@ -333,7 +357,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={value}>
-      {!['/', '/status', '/recursos', '/para-pacientes', '/termos', '/privacidade', '/ajuda', '/seguranca'].includes(pathname.replace(/\/+$/, '') || '/')
+      {profileDeactivated && !isSessionIndependentPath(pathname) ? <AuthLoadingFallback /> : !isSessionIndependentPath(pathname)
         && (initializing || (loading && !user) || (user && !user.profile))
         ? !initializing && user && !user.profile && isProfileError
           ? <div className="flex min-h-dvh items-center justify-center bg-background px-6">
@@ -347,7 +371,7 @@ export function AuthProvider({ children }) {
               </div>
             </div>
           : <AuthLoadingFallback />
-        : children}
+        : <React.Fragment key={preservesPublicDraft(pathname)?'public-content':`${user?.id || 'anonymous'}:${profileSessionEpoch}`}>{children}</React.Fragment>}
     </AuthContext.Provider>
   );
 }

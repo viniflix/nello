@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import ListActionsMenu from '@/components/nutritionist/PatientListActions';
 import { usePatientListData } from '@/hooks/usePatientListData';
 import { isPatientAccessPending } from '@/lib/utils/patientAccessStatus';
@@ -64,6 +65,10 @@ const THIRTY_DAYS_AGO = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOStr
 // ── Component ─────────────────────────────────────────────────────────────────
 const PatientsPage = () => {
     const { user } = useAuth();
+    return <PatientsPageContent key={user?.id || 'anonymous'} />;
+};
+const PatientsPageContent = () => {
+    const { user } = useAuth();
     const navigate = useNavigate();
     const [searchParams, setSearchParams] = useSearchParams();
     const { updateField } = usePatientFormStore();
@@ -73,7 +78,7 @@ const PatientsPage = () => {
 
     // ── State (with sessionStorage persistence) ──
     const persisted = useMemo(loadPersistedState, []);
-    const {patients,pendingRequests,loading,error:listError,fetchPatients}=usePatientListData(user?.id);
+    const {patients,pendingRequests,loading,resource,error:listError,fetchPatients}=usePatientListData(user?.id);
     const [searchTerm,          setSearchTerm]          = useState('');
 
     const [sortOrder,           setSortOrder]           = useState(persisted.sortOrder     || 'name_asc');
@@ -228,13 +233,13 @@ const PatientsPage = () => {
 
     // ── Contextual empty state message ───────────────────────────────────────
     const emptyMessage = useMemo(() => {
-        if(listError)return {title:'Lista indisponível',sub:'Não foi possível confirmar os pacientes. Tente novamente.'};
+        if(listError&&!resource.hasSnapshot)return {title:'Lista indisponível',sub:'Não foi possível confirmar os pacientes. Tente novamente.'};
         if (searchTerm) return { title: `Nenhum resultado para "${searchTerm}"`, sub: "Verifique a ortografia do nome ou e-mail." };
         if (activeChip === 'new30') return { title: "Nenhum paciente adicionado recentemente.", sub: "" };
         if (activeChip === 'pending') return { title: "Nenhum convite pendente.", sub: "Todos já acessaram a plataforma cruzando o primeiro acesso." };
         if (filterStatus === 'online') return { title: "Nenhum paciente online.", sub: "" };
         return { title: "Nenhum paciente encontrado.", sub: "" };
-    }, [searchTerm, filterStatus, activeChip, listError]);
+    }, [searchTerm, filterStatus, activeChip, listError, resource.hasSnapshot]);
 
     const handleChipClick = (chip) => setActiveChip(prev => prev === chip ? null : chip);
     const formatDate = (iso) => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
@@ -242,7 +247,8 @@ const PatientsPage = () => {
     // ── Render ────────────────────────────────────────────────────────────────
     return (
         <div className="flex flex-col min-h-dvh bg-background">
-{listError&&<section role="alert" className="m-4 rounded-lg border p-4"><p>{listError.message}</p><Button onClick={fetchPatients} variant="outline">Tentar novamente</Button></section>}
+<ResourceStatus resource={resource} label="pacientes" onRetry={fetchPatients} />
+{listError&&!resource.hasSnapshot&&<section role="alert" className="m-4 rounded-lg border p-4"><p>{listError.message}</p><Button onClick={fetchPatients} variant="outline">Tentar novamente</Button></section>}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}

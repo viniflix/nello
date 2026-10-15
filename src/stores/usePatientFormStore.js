@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { registerPrivateSessionCleanup } from '@/lib/utils/privateSessionState';
 
 const initialState = {
     name: '',
@@ -39,3 +40,4 @@ export const usePatientFormStore = create((set) => ({
 
     resetForm: () => set({ formData: initialState }),
 }));
+registerPrivateSessionCleanup(() => usePatientFormStore.getState().resetForm());

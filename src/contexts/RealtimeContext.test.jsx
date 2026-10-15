@@ -2,6 +2,7 @@ import React from 'react';
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, expect, it, vi } from 'vitest';
 import { RealtimeProvider } from './RealtimeContext';
+import {invalidateDomain} from '@/infrastructure/realtime/events';
 import { useOnlinePresence } from '@/hooks/useOnlinePresence';
 const mock=vi.hoisted(()=>({user:{id:'a'},rpc:vi.fn(),channel:vi.fn(),remove:vi.fn(),setAuth:vi.fn(),authChanged:null,query:{invalidateQueries:vi.fn(),resetQueries:vi.fn()},listeners:[]}));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>({user:mock.user})}));
@@ -31,4 +32,24 @@ it('clears presence immediately on an Auth session change before the context rer
  const view=render(<RealtimeProvider><Probe/></RealtimeProvider>);await waitFor(()=>expect(mock.channel).toHaveBeenCalledTimes(1));
  await act(async()=>{mock.listeners[0]('SUBSCRIBED');});await waitFor(()=>expect(screen.getByText('connected:true:true')).toBeInTheDocument());
  act(()=>mock.authChanged('SIGNED_OUT',null));expect(screen.getByText('connected:false:false')).toBeInTheDocument();view.unmount();
+});
+
+it('reconciles the last presence signal during a flight without adding presence writes',async()=>{
+ const finishes=[];mock.rpc.mockImplementation(name=>name==='get_chat_presence'?new Promise(resolve=>finishes.push(resolve)):Promise.resolve({data:name==='get_realtime_inbox'?'inbox:00000000-0000-0000-0000-000000000001':[],error:null}));
+ const view=render(<RealtimeProvider><Probe/></RealtimeProvider>);await waitFor(()=>expect(mock.channel).toHaveBeenCalledTimes(1));
+ act(()=>invalidateDomain('a','presence'));await waitFor(()=>expect(finishes).toHaveLength(1));
+ act(()=>{for(let i=0;i<8;i++)invalidateDomain('a','presence')});await act(async()=>new Promise(r=>setTimeout(r,130)));expect(finishes).toHaveLength(1);
+ await act(async()=>finishes.shift()({data:[],error:null}));await waitFor(()=>expect(finishes).toHaveLength(1));
+ await act(async()=>finishes.shift()({data:[{id:'peer',online:true,typing:false}],error:null}));expect(screen.getByText('connecting:true:false')).toBeInTheDocument();
+ expect(mock.rpc.mock.calls.filter(([name])=>name==='get_chat_presence')).toHaveLength(2);expect(mock.rpc.mock.calls.filter(([name])=>name==='update_chat_presence')).toHaveLength(0);view.unmount();
+});
+
+it('coalesces online, visible and SUBSCRIBED reads and adds no heartbeat for window focus',async()=>{
+ const visible=vi.spyOn(document,'visibilityState','get').mockReturnValue('visible');
+ const view=render(<RealtimeProvider><Probe/></RealtimeProvider>);await waitFor(()=>expect(mock.channel).toHaveBeenCalledTimes(1));
+ await act(async()=>{mock.listeners[0]('SUBSCRIBED');window.dispatchEvent(new Event('online'));document.dispatchEvent(new Event('visibilitychange'));await new Promise(resolve=>setTimeout(resolve,130));});
+ expect(mock.query.invalidateQueries).toHaveBeenCalledTimes(2);expect(mock.rpc.mock.calls.filter(([name])=>name==='get_chat_presence')).toHaveLength(1);
+ const writes=mock.rpc.mock.calls.filter(([name])=>name==='update_chat_presence').length;
+ await act(async()=>{window.dispatchEvent(new Event('focus'));window.dispatchEvent(new Event('focus'));await new Promise(resolve=>setTimeout(resolve,130));});
+ expect(mock.query.invalidateQueries).toHaveBeenCalledTimes(4);expect(mock.rpc.mock.calls.filter(([name])=>name==='update_chat_presence')).toHaveLength(writes);view.unmount();visible.mockRestore();
 });

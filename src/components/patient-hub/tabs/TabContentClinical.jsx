@@ -6,7 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Alert } from '@/components/ui/alert';
 import { Skeleton } from '@/components/ui/skeleton';
 import { HubPanel } from '@/components/patient-hub/HubPanel';
-import { patientRoute } from '@/lib/utils/patientRoutes';
+import { patientRoute, patientAnamnesisListRoute } from '@/lib/utils/patientRoutes';
 import { useToast } from '@/components/ui/use-toast';
 import { getLatestAnamnesis } from '@/lib/supabase/anamnesis-queries';
 import { getRecentLabResults } from '@/lib/supabase/lab-results-queries';
@@ -129,7 +129,7 @@ export default function TabContentClinical({ patientId, patientData, viewedEpiso
             <HubPanel
                 title="Anamnese"
                 description="Histórico clínico e informações essenciais"
-                action={<Button size="sm" variant={anamnesis ? 'outline' : 'default'} onClick={() => navigate(patientRoute(patient, 'anamnesis'))}>{anamnesis ? 'Abrir' : 'Iniciar'}<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
+                action={<Button size="sm" variant={anamnesis ? 'outline' : 'default'} onClick={() => navigate(patientAnamnesisListRoute(patient))}>{anamnesis ? 'Abrir' : 'Iniciar'}<ArrowRight className="ml-1.5 h-3.5 w-3.5" /></Button>}
             >
                 {anamnesisState === 'loading' ? <div role="status" aria-label="Carregando anamnese" className="space-y-3"><Skeleton className="h-5 w-1/2" /><Skeleton className="h-14 w-full" /></div>
                     : anamnesisState === 'error' ? <div className="space-y-3"><p className="text-sm text-slate-600">Não foi possível carregar a anamnese.</p><Button size="sm" variant="outline" onClick={() => void loadSummary()}>Recarregar</Button></div>
@@ -155,7 +155,7 @@ export default function TabContentClinical({ patientId, patientData, viewedEpiso
             <div className={`grid gap-2 ${writableEpisodeId ? 'grid-cols-3' : 'grid-cols-2'}`}>
                 {writableEpisodeId && <Button size="sm" onClick={() => setShowTemplateSelector(true)} className="min-w-0 gap-1.5 px-2 text-xs"><FileEdit className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Evolução</span></Button>}
                 <Button variant="outline" size="sm" onClick={() => navigate(patientRoute(patient, 'lab-results'))} className="min-w-0 gap-1.5 px-2 text-xs"><Droplet className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Exame</span></Button>
-                <Button variant="outline" size="sm" onClick={() => navigate(patientRoute(patient, 'anamnesis'))} className="min-w-0 gap-1.5 px-2 text-xs"><Plus className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Anamnese</span></Button>
+                <Button variant="outline" size="sm" onClick={() => navigate(patientAnamnesisListRoute(patient))} className="min-w-0 gap-1.5 px-2 text-xs"><Plus className="h-3.5 w-3.5 shrink-0" /><span className="truncate">Anamnese</span></Button>
             </div>
         </HubPanel>
 

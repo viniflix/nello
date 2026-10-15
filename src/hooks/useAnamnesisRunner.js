@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {queryRead} from '@/lib/utils/readPolicy';
 import { insertIdempotently, updateIdempotently } from '@/lib/supabase/idempotent-mutations';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase/client';
@@ -40,17 +42,17 @@ export function useAnamnesisRunner(patientId) {
     const usePatientRecords = () =>
         useQuery({
             queryKey: ['anamnesis_records', patientId],
-            queryFn: async () => {
+            queryFn: queryRead(async ({signal}) => {
                 if (!patientId) return [];
-                const { data, error } = await supabase
+                const { data, error } = await readRequest(() => supabase
                     .from('anamnesis_records')
                     .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, template:template_id(title)")
                     .eq('patient_id', patientId)
                     .order('created_at', { ascending: false })
-                    .limit(50);
+                    .limit(50), {signal:signal});
                 if (error) throw error;
                 return data || [];
-            },
+            }),
             enabled: !!patientId,
         });
 
@@ -58,14 +60,14 @@ export function useAnamnesisRunner(patientId) {
     const useRecord = (recordId) =>
         useQuery({
             queryKey: ['anamnesis_record', recordId, patientId],
-            queryFn: async () => {
+            queryFn: queryRead(async ({signal}) => {
                 if (!recordId) return null;
                 let actualId = recordId;
                 if (!recordId.includes('-')) {
-                    const { data: allRecords, error: listErr } = await supabase
+                    const { data: allRecords, error: listErr } = await readRequest(() => supabase
                         .from('anamnesis_records')
                         .select('id')
-                        .eq('patient_id', patientId);
+                        .eq('patient_id', patientId), {signal:signal});
                     if (listErr) throw listErr;
                     
                     const shortCode = String(recordId).toLowerCase();
@@ -76,19 +78,19 @@ export function useAnamnesisRunner(patientId) {
                     actualId = match.id;
                 }
 
-                const { data, error } = await supabase
+                const { data, error } = await readRequest(() => supabase
                     .from('anamnesis_records')
                     .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, template:template_id(id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version)")
                     .eq('id', actualId)
                     .eq('patient_id', patientId)
-                    .single();
+                    .single(), {signal:signal});
                 if (error) throw error;
                 // Usar template_snapshot se disponível (imutabilidade clínica)
                 if (data?.template_snapshot && Object.keys(data.template_snapshot).length > 0) {
                     return { ...data, template: data.template_snapshot };
                 }
                 return data;
-            },
+            }),
             enabled: !!recordId && !!patientId,
         });
 
@@ -96,18 +98,18 @@ export function useAnamnesisRunner(patientId) {
     const usePreviousProfile = () =>
         useQuery({
             queryKey: ['anamnesis_records', patientId, 'progressive'],
-            queryFn: async () => {
+            queryFn: queryRead(async ({signal}) => {
                 if (!patientId) return null;
-                const { data, error } = await supabase
+                const { data, error } = await readRequest(() => supabase
                     .from('anamnesis_records')
                     .select('content')
                     .eq('patient_id', patientId)
                     .in('status', ['submitted', 'validated'])
                     .order('created_at', { ascending: false })
-                    .limit(1);
+                    .limit(1), {signal:signal});
                 if (error) throw error;
                 return data?.[0]?.content || {};
-            },
+            }),
             enabled: !!patientId,
         });
 
@@ -115,13 +117,13 @@ export function useAnamnesisRunner(patientId) {
     const usePendingRecords = () =>
         useQuery({
             queryKey: ['anamnesis_records', user?.id, 'pending'],
-            queryFn: async ({signal}) => {
+            queryFn: queryRead(async ({signal}) => {
                 if (!user?.id) return [];
-                const scope=await supabase.rpc('get_active_feed_patients').abortSignal(signal);
+                const scope=await readRequest(() => supabase.rpc('get_active_feed_patients').abortSignal(signal), {signal:signal});
                 if(scope.error)throw scope.error;
                 if(!scope.data?.length)return [];
                 const cutoff = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-                const { data, error } = await supabase
+                const { data, error } = await readRequest(() => supabase
                     .from('anamnesis_records')
                     .select("id,patient_id,created_at,care_episode_id, patient:patient_id(name, slug), template:template_id(title)")
                     .in('care_episode_id',scope.data.map(patient=>patient.care_episode_id)).abortSignal(signal)
@@ -130,10 +132,10 @@ export function useAnamnesisRunner(patientId) {
                     .not('public_access_token', 'is', null)
                     .lt('created_at', cutoff)
                     .order('created_at', { ascending: false })
-                    .limit(20);
+                    .limit(20), {signal:signal});
                 if (error) throw error;
                 return data || [];
-            },
+            }),
             enabled: !!user?.id,
         });
 

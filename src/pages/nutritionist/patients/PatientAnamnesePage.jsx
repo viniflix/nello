@@ -1,3 +1,4 @@
+import {queryRead} from '@/lib/utils/readPolicy';
 import { civilAge } from '@/lib/utils/date';
 import React, { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -11,7 +12,7 @@ import { SimpleListSkeleton, PageHeaderSkeleton, TimelineSkeleton } from '@/comp
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
-import { patientAnamnesisEditRoute } from '@/lib/utils/patientRoutes';
+import { patientAnamnesisEditRoute, patientHubRoute } from '@/lib/utils/patientRoutes';
 import TimelineFeed from '@/features/clinical-records/components/TimelineFeed';
 import { getPatientRecordFoundation } from '@/features/clinical-records/api/record-foundation-queries';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -56,11 +57,11 @@ export default function PatientAnamnesePage() {
 
   const foundationQuery = useQuery({
     queryKey: ['patientRecordFoundation', patientId],
-    queryFn: async () => {
+    queryFn: queryRead(async ({signal}) => {
       const result = await getPatientRecordFoundation(patientId);
       if (result.error) throw result.error;
       return result.data;
-    },
+    }),
     enabled: Boolean(patientId && !resolvingPatient && !patientResolutionError),
   });
 
@@ -110,7 +111,7 @@ export default function PatientAnamnesePage() {
           <Button
             variant="ghost"
             size="sm"
-            onClick={() => navigate(`/nutritionist/patients/${paramValue}/hub`)}
+            onClick={() => navigate(patientHubRoute({ id: patientId, slug: paramValue }, 'clinical'))}
             className="gap-2 -ml-2 shrink-0 text-[#5f6f52] hover:text-[#5f6f52] hover:bg-[#5f6f52]/10"
           >
             <ArrowLeft className="w-4 h-4 shrink-0" />

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { queryClient, queryClientOptions } from './queryClient';
+import { queryReadRetry } from '@/lib/utils/readPolicy';
 import { createPosthogOptions } from './posthog';
 import { captureWithConsent } from './posthog';
 
@@ -39,7 +40,7 @@ describe('application runtime configuration', () => {
       defaultOptions: {
         queries: {
           staleTime: 1000 * 60 * 5,
-          retry: 1,
+          retry: queryReadRetry,
           refetchOnWindowFocus: false,
         },
       },

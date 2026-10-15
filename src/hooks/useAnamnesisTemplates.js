@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {queryRead} from '@/lib/utils/readPolicy';
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase/client';
@@ -13,18 +15,18 @@ export function useAnamnesisTemplates() {
 
   const useTemplates = () => useQuery({
     queryKey: ['anamnesisTemplates', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: queryRead(async ({signal}) => {
+      const { data, error } = await readRequest(() => supabase
         .from('anamnesis_templates')
         .select("id,nutritionist_id,title,description,sections,is_system_default,is_active,created_at,updated_at,version")
         .or(`nutritionist_id.eq.${user?.id},is_system_default.eq.true`)
         .eq('is_active', true)
         .order('is_system_default', { ascending: false }) // Globais primeiro
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }), {signal:signal});
       
       if (error) throw error;
       return data || [];
-    },
+    }),
     enabled: !!user?.id,
   });
 

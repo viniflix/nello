@@ -1,11 +1,12 @@
+import { adminReadRpc, adminReadInvoke } from '@/features/admin/services/adminRead';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { supabase } from '@/infrastructure/supabase/client';
 import { validateBriefing } from '@/portals/admin/model/sourceState';
 import { validateProductMetrics } from '@/portals/admin/model/productMetrics';
 import { validateVerificationQueue } from '@/portals/admin/model/verificationDecision';
 
-export async function getAdminVerificationQueue({ status = null, role = null, page = 1 } = {}) {
-  const { data, error } = await supabase.rpc('admin_verification_queue', { p_status: status, p_role: role, p_page: page });
+export async function getAdminVerificationQueue({ status = null, role = null, page = 1 } = {}, options) {
+  const { data, error } = await adminReadRpc('admin_verification_queue', { p_status: status, p_role: role, p_page: page }, options);
   if (error) return { data: null, error };
   try { return { data: validateVerificationQueue(data), error: null }; }
   catch (failure) { return { data: null, error: failure }; }
@@ -21,21 +22,21 @@ export async function decideAdminVerification({ verificationId, expected, nonce,
   return { data, error: null };
 }
 
-export async function getAdminNutritionistDetail(id) {
-  const { data, error } = await supabase.rpc('get_nutritionist_detail', { p_nutritionist_id: id });
+export async function getAdminNutritionistDetail(id, options) {
+  const { data, error } = await adminReadRpc('get_nutritionist_detail', { p_nutritionist_id: id }, options);
   return { data: error ? null : { person: data, generated_at: new Date().toISOString(), source: 'Banco Nello · detalhe cadastral' }, error };
 }
 
-export async function getAdminProductMetrics(days=30) {
+export async function getAdminProductMetrics(days=30, options) {
   if (![30,90,180].includes(days)) return {data:null,error:new Error('invalid_analytics_window')};
-  const {data,error}=await supabase.rpc('admin_product_analytics',{p_window_days:days});
+  const {data,error}=await adminReadRpc('admin_product_analytics',{p_window_days:days}, options);
   if(error)return {data:null,error};
   try {return {data:validateProductMetrics(data),error:null};} catch(error){return {data:null,error};}
 }
-export const getAdminProductCaptures = (days=30) => supabase.functions.invoke('sentry-proxy',{method:'POST',body:{action:'product_analytics',window_days:days}});
+export const getAdminProductCaptures = (days=30, options) => adminReadInvoke('sentry-proxy',{method:'POST',body:{action:'product_analytics',window_days:days}},options);
 
-export async function getAdminBriefing() {
-  const { data, error } = await supabase.rpc('admin_operational_briefing');
+export async function getAdminBriefing(options) {
+  const { data, error } = await adminReadRpc('admin_operational_briefing', undefined, options);
   if (error) return { data: null, error };
   try { return { data: validateBriefing(data), error: null }; }
   catch (contractError) { return { data: null, error: contractError }; }
@@ -45,35 +46,35 @@ export const getAdminIncidentState = (issueId) => supabase.rpc('admin_incident_s
 export const triageAdminIncident = ({ issueId, revision, status, reason }) => supabase.rpc('admin_triage_incident', {
   p_issue_id: String(issueId), p_expected_revision: revision, p_status: status, p_reason: reason,
 });
-export const getAdminIntegrations = () => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'sources' } });
-export const getAdminIssuePage = (filters) => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'issues_page', limit: 25, ...filters } });
+export const getAdminIntegrations = (options) => adminReadInvoke('sentry-proxy', { method: 'POST', body: { action: 'sources' } }, options);
+export const getAdminIssuePage = (filters, { signal } = {}) => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'issues_page', limit: 25, ...filters }, ...(signal ? { signal } : {}) });
 export const getAdminIssueEvent = (issueId) => supabase.functions.invoke('sentry-proxy', { method: 'POST', body: { action: 'latest_event', issue_id: String(issueId) } });
 
-export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}) {
-  const { data, error } = await supabase.rpc('admin_list_people', {
+export async function listAdminPeople({ search = '', type = 'all', page = 1 } = {}, options) {
+  const { data, error } = await adminReadRpc('admin_list_people', {
     p_search: search,
     p_type: type,
     p_page: page,
-  });
+  }, options);
   return { data: data ? { ...data, generated_at: new Date().toISOString(), source: 'Banco Nello · consulta do diretório' } : null, error };
 }
 
-export async function getAdminWorkflowOverview() {
-  const { data, error } = await supabase.rpc('admin_workflow_overview');
+export async function getAdminWorkflowOverview(options) {
+  const { data, error } = await adminReadRpc('admin_workflow_overview', undefined, options);
   return { data, error };
 }
 
-export async function getAdminSecurityOverview() {
-  const { data, error } = await supabase.rpc('admin_security_overview');
+export async function getAdminSecurityOverview(options) {
+  const { data, error } = await adminReadRpc('admin_security_overview', undefined, options);
   return { data, error };
 }
 
-export const getAdminSecurityActivity = (before = null) => supabase.rpc('admin_security_activity', {
+export const getAdminSecurityActivity = (before = null, options) => adminReadRpc('admin_security_activity', {
   p_before: before, p_limit: 25,
-});
+}, options);
 
-export async function getAdminBrandMigrationStatus() {
-  const { data, error } = await supabase.rpc('admin_brand_migration_status');
+export async function getAdminBrandMigrationStatus(options) {
+  const { data, error } = await adminReadRpc('admin_brand_migration_status', undefined, options);
   return { data, error };
 }
 
@@ -99,9 +100,9 @@ export async function getNutritionistsList() {
   }
 }
 
-export async function getSystemLiveLogs(limit = 50) {
+export async function getSystemLiveLogs(limit = 50, options) {
   try {
-    const { data, error } = await supabase.rpc('get_system_live_logs', { limit_count: limit });
+    const { data, error } = await adminReadRpc('get_system_live_logs', { limit_count: limit }, options);
     if (error) throw error;
     return { data, error: null };
   } catch (error) {
@@ -114,9 +115,9 @@ export async function getSystemLiveLogs(limit = 50) {
  * Busca todas as métricas da Área de Estudo TCC
  * RPC: get_tcc_study_metrics()
  */
-export async function getTCCStudyMetrics() {
+export async function getTCCStudyMetrics(options) {
   try {
-    const { data, error } = await supabase.rpc('get_tcc_study_metrics');
+    const { data, error } = await adminReadRpc('get_tcc_study_metrics', undefined, options);
     if (error) throw error;
     return { data, error: null };
   } catch (error) {

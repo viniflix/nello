@@ -1,8 +1,9 @@
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
-const rpc = async (name, payload = {}) => {
-  const { data, error } = await supabase.rpc(name, payload);
+const rpc = async (name, payload = {}, { signal } = {}) => {
+  const request = supabase.rpc(name, payload);
+  const { data, error } = await (signal && request.abortSignal ? request.abortSignal(signal) : request);
   if (error) logSupabaseError(name, error);
   return { data, error };
 };
@@ -13,7 +14,7 @@ export const createMyPrivacyRequest = (requestType, subjectNote) => rpc('create_
 });
 export const listMyPrivacyRequests = () => rpc('list_my_data_subject_requests');
 export const cancelMyPrivacyRequest = (requestId) => rpc('cancel_my_data_subject_request', { p_request_id: requestId });
-export const listPrivacyRequestsForAdmin = (status = null) => rpc('list_data_subject_requests', { p_status: status });
+export const listPrivacyRequestsForAdmin = (status = null, options) => rpc('list_data_subject_requests', { p_status: status }, options);
 export const updatePrivacyRequest = ({ requestId, revision, status, reason, retentionDecision = null, legalBasis = null }) => rpc('update_data_subject_request', {
   p_request_id: requestId,
   p_expected_revision: revision,

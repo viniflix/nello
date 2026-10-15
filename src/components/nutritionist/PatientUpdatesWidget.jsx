@@ -1,3 +1,4 @@
+import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +38,8 @@ const PatientUpdatesWidget = () => {
         return `${parsed.toFixed(2)} kcal`;
     };
 
-    useEffect(() => {
+    const readSource = useCoordinatedSources(JSON.stringify([user?.id,'nutritionist.updates']));
+  useEffect(() => {
         const controller = new AbortController();
         const fetchUpdates = async () => {
             if (!user?.id) return;
@@ -47,8 +49,8 @@ const PatientUpdatesWidget = () => {
 
             try {
                 // Buscar pacientes do nutricionista (com slug para URLs legíveis)
-                const { data: patientsData, error: patientsError } = await supabase
-                    .rpc('get_active_feed_patients').abortSignal(controller.signal);
+                const { data: patientsData, error: patientsError } = await readSource('relationship', () => supabase
+                    .rpc('get_active_feed_patients').abortSignal(controller.signal));
                 if (patientsError) throw patientsError;
                 if (controller.signal.aborted) return;
 
@@ -65,7 +67,7 @@ const PatientUpdatesWidget = () => {
                 const activities = [];
 
                 // OTIMIZADO: Buscar últimos 100 registros de cada tipo
-                const [mealAuditData, weightData] = await Promise.all([
+                const [mealAuditData, weightData] = await readSource('0', () => Promise.all([
                     // 1. AUDITORIA DE REFEIÇÕES - Últimas 100 (CREATE, UPDATE, DELETE)
                     supabase
                         .from('meal_audit_log')
@@ -83,7 +85,7 @@ const PatientUpdatesWidget = () => {
                         .in('care_episode_id', episodeIds).abortSignal(controller.signal)
                         .order('created_at', { ascending: false })
                         .limit(100)
-                ]);
+                ]));
                 if (mealAuditData.error) throw mealAuditData.error;
                 if (weightData.error) throw weightData.error;
 
@@ -158,14 +160,14 @@ const PatientUpdatesWidget = () => {
 
         fetchUpdates();
         return () => controller.abort();
-    }, [user?.id, retryKey]);
+    }, [user?.id, retryKey, readSource]);
 
     useEffect(() => {
         if (!user?.id) return;
         const refresh = () => setRetryKey(key=>key+1);
-        const unsubscribe = subscribeDomain(user.id, 'access', refresh);
+        const unsubscribes = ['access', 'clinical'].map(domain => subscribeDomain(user.id, domain, refresh));
         window.addEventListener('online',refresh);window.addEventListener('focus',refresh);
-        return () => {unsubscribe();window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
+        return () => {unsubscribes.forEach(off => off());window.removeEventListener('online',refresh);window.removeEventListener('focus',refresh);};
     }, [user?.id]);
 
     const getIcon = (type) => {

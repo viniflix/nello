@@ -12,27 +12,44 @@ const STATUS = { signed: 'Assinado', invalidated: 'Invalidado', superseded: 'Sub
 export default function DocumentAuthenticityPage() {
   const { code } = useParams();
   const navigate = useNavigate();
+  const [attempt,setAttempt]=useState(0);
+  const [resultCode,setResultCode]=useState(null);
+  const [limitedUntil,setLimitedUntil]=useState(0);
+  const [cooldown,setCooldown]=useState(false);
   const [query, setQuery] = useState(code || '');
   const [result, setResult] = useState(null);
   const [state, setState] = useState(code ? 'loading' : 'idle');
 
+  useEffect(()=>{setQuery(code||'')},[code]);
+  useEffect(()=>{
+    if(!limitedUntil){setCooldown(false);return;}
+    setCooldown(Date.now()<limitedUntil);
+    const timer=setTimeout(()=>setCooldown(false),Math.max(0,limitedUntil-Date.now()));
+    return()=>clearTimeout(timer);
+  },[limitedUntil]);
   useEffect(() => {
     let current = true;
-    setQuery(code || '');
+    const controller=new AbortController();
+    setResultCode(null);
+    setLimitedUntil(0);
     setResult(null);
     if (!code) { setState('idle'); return undefined; }
     setState('loading');
-    void verifyDocumentAuthenticity(code).then(({ data, error }) => {
+    void verifyDocumentAuthenticity(code,{signal:controller.signal}).then(({ data, error }) => {
       if (!current) return;
+      setResultCode(code);
+      if(data?.rate_limited){const seconds=Math.min(3600,Math.max(1,Number(data.retry_after_seconds)||60));setLimitedUntil(Date.now()+seconds*1000);}
       setResult(error ? null : data);
       setState(error ? 'error' : data?.rate_limited ? 'limited' : 'ready');
     }).catch(() => { if (current) { setResult(null); setState('error'); } });
-    return () => { current = false; };
-  }, [code]);
+    return () => { current = false;controller.abort(); };
+  }, [code,attempt]);
 
   const submit = (event) => {
     event.preventDefault();
     const normalized = query.trim();
+    if(normalized===code){if(!cooldown&&state!=='loading')setAttempt(x=>x+1);return;}
+    if (cooldown) return;
     if (normalized) navigate(`/verificar-documento/${encodeURIComponent(normalized)}`);
   };
 
@@ -40,13 +57,13 @@ export default function DocumentAuthenticityPage() {
     <main id="main-content" tabIndex={-1} className="min-h-dvh bg-slate-50 px-4 py-10 text-slate-900">
       <div className="mx-auto max-w-2xl space-y-6">
         <header className="text-center"><div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-emerald-100 text-emerald-700"><FileCheck2 /></div><h1 className="mt-4 text-2xl font-bold uppercase">Verificar documento</h1><p className="mt-2 text-sm text-slate-600">Consulte a autenticidade sem expor dados do paciente ou o conteúdo clínico.</p></header>
-        <Card><CardContent className="pt-6"><form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Código de autenticidade" required value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Informe o código do documento" /><Button type="submit"><Search className="mr-2 h-4 w-4" />Verificar</Button></form></CardContent></Card>
+        <Card><CardContent className="pt-6"><form className="flex flex-col gap-3 sm:flex-row" onSubmit={submit}><Input aria-label="Código de autenticidade" required value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Informe o código do documento" /><Button type="submit" disabled={cooldown||(query.trim()===code&&state==='loading')}><Search className="mr-2 h-4 w-4" />Verificar</Button></form></CardContent></Card>
 
-        {state === 'loading' ? <div role="status" className="flex items-center justify-center gap-2 py-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin" />Verificando autenticidade...</div> : null}
-        {state === 'error' ? <Card className="border-red-200"><CardContent className="flex gap-3 py-6 text-red-700"><AlertCircle /><p>Não foi possível verificar agora. Tente novamente em alguns instantes.</p></CardContent></Card> : null}
-        {state === 'limited' ? <Card className="border-amber-200"><CardContent role="status" className="flex gap-3 py-6 text-amber-800"><Clock className="shrink-0" /><p>Limite de consultas atingido. Aguarde um minuto antes de verificar novamente.</p></CardContent></Card> : null}
-        {state === 'ready' && !result?.found ? <Card className="border-amber-200"><CardContent className="flex gap-3 py-6 text-amber-800"><AlertCircle /><div><p className="font-semibold">Documento não encontrado</p><p className="mt-1 text-sm">Confira o código. Por privacidade, nenhum outro dado é exibido.</p></div></CardContent></Card> : null}
-        {state === 'ready' && result?.found ? (
+        {state === 'loading' ? <div role="status" className="flex items-center justify-center gap-2 py-8 text-slate-500"><Loader2 className="h-5 w-5 animate-spin motion-reduce:animate-none" />Verificando autenticidade...</div> : null}
+        {state === 'error' ? <Card className="border-red-200"><CardContent role="alert" className="flex gap-3 py-6 text-red-700"><AlertCircle /><p>Não foi possível verificar agora. Tente novamente em alguns instantes.</p><Button onClick={()=>setAttempt(x=>x+1)}>Tentar verificar novamente</Button></CardContent></Card> : null}
+        {state === 'limited' ? <Card className="border-amber-200"><CardContent role="status" className="flex gap-3 py-6 text-amber-800"><Clock className="shrink-0" /><p>Limite de consultas atingido. {cooldown ? `Aguarde ${Math.min(3600,Math.max(1,Number(result?.retry_after_seconds)||60))} segundos antes de verificar novamente.` : 'Você já pode verificar novamente.'}</p><Button disabled={cooldown} onClick={()=>setAttempt(x=>x+1)}>Verificar novamente</Button></CardContent></Card> : null}
+        {state === 'ready' && resultCode===code && !result?.found ? <Card className="border-amber-200"><CardContent className="flex gap-3 py-6 text-amber-800"><AlertCircle /><div><p className="font-semibold">Documento não encontrado</p><p className="mt-1 text-sm">Confira o código. Por privacidade, nenhum outro dado é exibido.</p></div></CardContent></Card> : null}
+        {state === 'ready' && resultCode===code && result?.found ? (
           <Card className="border-emerald-200">
             <CardHeader><div className="flex flex-wrap items-start justify-between gap-3"><div><CardTitle className="flex items-center gap-2 uppercase"><ShieldCheck className="text-emerald-700" />Documento localizado</CardTitle><CardDescription>Emissor: {result.issuer}</CardDescription></div><Badge className={result.status === 'signed' ? 'bg-emerald-700' : 'bg-amber-700'}>{STATUS[result.status] || result.status}</Badge></div></CardHeader>
             <CardContent className="grid gap-4 text-sm sm:grid-cols-2">
@@ -57,7 +74,7 @@ export default function DocumentAuthenticityPage() {
             </CardContent>
           </Card>
         ) : null}
-        <p className="text-center text-xs uppercase tracking-wide text-slate-400">Verificação pública Nello • Dados clínicos protegidos</p>
+        <p className="text-center text-xs uppercase tracking-wide text-slate-600">Verificação pública Nello • Dados clínicos protegidos</p>
       </div>
     </main>
   );

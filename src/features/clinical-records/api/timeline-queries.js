@@ -1,9 +1,10 @@
+import {readRequest} from '@/lib/supabase/readRequest';
 import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 export const TIMELINE_PAGE_SIZE = 30;
 
-export async function listPatientTimeline(patientId, episodeId, scope = 'all', cursor = null, limit = TIMELINE_PAGE_SIZE) {
+export async function listPatientTimeline(patientId, episodeId, scope = 'all', cursor = null, limit = TIMELINE_PAGE_SIZE, {signal} = {}) {
   const payload = {
     p_patient_id: patientId,
     p_episode_id: episodeId,
@@ -13,7 +14,7 @@ export async function listPatientTimeline(patientId, episodeId, scope = 'all', c
     p_limit: limit,
   };
   try {
-    const { data, error } = await supabase.rpc('list_patient_timeline', payload);
+    const { data, error } = await readRequest(() => supabase.rpc('list_patient_timeline', payload), {signal});
     if (error) throw error;
     const rows = Array.isArray(data) ? data : [];
     const hasNextPage = rows.length > limit;

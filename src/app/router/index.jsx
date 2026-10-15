@@ -1,3 +1,4 @@
+import {isSessionIndependentPath,normalizeRoutePath} from './publicRoutePolicy';
 import React, { Suspense } from 'react';
 import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,13 +28,19 @@ const AppRouter = () => {
   const { pathname } = useLocation();
 
   // Operational status must remain readable while authentication is unavailable.
-  if (pathname === '/status' || pathname === '/status/') return <StatusPage />;
-  const publicPath = pathname.replace(/\/$/, '');
+  const publicPath=normalizeRoutePath(pathname);
+  if(publicPath==='/status')return <StatusPage/>;
   if (publicPath === '/pesquisa') return <Suspense fallback={<PageLoadingFallback />}><ResearchPage /></Suspense>;
   if (['/recursos', '/para-pacientes'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><ProductInformationPage pathname={publicPath} /></Suspense>;
   if (['/termos', '/privacidade', '/ajuda', '/seguranca'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><LegalInformationPage pathname={publicPath} /></Suspense>;
 
   if (pathname === '/' && !user) return <Suspense fallback={<PageLoadingFallback />}><LandingPage /></Suspense>;
+
+  if(isSessionIndependentPath(pathname)&&publicPath!=='/')return <Suspense fallback={<PageLoadingFallback/>}><Routes>
+    {authRoutes}
+    <Route path="/f/:token" element={<PatientFacingAnamnesis key={pathname}/>}/>
+    <Route path="/verificar-documento/:code?" element={<DocumentAuthenticityPage/>}/>
+  </Routes></Suspense>;
 
   if (loading) {
     return <PageLoadingFallback />;

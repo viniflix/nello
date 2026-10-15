@@ -15,7 +15,7 @@ describe('profile retry ownership', () => {
   beforeEach(() => { vi.useFakeTimers(); state.fetch.mockReset(); });
   afterEach(() => vi.useRealTimers());
 
-  it('propaga 503 em uma única tentativa do SDK, deixando as retentativas ao hook', async () => {
+  it('limita 503 a três transportes no orçamento único do perfil', async () => {
     state.fetch.mockImplementation(async () => new Response('{"code":"QA_PROFILE_UNAVAILABLE","message":"Synthetic outage"}', {
       status: 503, headers: { 'content-type': 'application/json' },
     }));
@@ -24,10 +24,12 @@ describe('profile retry ownership', () => {
     await vi.waitFor(() => expect(state.fetch).toHaveBeenCalled());
     await vi.runAllTimersAsync();
     expect(await result).toMatchObject({ code: 'QA_PROFILE_UNAVAILABLE' });
-    expect(state.fetch).toHaveBeenCalledTimes(1);
-    expect(query.retry(1, new Error('network'))).toBe(true);
-    expect(query.retry(2, new Error('network'))).toBe(false);
-    expect(query.retry(3, new Error('PROFILE_NOT_FOUND'))).toBe(true);
-    expect(query.retry(4, new Error('PROFILE_NOT_FOUND'))).toBe(false);
+    expect(state.fetch).toHaveBeenCalledTimes(3);
+    expect(query.retry).toBe(false);
   });
+});
+
+it('preserves the five-read profile trigger grace within one total budget',async()=>{
+ vi.useFakeTimers();state.fetch.mockReset();state.fetch.mockImplementation(async()=>new Response(JSON.stringify({code:'PGRST116',message:'Missing'}),{status:406,headers:{'Content-Type':'application/json'}}));
+ const q=useProfile('fictitious-new-profile');const work=q.queryFn().catch(error=>error);await vi.runAllTimersAsync();expect((await work).message).toBe('PROFILE_NOT_FOUND');expect(state.fetch).toHaveBeenCalledTimes(5);expect(q.retry).toBe(false);vi.useRealTimers();
 });

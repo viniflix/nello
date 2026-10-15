@@ -1,5 +1,6 @@
-import { useMemo, useState } from 'react';
-import { useInfiniteQuery } from '@tanstack/react-query';
+import {queryRead} from '@/lib/utils/readPolicy';
+import { useEffect, useMemo, useState } from 'react';
+import { useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
 import { Bug, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Badge } from '@/components/ui/badge';
@@ -10,29 +11,39 @@ import { Label } from '@/components/ui/label';
 import { Skeleton } from '@/components/ui/skeleton';
 import { getAdminIssuePage, getSystemLiveLogs } from '@/services/adminService';
 import AdminIncidentDetail from '@/portals/admin/components/AdminIncidentDetail';
-import { useAdminSource } from '@/portals/admin/hooks/useAdminSource';
+import { useAccessEpoch } from '@/hooks/useAccessEpoch';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
+import { useAdminSource, accessDenied } from '@/portals/admin/hooks/useAdminSource';
 import { operationalDate } from '@/portals/admin/model/sourceState';
 
 export default function AdminBugReportsPage() {
   const { user } = useAuth();
+  const client = useQueryClient();
+  const access = useAdminAccess();
+  const epoch = useAccessEpoch(user?.id);
   const [hours, setHours] = useState(24);
   const [environment, setEnvironment] = useState('production');
   const [release, setRelease] = useState('');
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState(null);
-  const logs = useAdminSource('operational-logs', () => getSystemLiveLogs(50));
+  const logs = useAdminSource('operational-logs', options => getSystemLiveLogs(50,options));
   const issues = useInfiniteQuery({
-    queryKey: ['admin-workspace', user?.id, 'issues', hours, environment, release],
-    enabled: Boolean(user?.id) && (!release || /^[a-f0-9]{7,40}$/.test(release)),
-    initialPageParam: '', retry: false, staleTime: 60000, gcTime: 0,
-    queryFn: async ({ pageParam }) => {
-      const { data, error } = await getAdminIssuePage({ hours, environment, release, cursor: pageParam });
-      if (error) throw error;
+    queryKey: ['admin-workspace', user?.id, 'issues', epoch, hours, environment, release],
+    enabled: Boolean(user?.id) && access.phase === 'authorized' && (!release || /^[a-f0-9]{7,40}$/.test(release)),
+    initialPageParam: '', retry: false, staleTime: 60000, gcTime: 60000,
+    queryFn: queryRead(async ({ pageParam, signal }) => {
+      const generation = access.getGeneration(), session = getPrivateSessionEpoch();
+      const { data, error } = await getAdminIssuePage({ hours, environment, release, cursor: pageParam }, { signal });
+      if (signal.aborted || generation !== access.getGeneration() || session !== getPrivateSessionEpoch() || epoch !== getAccessEpoch(user?.id)) throw Object.assign(new Error('issue_request_obsolete'), { name: 'AbortError' });
+      if (error) { if (accessDenied(error)) client.setQueryData(['admin-workspace', user?.id, 'issues', epoch, hours, environment, release], null); throw error; }
       if (!Array.isArray(data?.items) || (data.next_cursor && !/^[0-9:]{1,100}$/.test(data.next_cursor))) throw new Error('invalid_issue_page');
       return data;
-    },
+    }),
     getNextPageParam: (last, pages, previous, params) => last.next_cursor && !params.includes(last.next_cursor) && pages.length < 10 ? last.next_cursor : undefined,
   });
+  useEffect(() => { setSelected(null); client.removeQueries({ predicate: q => q.queryKey[0] === 'admin-workspace' && q.queryKey[1] === user?.id && q.queryKey[2] === 'issues' && q.queryKey[3] !== epoch }); }, [epoch, user?.id, client]);
   const all = useMemo(() => [...new Map((issues.data?.pages || []).flatMap(p => p.items).map(issue => [issue.id, issue])).values()], [issues.data]);
   const visible = all.filter(issue => `${issue.title} ${issue.shortId}`.toLowerCase().includes(query.toLowerCase()));
   return <div className="space-y-6"><header className="space-y-2"><p className="text-sm font-medium text-primary">Operação · investigação</p><h1 className="font-heading text-2xl uppercase sm:text-3xl">Incidentes e eventos</h1><p className="max-w-2xl text-sm text-muted-foreground">Consulte issues abertas do projeto Nello e registre o acompanhamento interno. O total abaixo corresponde às páginas carregadas.</p></header>
@@ -47,6 +58,6 @@ export default function AdminBugReportsPage() {
       {issues.data?.pages.length === 10 && <p className="text-xs text-muted-foreground">Limite de 250 resultados por consulta. Refine os filtros para investigar outros incidentes.</p>}
     </CardContent></Card>
     <Card className="rounded-2xl"><CardHeader><CardTitle className="text-lg">Eventos operacionais recentes</CardTitle><p className="text-sm text-muted-foreground">Até 50 registros internos. Não representa disponibilidade ou taxa de erro.</p></CardHeader><CardContent className="space-y-2">{logs.isError && <p role="alert" className="text-sm text-destructive">Eventos internos indisponíveis; nenhuma fila vazia foi confirmada.</p>}{logs.isPending ? <Skeleton className="h-24 w-full" /> : logs.data?.map(log => <div key={log.id} className="flex flex-wrap justify-between gap-2 rounded-lg border p-3 text-sm"><span>{log.message}</span><span className="text-xs text-muted-foreground">{operationalDate(log.event_timestamp)}</span></div>)}{logs.data?.length === 0 && !logs.isError && <p className="text-sm text-muted-foreground">Nenhum registro retornado nesta consulta.</p>}</CardContent></Card>
-    {selected && <AdminIncidentDetail key={`${user?.id}:${selected.id}`} issue={selected} onClose={() => setSelected(null)} />}
+    {selected && !accessDenied(issues.error) && <AdminIncidentDetail key={`${user?.id}:${selected.id}`} issue={selected} onClose={() => setSelected(null)} />}
   </div>;
 }

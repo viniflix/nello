@@ -1,3 +1,4 @@
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
 import {useRef,useState} from 'react';
 import {Button} from '@/components/ui/button';
 import {Input} from '@/components/ui/input';
@@ -16,6 +17,7 @@ function initial(kind) {
 }
 const selectClass='h-11 w-full rounded-md border bg-background px-3 text-sm';
 export default function IntelligenceRecordEditor({kind,entry,onClose,onSaved}) {
+ const access=useAdminAccess();
  const [payload,setPayload]=useState(()=>entry?.payload||initial(kind));
  const [reason,setReason]=useState('');const [error,setError]=useState('');const [busy,setBusy]=useState(false);
  const [revision,setRevision]=useState(entry?.revision||0);const [conflict,setConflict]=useState(false);const [latest,setLatest]=useState(null);
@@ -24,12 +26,13 @@ export default function IntelligenceRecordEditor({kind,entry,onClose,onSaved}) {
  const field=(key,label,{type='text',minLength=1,maxLength=1000,optional=false,multiline=false}={})=><div className="min-w-0 space-y-2" key={key}><Label htmlFor={`intelligence-${key}`}>{label}{optional?' (opcional)':''}</Label>{multiline?<Textarea id={`intelligence-${key}`} value={payload[key]} onChange={e=>change(key,e.target.value)} required={!optional} minLength={optional?undefined:minLength} maxLength={maxLength} disabled={busy}/>:<Input id={`intelligence-${key}`} type={type} value={payload[key]??''} onChange={e=>change(key,e.target.value)} required={!optional} minLength={type==='text'?minLength:undefined} maxLength={type==='text'?maxLength:undefined} min={type==='number'?0:undefined} step={type==='number'?'any':undefined} disabled={busy}/>}</div>;
  const choices=(key,label,options)=><div className="min-w-0 space-y-2"><Label htmlFor={`intelligence-${key}`}>{label}</Label><select id={`intelligence-${key}`} className={selectClass} value={payload[key]} onChange={e=>change(key,e.target.value)} disabled={busy}>{Object.entries(options).map(([value,text])=><option value={value} key={value}>{text}</option>)}</select></div>;
  async function submit(e){
-  e.preventDefault();setError('');setBusy(true);
+  e.preventDefault();if(!access.canAct())return;const generation=access.getGeneration();setError('');setBusy(true);
   try {
    const savedPayload=kind==='capacity'?{...payload,used:Number(payload.used),limit:payload.limit===''||payload.limit===null?null:Number(payload.limit),cost:payload.cost===''||payload.cost===null?null:Number(payload.cost)}:payload;
    const fingerprint=JSON.stringify([kind,id.current,revision,savedPayload,reason]);
    if(intent.current?.fingerprint!==fingerprint)intent.current={fingerprint,nonce:crypto.randomUUID()};
    const result=await intelligenceSave({kind,id:id.current,revision,nonce:intent.current.nonce,payload:savedPayload,reason});
+   if(!access.canAct()||generation!==access.getGeneration())return;
    if(result.error)throw result.error;
    if(result.data?.success!==true||result.data.id!==id.current||!Number.isSafeInteger(result.data.revision))throw Error('unconfirmed_intelligence_save');
    await onSaved();
@@ -51,7 +54,7 @@ export default function IntelligenceRecordEditor({kind,entry,onClose,onSaved}) {
    {kind==='feature'&&<>{field('title','Nome da funcionalidade',{maxLength:140})}{field('feature_key','Identificador estável',{maxLength:80})}<div className="grid gap-4 sm:grid-cols-2">{choices('module','Módulo',MODULE_NAMES)}{choices('stage','Etapa declarada',FEATURE_STAGES)}</div>{field('scope','Escopo e público',{multiline:true,minLength:10,maxLength:500})}{field('rationale','Justificativa e evidência',{multiline:true,minLength:10})}{field('review_on','Data de revisão',{type:'date'})}<p className="text-xs text-muted-foreground">Inventário declarado para acompanhar o produto. Este registro não ativa, desativa ou altera permissões de uma funcionalidade.</p></>}
    {kind==='capacity'&&<><div className="grid gap-4 sm:grid-cols-2">{choices('provider','Provedor',{Supabase:'Supabase',Sentry:'Sentry',PostHog:'PostHog',Resend:'Resend',Vercel:'Vercel',Other:'Outro'})}{field('resource','Recurso medido',{maxLength:80})}</div><div className="grid gap-4 sm:grid-cols-3">{field('used','Uso medido',{type:'number'})}{field('limit','Limite contratado',{type:'number',optional:true})}{field('unit','Unidade',{maxLength:40})}</div><div className="grid gap-4 sm:grid-cols-2">{field('cost','Custo do período',{type:'number',optional:true})}{choices('currency','Moeda',{BRL:'BRL · Real',USD:'USD · Dólar'})}</div><div className="grid gap-4 sm:grid-cols-3">{field('period_start','Início do período',{type:'date'})}{field('period_end','Fim do período',{type:'date'})}{field('measured_on','Data da medição',{type:'date'})}</div>{field('source_note','Fonte e escopo da medição',{multiline:true,minLength:10,maxLength:500})}<p className="text-xs text-muted-foreground">Deixe limite ou custo vazios quando desconhecidos. Zero representa um valor efetivamente medido. Unidades, moedas e períodos diferentes não serão somados.</p></>}
    <div className="space-y-2"><Label htmlFor="intelligence-reason">Motivo deste registro ou alteração</Label><Textarea id="intelligence-reason" value={reason} onChange={e=>setReason(e.target.value)} minLength={10} maxLength={500} required disabled={busy}/></div>
-   <DialogFooter className="gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancelar</Button><Button type="submit" disabled={busy||conflict}>{busy?'Confirmando…':'Salvar registro'}</Button></DialogFooter>
+   <DialogFooter className="gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancelar</Button><Button type="submit" disabled={busy||conflict||!access.canAct()}>{busy?'Confirmando…':'Salvar registro'}</Button></DialogFooter>
   </form>
  </DialogContent></Dialog>;
 }

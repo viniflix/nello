@@ -1,3 +1,5 @@
+import {executeRead,readPolicies} from '@/lib/utils/readPolicy';
+import {readRequest} from './readRequest';
 export const DATA_PAGE_SIZE = 250;
 export const MAX_DATA_ROWS = 10000;
 
@@ -9,10 +11,11 @@ export function pageBounds(limit = 50, offset = 0) {
 
 // Full reports retain all rows or fail visibly; never return a silent partial total.
 export async function collectBoundedPages(build, {signal, pageSize = DATA_PAGE_SIZE, maxRows = MAX_DATA_ROWS} = {}) {
+  return executeRead(async budget => {
   const rows = [];
   for (let offset = 0; offset <= maxRows; offset += pageSize) {
-    signal?.throwIfAborted();
-    const { data, error } = await build(offset, pageSize);
+    budget.throwIfAborted();
+    const { data, error } = await readRequest(() => build(offset, pageSize), {signal:budget,policy:readPolicies.clinical,rpcRead:true});
     if (error) throw error;
     const page = data || [];
     if (page.length > pageSize || rows.length + page.length > maxRows) throw new Error('REPORT_ROW_LIMIT_REACHED');
@@ -20,4 +23,5 @@ export async function collectBoundedPages(build, {signal, pageSize = DATA_PAGE_S
     if (page.length < pageSize) return rows;
   }
   throw new Error('REPORT_ROW_LIMIT_REACHED');
+  }, {signal,policy:readPolicies.collection});
 }

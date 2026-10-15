@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
@@ -8,7 +10,7 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 import { listClinicalRecordsByEpisode } from '@/features/clinical-records/api/evolution-queries';
 import {getPatientProfile,getLatestMetrics} from './patient-query-history';
-export const getPatientHubOperationalContext = async (patientId, nutritionistId, episodeId = null) => {
+export const getPatientHubOperationalContext = async (patientId, nutritionistId, episodeId = null, readOptions = {}) => {
     if (!patientId || !nutritionistId) return { data: null, error: null };
 
     const now = new Date();
@@ -37,15 +39,15 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
 
     try {
         const [plansResult, nextAppointmentResult, lastAppointmentResult, checkinResult, goalResult, weeklySummaryResult, clinicalRecordResult] = await Promise.all([
-            supabase
+            readRequest(() => supabase
                 .from('meal_plans')
                 .select('id, name, start_date, end_date, is_active, is_draft, prescription_status, daily_calories, daily_protein, daily_carbs, daily_fat, updated_at, archived_at')
                 .eq('patient_id', patientId)
                 .eq('nutritionist_id', nutritionistId)
                 .is('archived_at', null)
                 .order('updated_at', { ascending: false })
-                .limit(20),
-            supabase
+                .limit(20),{signal:readOptions?.signal,policy:readPolicies.clinical}),
+            readRequest(() => supabase
                 .from('appointments')
                 .select('id, start_time, appointment_time, duration, appointment_type, status, notes')
                 .eq('patient_id', patientId)
@@ -54,8 +56,8 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
                 .gte('start_time', nowIso)
                 .order('start_time', { ascending: true })
                 .limit(1)
-                .maybeSingle(),
-            supabase
+                .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
+            readRequest(() => supabase
                 .from('appointments')
                 .select('id, start_time, appointment_time, duration, appointment_type, status, notes')
                 .eq('patient_id', patientId)
@@ -64,16 +66,16 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
                 .lt('start_time', nowIso)
                 .order('start_time', { ascending: false })
                 .limit(1)
-                .maybeSingle(),
-            supabase
+                .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
+            readRequest(() => supabase
                 .from('checkin_sessions')
                 .select('id, status, completed_at, sent_at, adherence_percentage, score_total, score_max')
                 .eq('patient_id', patientId)
                 .eq('nutritionist_id', nutritionistId)
                 .order('created_at', { ascending: false })
                 .limit(1)
-                .maybeSingle(),
-            supabase
+                .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
+            readRequest(() => supabase
                 .from('patient_goals')
                 .select('id, title, goal_type, status, progress_percentage, target_date, updated_at')
                 .eq('patient_id', patientId)
@@ -81,15 +83,15 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
                 .eq('status', 'active')
                 .order('updated_at', { ascending: false })
                 .limit(1)
-                .maybeSingle(),
-            supabase
+                .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
+            readRequest(() => supabase
                 .from('weekly_summaries')
                 .select('id, week_start_date, notes, goals_met, updated_at')
                 .eq('patient_id', patientId)
                 .eq('nutritionist_id', nutritionistId)
                 .order('week_start_date', { ascending: false })
                 .limit(1)
-                .maybeSingle(),
+                .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
             episodeId
                 ? listClinicalRecordsByEpisode(patientId, episodeId)
                 : Promise.resolve({ data: [], error: null })
@@ -103,19 +105,19 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
         let meals = [];
         let foodCount = 0;
         if (displayedPlan?.id) {
-            const mealsResult = await supabase
+            const mealsResult = await readRequest(() => supabase
                 .from('meal_plan_meals')
                 .select('id, name, meal_type, meal_time, order_index, total_calories, total_protein, total_carbs, total_fat')
                 .eq('meal_plan_id', displayedPlan.id)
-                .order('order_index', { ascending: true });
+                .order('order_index', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.clinical});
             meals = read(mealsResult, [], 'refeições do plano');
 
             const mealIds = meals.map((meal) => meal.id).filter(Boolean);
             if (mealIds.length > 0) {
-                const foodCountResult = await supabase
+                const foodCountResult = await readRequest(() => supabase
                     .from('meal_plan_foods')
                     .select('id', { count: 'exact', head: true })
-                    .in('meal_plan_meal_id', mealIds);
+                    .in('meal_plan_meal_id', mealIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
                 if (foodCountResult.error) {
                     partialErrors.push('alimentos do plano');
                     foodCount = null;
@@ -160,66 +162,58 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
     }
 };
 
-export const getModulesStatus = async (patientId) => {
+export const getModulesStatus = async (patientId, readOptions = {}) => {
     try {
         // A anamnese atual é versionada em anamnesis_records. O antigo modelo
         // EAV (anamnese_answers) foi removido do banco e não deve ser consultado.
-        const { data: anamneseData } = await supabase
+        const results = await Promise.all([
+readRequest(() => supabase
             .from('anamnesis_records')
             .select('id')
             .eq('patient_id', patientId)
             .in('status', ['completed', 'validated'])
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem avaliação antropométrica
-        const { data: anthropometryData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('growth_records')
             .select('id')
             .eq('patient_id', patientId)
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem prescrição
-        const { data: prescriptionData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('prescriptions')
             .select('id')
             .eq('patient_id', patientId)
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem refeições registradas (não deletadas)
-        const { data: mealsData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('meals')
             .select('id')
             .eq('patient_id', patientId)
             .is('deleted_at', null)
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem conquistas
-        const { data: achievementsData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('user_achievements')
             .select('id')
             .eq('user_id', patientId)
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem gasto energético calculado
-        const { data: energyData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('energy_expenditure_calculations')
             .select('id')
             .eq('patient_id', patientId)
             .limit(1)
-            .maybeSingle();
-
-        // Verificar se tem exames laboratoriais
-        const { data: labResultsData } = await supabase
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical}),
+readRequest(() => supabase
             .from('lab_results')
             .select('id')
             .eq('patient_id', patientId)
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical})
+        ]);
+        for(const result of results)if(result.error)throw result.error;
+        const [anamneseData, anthropometryData, prescriptionData, mealsData, achievementsData, energyData, labResultsData] = results.map(result=>result.data);
 
         const status = {
             anamnese: anamneseData ? 'completed' : 'not_started',
@@ -239,12 +233,12 @@ export const getModulesStatus = async (patientId) => {
     }
 };
 
-export const getPatientSummary = async (patientId, nutritionistId) => {
+export const getPatientSummary = async (patientId, nutritionistId, {signal} = {}) => {
     try {
         const [profileResult, metricsResult, statusResult] = await Promise.all([
-            getPatientProfile(patientId, nutritionistId),
-            getLatestMetrics(patientId),
-            getModulesStatus(patientId)
+            getPatientProfile(patientId, nutritionistId, {signal}),
+            getLatestMetrics(patientId, {signal}),
+            getModulesStatus(patientId, {signal})
         ]);
 
         if (profileResult.error) {

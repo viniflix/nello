@@ -1,4 +1,6 @@
-import { useEffect, useState } from 'react';
+import { useAdminManualResource } from '@/portals/admin/hooks/useAdminManualResource';
+import { ResourceStatus } from '@/components/ui/resource-status';
+import { useCallback, useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { getAdminSecurityActivity } from '@/services/adminService';
@@ -18,19 +20,14 @@ const date = (value) => value ? new Date(value).toLocaleString('pt-BR') : 'Ainda
 
 export default function SecurityActivityCard({ version = 0 }) {
   const [before, setBefore] = useState(null);
-  const [state, setState] = useState({ loading: true, data: null, error: false });
   useEffect(() => { setBefore(null); }, [version]);
-  useEffect(() => {
-    let active = true;
-    setState({ loading: true, data: null, error: false });
-    getAdminSecurityActivity(before).then(({ data, error }) => {
-      if (active) setState({ loading: false, data: error ? null : data, error: Boolean(error || data?.schema_version !== 1) });
-    }).catch(() => {
-      if (active) setState({ loading: false, data: null, error: true });
-    });
-    return () => { active = false; };
+  const loader = useCallback(async options => {
+    const result = await getAdminSecurityActivity(before, options);
+    if (!result.error && result.data?.schema_version !== 1) return { error: new Error('admin_audit_unconfirmed') };
+    return result;
   }, [before, version]);
-  const data = state.data;
+  const resource = useAdminManualResource(['security-activity', before], loader);
+  const data = resource.data;
   const events = data?.events || [];
   const alerts = data?.alerts || [];
   const monitorStale = data?.monitor?.last_evaluated_at && Date.now() - Date.parse(data.monitor.last_evaluated_at) > 15 * 60 * 1000;
@@ -39,7 +36,8 @@ export default function SecurityActivityCard({ version = 0 }) {
       <p className="text-sm text-muted-foreground">Alterações de acesso e alertas internos para investigação. Volume de atividade não confirma uma tentativa maliciosa.</p>
     </CardHeader>
     <CardContent className="space-y-4">
-      {state.loading ? <p role="status">Consultando auditoria…</p> : state.error ? <p role="alert" className="text-sm text-destructive">Não foi possível consultar a auditoria. Use Atualizar para tentar novamente.</p> : <>
+      <ResourceStatus resource={resource} label="auditoria" onRetry={resource.load} />
+      {resource.initialLoading ? <p role="status">Consultando auditoria…</p> : !resource.hasSnapshot ? null : <>
         <p className="text-xs text-muted-foreground">Última avaliação: {date(data?.monitor?.last_evaluated_at)}. Notificações externas ainda não configuradas; falhas de login não têm cobertura completa.</p>
         {monitorStale && <p role="alert" className="text-sm text-destructive">A avaliação está atrasada. Verifique o monitor antes de confiar na atualização dos alertas.</p>}
         <h2 className="font-medium">Alertas internos recentes</h2>

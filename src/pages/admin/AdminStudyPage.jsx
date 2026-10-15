@@ -1,5 +1,7 @@
+import { useAdminManualResource } from '@/portals/admin/hooks/useAdminManualResource';
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { VisibleChart } from '@/components/ui/visible-chart';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { format } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -7,7 +9,7 @@ import {
   BarChart2, Users, Activity, Target, BookOpen, FileText,
   Calendar, MessageSquare, Award, TrendingUp, TrendingDown,
   Zap, RefreshCw, Info, Utensils, Scale,
-  Clock, AlertCircle, CheckCircle2, PieChart, ShieldAlert,
+  Clock, CheckCircle2, PieChart, ShieldAlert,
   Eye, MousePointer, UserCheck, Timer,
   ArrowUpRight, ArrowDownRight, Minus, Minus as MinusIcon
 } from 'lucide-react';
@@ -456,30 +458,12 @@ function AnalyticsPanel({ metrics }) {
 // MAIN PAGE COMPONENT
 // ══════════════════════════════════════════════════════════════════════════
 export default function AdminStudyPage() {
-  const [isLoading, setIsLoading] = useState(true);
-  const [metrics, setMetrics] = useState(null);
-  const [error, setError] = useState(null);
-  const [lastRefresh, setLastRefresh] = useState(null);
-
-  const load = useCallback(async () => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const { data, error: rpcError } = await getTCCStudyMetrics();
-      if (rpcError) throw rpcError;
-      setMetrics(data);
-      setLastRefresh(new Date());
-    } catch (e) {
-      setError(e.message || 'Erro ao carregar métricas');
-    } finally {
-      setIsLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    load();
-    track(Events.STUDY_AREA_VIEWED);
-  }, [load]);
+  const resource = useAdminManualResource('study', getTCCStudyMetrics);
+  const metrics = resource.data;
+  const isLoading = resource.initialLoading;
+  const lastRefresh = resource.confirmedAt ? new Date(resource.confirmedAt) : null;
+  const load = resource.load;
+  useEffect(() => { track(Events.STUDY_AREA_VIEWED); }, []);
 
   const m = metrics || {};
 
@@ -504,20 +488,15 @@ export default function AdminStudyPage() {
               Atualizado: {format(lastRefresh, 'HH:mm', { locale: ptBR })}
             </p>
           )}
-          <Button variant="outline" size="sm" onClick={load} disabled={isLoading} className="gap-2">
+          <Button variant="outline" size="sm" onClick={load} disabled={resource.pending} className="gap-2">
             <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
             Atualizar
           </Button>
         </div>
       </motion.div>
 
-      {error && (
-        <div className="flex items-center gap-2 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
-          <AlertCircle className="w-4 h-4 flex-shrink-0" />
-          {error}
-        </div>
-      )}
-
+      <ResourceStatus resource={resource} label="métricas" onRetry={load} />
+      {!resource.hasSnapshot && !resource.initialLoading ? null : <>
       {/* Tabs */}
       <Tabs defaultValue="overview">
         <div className="overflow-x-auto pb-1 scrollbar-hide -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -921,7 +900,7 @@ export default function AdminStudyPage() {
         <TabsContent value="analytics" className="mt-6">
           <AnalyticsPanel metrics={m} />
         </TabsContent>
-      </Tabs>
+      </Tabs></> }
     </div>
   );
 }

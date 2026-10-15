@@ -1,3 +1,5 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
+import { useLocation } from 'react-router-dom';
 import {useLabResultsPageController} from './useLabResultsPageController';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef, useMemo } from 'react';
@@ -35,7 +37,12 @@ import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { PageHeaderSkeleton, CardSkeleton } from '@/components/ui/custom-skeletons';
 
 const LabResultsPage = () => {
-const {resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl}=useLabResultsPageController();
+    const { user } = useAuth();
+    const location = useLocation();
+    return <LabResultsPageContent key={JSON.stringify([user?.id, location.pathname])} />;
+};
+const LabResultsPageContent = () => {
+const {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl}=useLabResultsPageController();
 if (resolveLoading || !patientId) {
         return (
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
@@ -58,6 +65,7 @@ if (resolveLoading || !patientId) {
         );
     }
 
+    if (resource.error && !resource.hasSnapshot) return <ResourceStatus resource={resource} label="exames" onRetry={loadLabResults} />;
     return loading ? (
         <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
             <PageHeaderSkeleton />
@@ -66,6 +74,7 @@ if (resolveLoading || !patientId) {
         </div>
     ) : (
         <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
+            <ResourceStatus resource={resource} label="exames" onRetry={loadLabResults} />
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 min-w-0">
                 {/* Header */}
                 <div className="flex flex-col gap-4 mb-6">

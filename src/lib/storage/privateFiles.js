@@ -1,4 +1,7 @@
+import {executeRead,readPolicies} from '@/lib/utils/readPolicy';
 import { filesClient as supabase } from '@/infrastructure/supabase/domainClients';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
 
 export const PRIVATE_FILE_TTL_SECONDS = 300;
 const BUCKETS = new Set(['avatars', 'financial-docs', 'chat_media', 'lab-results-pdfs',
@@ -42,18 +45,25 @@ export function privateFileReference(bucket, path) {
   return `storage:${parsed.bucket}/${parsed.path}`;
 }
 
-export async function signPrivateFile(value, expectedBucket, expiresIn = PRIVATE_FILE_TTL_SECONDS) {
+export async function signPrivateFile(value, expectedBucket, expiresIn = PRIVATE_FILE_TTL_SECONDS, {signal} = {}) {
+  return executeRead(async budget => {
+  budget.throwIfAborted();
+  const privateEpoch = getPrivateSessionEpoch();
   const parsed = parsePrivateFile(value, expectedBucket);
   if (!parsed) throw new Error('invalid_private_file_reference');
   const before = await supabase.auth.getSession();
   const session = before.data?.session;
+  const access = getAccessEpoch(session?.user?.id);
   if (before.error || !session?.user?.id || !session.access_token) throw new Error('authentication_required');
   const ttl = Math.min(PRIVATE_FILE_TTL_SECONDS, Math.max(1, Math.floor(Number(expiresIn) || PRIVATE_FILE_TTL_SECONDS)));
+  budget.throwIfAborted();
   const { data, error } = await supabase.storage.from(parsed.bucket).createSignedUrl(parsed.path, ttl);
   if (error) throw error;
   if (!data?.signedUrl) throw new Error('private_file_access_unavailable');
+  budget.throwIfAborted();
   const after = await supabase.auth.getSession();
-  if (after.error || after.data?.session?.user?.id !== session.user.id
+  if (privateEpoch !== getPrivateSessionEpoch() || access !== getAccessEpoch(session.user.id)
+      || after.error || after.data?.session?.user?.id !== session.user.id
       || after.data?.session?.access_token !== session.access_token) {
     throw new Error('private_file_session_changed');
   }
@@ -62,4 +72,5 @@ export async function signPrivateFile(value, expectedBucket, expiresIn = PRIVATE
     throw new Error('private_file_origin_mismatch');
   }
   return data.signedUrl;
+  }, {signal,policy:readPolicies.asset});
 }

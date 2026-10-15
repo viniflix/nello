@@ -17,5 +17,7 @@ it('rejects a late response from the previous account',async()=>{
 });
 it('ignores a superseded reload and an unmounted result',async()=>{
  let old;fetchAllNutritionistPatients.mockImplementationOnce(()=>new Promise(resolve=>{old=resolve})).mockResolvedValue({active:[{id:'fresh'}]});
- const {result,unmount}=renderHook(()=>usePatientListData('a'));await act(()=>result.current.fetchPatients());await act(async()=>old({active:[{id:'stale'}]}));expect(result.current.patients[0].id).toBe('fresh');unmount();
+ const {result,unmount}=renderHook(()=>usePatientListData('a'));let reload;act(()=>{reload=result.current.fetchPatients()});expect(fetchAllNutritionistPatients).toHaveBeenCalledTimes(1);
+ await act(async()=>{old({active:[{id:'stale'}]});await reload});expect(fetchAllNutritionistPatients).toHaveBeenCalledTimes(2);expect(result.current.patients[0].id).toBe('fresh');
+ let finish;fetchAllNutritionistPatients.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve}));let queued;act(()=>{queued=result.current.fetchPatients();void result.current.fetchPatients()});expect(fetchAllNutritionistPatients).toHaveBeenCalledTimes(3);unmount();await act(async()=>{finish({active:[{id:'unmounted-stale'}]});await queued});expect(fetchAllNutritionistPatients).toHaveBeenCalledTimes(3);expect(result.current.patients[0].id).toBe('fresh');
 });

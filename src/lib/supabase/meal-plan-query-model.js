@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 
@@ -37,26 +39,26 @@ export const FOOD_FIELDS = `
     folate
 `;
 
-export const fetchAllRows = async (buildQuery, pageSize = 500) => {
-    return collectBoundedPages(buildQuery, {pageSize});
+export const fetchAllRows = async (buildQuery, pageSize = 500, {signal} = {}) => {
+    return collectBoundedPages(buildQuery, {pageSize,signal});
 };
 
-export const fetchByIdsInPages = async (ids, buildQuery) => {
+export const fetchByIdsInPages = async (ids, buildQuery, {signal} = {}) => {
     const rows = [];
     for (let start = 0; start < ids.length; start += 200) {
         const chunk = ids.slice(start, start + 200);
-        rows.push(...await fetchAllRows((offset, pageSize) => buildQuery(chunk, offset, pageSize)));
+        rows.push(...await fetchAllRows((offset, pageSize) => buildQuery(chunk, offset, pageSize), 500, {signal}));
     }
     return rows;
 };
 
-export const getFoodsMapByIds = async (foodIds) => {
+export const getFoodsMapByIds = async (foodIds, readOptions = {}) => {
     const ids = [...new Set((foodIds || []).filter(Boolean).map(String))];
     if (ids.length === 0) return {};
 
     const chunks = [];
     for (let offset = 0; offset < ids.length; offset += 400) {
-        const { data, error } = await supabase.from('foods').select(FOOD_FIELDS).in('id', ids.slice(offset, offset + 400));
+        const { data, error } = await readRequest(() => supabase.from('foods').select(FOOD_FIELDS).in('id', ids.slice(offset, offset + 400)), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
         chunks.push(...(data || []));
     }

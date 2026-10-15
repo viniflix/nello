@@ -1,5 +1,7 @@
+import {useCoordinatedLoader} from '@/hooks/useCoordinatedLoader';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/infrastructure/supabase/client';
 import {
@@ -75,18 +77,22 @@ export function useMealPlanController({
     const [draftToDelete, setDraftToDelete] = useState(null);
 
     // Versions states
-    const [mealPlanVersions, setMealPlanVersions] = useState([]);
-    const [versionsLoading, setVersionsLoading] = useState(false);
+    const versionsResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, activePlan?.id, 'versions']), []);
+    const {begin:beginVersions,succeed:confirmVersions,fail:failVersions}=versionsResource;
+    const mealPlanVersions = versionsResource.data;
+    const versionsLoading = Boolean(activePlan?.id) && versionsResource.initialLoading;
     const [selectedVersionId, setSelectedVersionId] = useState('');
     const [restoringVersion, setRestoringVersion] = useState(false);
     const [versionsExpanded, setVersionsExpanded] = useState(false);
 
     // Context states
-    const [energyCalculation, setEnergyCalculation] = useState(null);
+    const energyResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'energy']), null);
+    const {begin:beginEnergy,succeed:confirmEnergy,fail:failEnergy}=energyResource;
+    const energyCalculation = energyResource.data;
     const [contextRevision, setContextRevision] = useState(0);
-    const [versionsError, setVersionsError] = useState(false);
-    const [energyLoading, setEnergyLoading] = useState(false);
-    const [energyError, setEnergyError] = useState(false);
+    const versionsError = Boolean(versionsResource.error);
+    const energyLoading = Boolean(patientId) && energyResource.initialLoading;
+    const energyError = Boolean(energyResource.error);
     const [syncFlags, setSyncFlags] = useState(null);
 
     // =============== Effects ===============
@@ -128,60 +134,29 @@ export function useMealPlanController({
         return () => { active = false; };
     }, [activePlan?.id, patientId, user?.id]);
 
-    useEffect(() => {
-        let active = true;
-        setMealPlanVersions([]); setSelectedVersionId(''); setVersionsLoading(false); setVersionsError(false);
-        const loadVersions = async () => {
-            if (!activePlan?.id) {
-                setMealPlanVersions([]);
-                setSelectedVersionId('');
-                return;
-            }
-            setVersionsLoading(true);
-            try {
-                const { data, error } = await getMealPlanVersions(activePlan.id, 20);
-                if (!active) return;
-                if (error) throw error;
-                const versions = data || [];
-                setMealPlanVersions(versions);
-                const preferred = versions.length > 1 ? versions[1] : versions[0];
-                setSelectedVersionId(preferred ? String(preferred.id) : '');
-            } catch (error) {
-                if (!active) return;
-                logDiagnostic('error', 'hooks/useMealPlanController.js:125', 'Erro ao carregar versões do plano:', error);
-                setVersionsError(true);
-                setMealPlanVersions([]);
-                setSelectedVersionId('');
-            } finally {
-                if (active) setVersionsLoading(false);
-            }
-        };
-        loadVersions();
-        return () => { active = false; };
-    }, [activePlan?.id, activePlan?.updated_at, patientId, user?.id, contextRevision]);
-
-    useEffect(() => {
-        let active = true;
-        setEnergyCalculation(null);
-        setEnergyError(false);
-        setEnergyLoading(Boolean(patientId));
-        const loadEnergyCalculation = async () => {
-            if (!patientId) return;
-            try {
-                const { data, error } = await getLatestEnergyCalculation(patientId);
-                if (error) throw error;
-                if (active) setEnergyCalculation(data);
-            } catch (error) {
-                if (!active) return;
-                setEnergyError(true);
-                logDiagnostic('error', 'hooks/useMealPlanController.js:143', 'Erro ao carregar cálculo de energia:', error);
-            } finally {
-                if (active) setEnergyLoading(false);
-            }
-        };
-        loadEnergyCalculation();
-        return () => { active = false; };
-    }, [patientId, user?.id, contextRevision]);
+    const loadVersions = useCoordinatedLoader(useCallback(async () => {
+        const ticket = beginVersions();
+        if (!activePlan?.id) { if (confirmVersions(ticket, [])) setSelectedVersionId(''); return; }
+        try {
+            const { data, error } = await getMealPlanVersions(activePlan.id, 20);
+            if (error) throw error;
+            const versions = data || [];
+            if (!confirmVersions(ticket, versions)) return;
+            const preferred = versions.length > 1 ? versions[1] : versions[0];
+            setSelectedVersionId(previous => versions.some(version => String(version.id) === previous) ? previous : preferred ? String(preferred.id) : '');
+        } catch (error) { failVersions(ticket, error); }
+    }, [activePlan?.id, activePlan?.updated_at, beginVersions, confirmVersions, failVersions]), versionsResource.scopeKey);
+    const loadEnergyCalculation = useCoordinatedLoader(useCallback(async () => {
+        if (!patientId) return;
+        const ticket = beginEnergy();
+        try {
+            const { data, error } = await getLatestEnergyCalculation(patientId);
+            if (error) throw error;
+            confirmEnergy(ticket, data);
+        } catch (error) { failEnergy(ticket, error); }
+    }, [patientId, beginEnergy, confirmEnergy, failEnergy]), energyResource.scopeKey);
+    useEffect(() => { void loadVersions(); }, [loadVersions, contextRevision]);
+    useEffect(() => { void loadEnergyCalculation(); }, [loadEnergyCalculation, contextRevision]);
 
     useEffect(() => {
         let active = true;
@@ -570,6 +545,7 @@ export function useMealPlanController({
     };
 
     const handleRestoreVersion = async () => {
+        if (!versionsResource.canAct) return;
         const selectedVersion = mealPlanVersions.find((v) => String(v.id) === String(selectedVersionId)) || null;
         if (!selectedVersion) return;
         const confirmRestore = window.confirm(`Deseja restaurar a versão ${selectedVersion.version_number}? Isso criará uma nova versão de rollback.`);
@@ -651,6 +627,7 @@ export function useMealPlanController({
 
     return {
         // States
+        contextResources: {energy: energyResource, versions: versionsResource},
         submitting, setSubmitting,
         patientName,
         referenceValues,

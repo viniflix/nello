@@ -1,3 +1,4 @@
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -9,6 +10,7 @@ import { operationalDate } from '../model/sourceState';
 export const TRIAGE_LABEL = { new: 'Nova', investigating: 'Em investigação', monitoring: 'Em acompanhamento', closed: 'Triagem encerrada' };
 
 export default function AdminIncidentDetail({ issue, onClose }) {
+  const access = useAdminAccess();
   const [state, setState] = useState({ loading: true, event: null, triage: null, eventError: false, triageError: false });
   const [status, setStatus] = useState('investigating');
   const [reason, setReason] = useState('');
@@ -28,9 +30,10 @@ export default function AdminIncidentDetail({ issue, onClose }) {
     return () => { active = false; };
   }, [issue.id, version]);
   const save = async (event) => {
-    event.preventDefault(); setBusy(true); setError('');
+    event.preventDefault(); if (!access.canAct()) return; const generation = access.getGeneration(); setBusy(true); setError('');
     try {
       const result = await triageAdminIncident({ issueId: issue.id, revision: state.triage?.item?.revision || 0, status, reason: reason.trim() });
+      if (!access.canAct() || generation !== access.getGeneration()) return;
       if (result.error) throw result.error;
       if (!result.data || result.data.issue_id !== String(issue.id) || result.data.revision !== (state.triage?.item?.revision || 0) + 1) throw new Error('triage_unconfirmed');
       setReason('');

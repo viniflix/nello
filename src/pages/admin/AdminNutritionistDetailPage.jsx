@@ -41,7 +41,7 @@ const goalLabels = {
 export default function AdminNutritionistDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const query = useAdminSource(['person', id], () => getAdminNutritionistDetail(id));
+  const query = useAdminSource(['person', id], options => getAdminNutritionistDetail(id,options));
   const data = query.data?.person;
   const isLoading = query.isPending && !query.data;
 

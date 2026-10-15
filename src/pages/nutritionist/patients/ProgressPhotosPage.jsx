@@ -1,7 +1,11 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
+import { ResourceStatus, ResourceSection } from '@/components/ui/resource-status';
+import { observeResources } from '@/lib/utils/resourceReads';
 import { civilDateToDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { ArrowLeft, Camera, Plus, Trash2, Scale, Calendar, Loader2, Edit2, X, User, Stethoscope } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -53,15 +57,23 @@ const MIME_BY_EXT = {
 };
 
 export default function ProgressPhotosPage() {
+    const { user } = useAuth();
+    const location = useLocation();
+    return <ProgressPhotosPageContent key={JSON.stringify([user?.id, location.pathname])} />;
+}
+function ProgressPhotosPageContent() {
     const { patientId, loading: resolveLoading, error: resolveError, paramValue } = useResolvedPatientId();
     const navigate = useNavigate();
     const { toast } = useToast();
     const { user } = useAuth();
     const [patientName, setPatientName] = useState('');
     const [patientSlug, setPatientSlug] = useState('');
-    const [photos, setPhotos] = useState([]);
-    const [weights, setWeights] = useState([]);
-    const [loading, setLoading] = useState(true);
+    const photosResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'photos']), []);
+    const weightsResource = useResourceSnapshot(JSON.stringify([user?.id, patientId, 'weights']), []);
+    const { begin: beginPhotos, succeed: confirmPhotos, fail: failPhotos } = photosResource;
+    const { begin: beginWeights, succeed: confirmWeights, fail: failWeights } = weightsResource;
+    const photos = photosResource.data, weights = weightsResource.data;
+    const loading = photosResource.initialLoading && weightsResource.initialLoading;
     const [modalOpen, setModalOpen] = useState(false);
     const [photoDate, setPhotoDate] = useState(format(new Date(), 'yyyy-MM-dd'));
     const [uploading, setUploading] = useState(false);
@@ -77,46 +89,37 @@ export default function ProgressPhotosPage() {
 
     useEffect(() => {
         if (!patientId) return;
+        let cancelled = false;
         (async () => {
             const { data: profile } = await supabase
                 .from('user_profiles')
                 .select('name, slug')
                 .eq('id', patientId)
                 .single();
-            if (profile) {
+            if (!cancelled && profile) {
                 setPatientName(profile.name || 'Paciente');
                 setPatientSlug(profile.slug || '');
             }
         })();
+        return () => { cancelled = true; };
     }, [patientId]);
 
-    const loadData = async () => {
+    const loadData = useCoordinatedLoader(useCallback(async () => {
         if (!patientId) return;
-        setLoading(true);
-        try {
-            const { data: photosData } = await getProgressPhotos({ patientId });
-            setPhotos(photosData || []);
-
-            const { data: weightData } = await supabase
-                .from('growth_records')
-                .select('record_date, weight')
-                .eq('patient_id', patientId)
-                .not('weight', 'is', null)
-                .order('record_date', { ascending: false })
-                .limit(100);
-            setWeights(weightData || []);
-        } catch (e) {
-            logDiagnostic('error', 'pages/nutritionist/patients/ProgressPhotosPage.jsx:107', e);
-            toast({ title: 'Erro ao carregar dados', description: e.message, variant: 'destructive' });
-        } finally {
-            setLoading(false);
-        }
-    };
-
-    useEffect(() => {
-        if (!patientId) return;
-        loadData();
-    }, [patientId]);
+        const photoTicket = beginPhotos(), weightTicket = beginWeights();
+        await observeResources({
+            photos: () => getProgressPhotos({ patientId }),
+            weights: () => supabase.from('growth_records').select('record_date, weight')
+                .eq('patient_id', patientId).not('weight', 'is', null)
+                .order('record_date', { ascending: false }).limit(100)
+        }, (key, result) => {
+            const ticket = key === 'photos' ? photoTicket : weightTicket;
+            const succeed = key === 'photos' ? confirmPhotos : confirmWeights;
+            const fail = key === 'photos' ? failPhotos : failWeights;
+            if (result.error) fail(ticket, result.error); else succeed(ticket, result.data || []);
+        });
+    }, [patientId, beginPhotos, confirmPhotos, failPhotos, beginWeights, confirmWeights, failWeights]), photosResource.scopeKey, ['clinical']);
+    useEffect(() => { if (patientId) void loadData(); }, [patientId, loadData]);
 
     const handleFileSelect = (e) => {
         setSelectedFile(e?.target?.files?.[0] ?? null);
@@ -246,7 +249,7 @@ export default function ProgressPhotosPage() {
         );
     }
     if (resolveError) {
-        return (
+    return (
             <div className="min-h-dvh bg-background p-4">
                 <p className="text-destructive">Paciente não encontrado.</p>
                 <Button variant="outline" onClick={() => navigate('/nutritionist/patients')} className="gap-2">
@@ -260,6 +263,8 @@ export default function ProgressPhotosPage() {
     const sortedPhotos = [...photos].sort(
         (a, b) => new Date(a.photo_date) - new Date(b.photo_date)
     );
+    const denied = [photosResource, weightsResource].find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
+    if (denied) return <ResourceStatus resource={denied} label="fotos" onRetry={loadData} />;
 
     return (
         <div className="min-h-dvh bg-background overflow-x-hidden">
@@ -285,6 +290,7 @@ export default function ProgressPhotosPage() {
                     </div>
                 </div>
 
+                <ResourceStatus resource={weightsResource} label="pesos de referência" onRetry={loadData} />
                 {loading ? (
                     <div className="flex justify-center py-12">
                         <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
@@ -341,7 +347,7 @@ export default function ProgressPhotosPage() {
                                     </Button>
                                 </div>
                             </CardHeader>
-                            <CardContent>
+                            <CardContent><ResourceSection resource={photosResource} label="fotos" onRetry={loadData}>
                                 {sortedPhotos.length === 0 ? (
                                     <div className="text-center py-12 border-2 border-dashed border-muted rounded-lg">
                                         <Camera className="w-12 h-12 text-muted-foreground mx-auto mb-3" />
@@ -409,7 +415,7 @@ export default function ProgressPhotosPage() {
                                         })}
                                     </div>
                                 )}
-                            </CardContent>
+                            </ResourceSection></CardContent>
                         </Card>
                     </div>
                 )}

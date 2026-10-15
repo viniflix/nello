@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { filesClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { isUuid } from '@/lib/utils/patientRoutes';
@@ -135,15 +137,13 @@ export const listDocumentArtifacts = (patientId, episodeId = null) => {
   );
 };
 
-export const verifyDocumentAuthenticity = (code) => {
+export const verifyDocumentAuthenticity = async (code, {signal} = {}) => {
   const normalizedCode = typeof code === 'string' ? code.trim() : '';
   if (!isUuid(normalizedCode)) {
     return Promise.resolve({ data: { found: false }, error: null });
   }
 
-  return callRpc(
-    'verify_document_authenticity',
-    { p_code: normalizedCode },
-    "erro_ao_verificar_autenticidade_documental",
-  );
+  try { return await readRequest(()=>supabase.rpc('verify_document_authenticity',{p_code:normalizedCode}),
+    {signal,policy:{...readPolicies.edge,deadlineMs:10000,maxAttempts:1}}); }
+  catch(error){return {data:null,error};}
 };

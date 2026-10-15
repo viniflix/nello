@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import {
@@ -327,7 +328,7 @@ export default function NutritionistDashboard() {
     patients90DaysSeries,
     active24hSeries,
     adherence24hSeries,
-    failures,
+    resources, failures,
     retry,
     statsLoading,
     appointmentsLoading,
@@ -336,6 +337,9 @@ export default function NutritionistDashboard() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
+      <ResourceStatus resource={resources.stats} label="estatísticas" onRetry={retry} />
+      <ResourceStatus resource={resources.appointments} label="agenda" onRetry={retry} />
+      <ResourceStatus resource={resources.noShow} label="faltas" onRetry={retry} />
       {Object.keys(failures).length>0&&<section role="alert" className="m-4 rounded-lg border p-4"><h2 className="font-semibold">Alguns dados não foram atualizados</h2><p>Os resultados disponíveis foram mantidos. Não interprete os indicadores indisponíveis como zero.</p>{Object.entries(failures).map(([key,failure])=><p key={key}>{({stats:'Estatísticas',appointments:'Agenda',noShow:'Faltas',upcoming_count:'Total da agenda',today_count:'Agenda de hoje',canceled_count:'Canceladas'})[key]}: {failure.message} {failure.correlationId&&('Código: '+failure.correlationId)}</p>)}<Button variant="outline" onClick={retry}>Tentar novamente</Button></section>}
 
 
@@ -377,10 +381,10 @@ export default function NutritionistDashboard() {
             <div className="hidden lg:block">
               <AppointmentsCard2
                 appointments={appointments}
-                totalUpcoming={failures.upcoming_count||failures.appointments?"—":appointmentsTotalCount}
-                todayAppointments={failures.today_count||failures.appointments?"—":appointmentsTodayCount}
+                totalUpcoming={failures.upcoming_count||failures.appointments&&!resources.appointments.hasSnapshot?"—":appointmentsTotalCount}
+                todayAppointments={failures.today_count||failures.appointments&&!resources.appointments.hasSnapshot?"—":appointmentsTodayCount}
                 appointmentsLoading={appointmentsLoading}
-                noShowStats={failures.noShow?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
+                noShowStats={failures.noShow&&!resources.noShow.hasSnapshot?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
                 noShowLoading={noShowLoading}
                 noShowPeriodDays={noShowPeriodDays}
                 onNoShowPeriodChange={setNoShowPeriodDays}
@@ -417,7 +421,7 @@ export default function NutritionistDashboard() {
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {failures.stats?'—':patients.length}
+                        {failures.stats&&!resources.stats.hasSnapshot?'—':patients.length}
                       </div>
                       <p className="text-xs text-white/70">
                         Evolução dos últimos 90 dias
@@ -436,10 +440,10 @@ export default function NutritionistDashboard() {
                     </CardHeader>
                     <CardContent className="relative">
                       <div className="text-3xl lg:text-4xl font-bold text-white">
-                        {failures.stats?'—':activePatients24h}
+                        {failures.stats&&!resources.stats.hasSnapshot?'—':activePatients24h}
                       </div>
                       <p className="text-xs text-white/70 leading-tight">
-                        {failures.stats?'—':newPatients30Days} novos nos últimos 30 dias
+                        {failures.stats&&!resources.stats.hasSnapshot?'—':newPatients30Days} novos nos últimos 30 dias
                       </p>
                     </CardContent>
                   </Card>
@@ -458,7 +462,7 @@ export default function NutritionistDashboard() {
                         {adherencePercent24h}
                       </div>
                       <p className="text-xs text-secondary-foreground">
-                        {failures.stats?'—':adherentPatients24h}/{failures.stats?'—':patients.length} com 2+ registros
+                        {failures.stats&&!resources.stats.hasSnapshot?'—':adherentPatients24h}/{failures.stats&&!resources.stats.hasSnapshot?'—':patients.length} com 2+ registros
                       </p>
                     </CardContent>
                   </Card>
@@ -480,7 +484,7 @@ export default function NutritionistDashboard() {
               totalUpcoming={appointmentsTotalCount}
               todayAppointments={appointmentsTodayCount}
               appointmentsLoading={appointmentsLoading}
-              noShowStats={failures.noShow?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
+              noShowStats={failures.noShow&&!resources.noShow.hasSnapshot?{noShowCount:"—",completedCount:"—",canceledCount:"—",eligibleCount:"—",noShowRate:"—"}:noShowStats}
               noShowLoading={noShowLoading}
               noShowPeriodDays={noShowPeriodDays}
               onNoShowPeriodChange={setNoShowPeriodDays}

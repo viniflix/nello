@@ -1,3 +1,7 @@
+import { invalidateDomain } from '@/infrastructure/realtime/events';
+import { readReference, invalidateReference, referenceScope } from '@/lib/utils/referenceCache';
+import {readRequest} from './readRequest';
+import {readPolicies,executeRead} from '@/lib/utils/readPolicy';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { insertIdempotently, updateIdempotently, idempotentRpc } from '@/lib/supabase/idempotent-mutations';
 import { toCents, fromCents, decimalMoney } from '@/lib/utils/money';
@@ -7,17 +11,18 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
 import {MAX_DATA_ROWS} from './bounded-pages';
 
-export async function getFinancialTransactionById(nutritionistId, transactionId) {
+export async function getFinancialTransactionById(nutritionistId, transactionId, readOptions = {}) {
     if (!nutritionistId || !/^[1-9]\d*$/.test(String(transactionId))) throw new Error('Invalid transaction reference');
-    const { data, error } = await supabase.from('financial_transactions')
+    const { data, error } = await readRequest(() => supabase.from('financial_transactions')
         .select('id,nutritionist_id,patient_id,type,description,amount,transaction_date,updated_at,category,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,attachment_url,appointment_id,patient:user_profiles!financial_transactions_patient_id_fkey(id,name)')
-        .eq('nutritionist_id', nutritionistId).eq('id', transactionId).single();
+        .eq('nutritionist_id', nutritionistId).eq('id', transactionId).single(), {signal:readOptions?.signal,policy:readPolicies.reference});
     if (error) throw error;
     return data;
 }
 
 /** Fetch every row touching the month by competence, payment or refund date. */
-export async function getFinancialMonthRows(nutritionistId, monthDate) {
+export async function getFinancialMonthRows(nutritionistId, monthDate, readOptions = {}) {
+    return executeRead(async signal => {
     if (!nutritionistId) throw new Error('nutritionistId is required');
     const start = format(startOfMonth(monthDate), 'yyyy-MM-dd');
     const end = format(endOfMonth(monthDate), 'yyyy-MM-dd');
@@ -25,10 +30,10 @@ export async function getFinancialMonthRows(nutritionistId, monthDate) {
     const fetchColumn = async (column) => {
         const rows = [];
         for (let offset = 0; ; offset += 1000) {
-            const { data, error } = await supabase.from('financial_transactions')
+            const { data, error } = await readRequest(() => supabase.from('financial_transactions')
                 .select(select).eq('nutritionist_id', nutritionistId)
                 .gte(column, start).lte(column, end)
-                .order('id', { ascending: true }).range(offset, offset + 999);
+                .order('id', { ascending: true }).range(offset, offset + 999), {signal,policy:readPolicies.reference});
             if (error) throw error;
             if (rows.length+(data?.length||0)>MAX_DATA_ROWS)throw new Error('REPORT_ROW_LIMIT_REACHED');
             rows.push(...(data || []));
@@ -38,6 +43,7 @@ export async function getFinancialMonthRows(nutritionistId, monthDate) {
     };
     const groups = await Promise.all(['transaction_date', 'paid_at', 'refunded_at'].map(fetchColumn));
     return [...new Map(groups.flat().map((row) => [row.id, row])).values()];
+    },{signal:readOptions?.signal,policy:readPolicies.collection});
 }
 
 export async function getFinancialSummary(monthDate, nutritionistId) {
@@ -246,12 +252,12 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
  * @param {string} nutritionistId - Nutritionist UUID
  * @returns {Promise<Array>}
  */
-export async function getPatientsForAutocomplete(nutritionistId) {
-    const { data, error } = await supabase
+export async function getPatientsForAutocomplete(nutritionistId, readOptions = {}) {
+    const { data, error } = await readRequest(() => supabase
         .from('user_profiles')
         .select('id, name')
         .eq('nutritionist_id', nutritionistId)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) {
         logSupabaseError('Error fetching patients', error);
@@ -266,13 +272,13 @@ export async function getPatientsForAutocomplete(nutritionistId) {
  * @param {string} nutritionistId - Nutritionist UUID
  * @returns {Promise<Array>}
  */
-export async function getServices(nutritionistId) {
+async function loadServices(nutritionistId, readOptions = {}) {
     // Owner scope stays on the server; include the revision required for edits.
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
         .from('services')
         .select("id,nutritionist_id,name,price,duration_minutes,active,created_at,updated_at,description,category")
         .eq('nutritionist_id', nutritionistId)
-        .order('name', { ascending: true });
+        .order('name', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) {
         logSupabaseError('Error fetching services', error);
@@ -295,6 +301,7 @@ export async function getServices(nutritionistId) {
  * @returns {Promise<Object>}
  */
 export async function saveService(serviceData) {
+    const cacheScope = referenceScope(serviceData.nutritionist_id);
     const { id, nutritionist_id, name, price, duration_minutes, description, category, ...rest } = serviceData;
     // Enviar apenas colunas existentes na tabela services
     const data = { nutritionist_id, name, price };
@@ -313,6 +320,8 @@ export async function saveService(serviceData) {
         throw error;
     }
 
+    void invalidateReference('services', serviceData.nutritionist_id, {scope:cacheScope});
+    invalidateDomain(cacheScope.actor, 'clinical');
     return result;
 }
 
@@ -322,6 +331,7 @@ export async function saveService(serviceData) {
  * @returns {Promise<void>}
  */
 export async function deleteService(serviceId) {
+    const cacheScope = referenceScope();
     // Tabela services usa coluna "active" (não is_active)
     const { error } = await supabase
         .from('services')
@@ -332,6 +342,8 @@ export async function deleteService(serviceId) {
         logSupabaseError('Error deleting service', error);
         throw error;
     }
+    void invalidateReference('services', null, {scope:cacheScope});
+    invalidateDomain(cacheScope.actor, 'clinical');
 }
 
 /**
@@ -357,16 +369,16 @@ export async function saveMultipleTransactions(transactions) {
  * @param {string} nutritionistId - Nutritionist UUID
  * @returns {Promise<Array>}
  */
-export async function getPendingPayments(nutritionistId) {
+export async function getPendingPayments(nutritionistId, readOptions = {}) {
     if (!nutritionistId) throw new Error('nutritionistId is required');
     const rows = [];
     for (let offset = 0; ; offset += 1000) {
-        const { data, error } = await supabase.from('financial_transactions')
+        const { data, error } = await readRequest(() => supabase.from('financial_transactions')
             .select("id,nutritionist_id,patient_id,type,description,amount,transaction_date,created_at,updated_at,category,income_source,status,due_date,paid_at,refunded_at,payment_method,fee_percentage,net_amount,attachment_url,appointment_id,patient:user_profiles!financial_transactions_patient_id_fkey(id,name)")
             .eq('nutritionist_id', nutritionistId).eq('type', 'income')
             .in('status', ['pending', 'overdue'])
             .order('due_date', { ascending: true, nullsFirst: false }).order('id', { ascending: true })
-            .range(offset, offset + 999);
+            .range(offset, offset + 999), {signal:readOptions?.signal,policy:readPolicies.reference});
         if (error) { logSupabaseError('Error fetching pending payments', error); throw error; }
         if (rows.length + (data?.length || 0) > MAX_DATA_ROWS) throw new Error('REPORT_ROW_LIMIT_REACHED');
         rows.push(...(data || []));
@@ -429,3 +441,7 @@ export async function rescheduleTransaction(transactionId, newDate) {
     return data;
 }
 
+
+export function getServices(nutritionistId, options = {}) {
+  return readReference('services', nutritionistId, null, signal => loadServices(nutritionistId, {signal}), options);
+}

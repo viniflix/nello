@@ -1,3 +1,5 @@
+import {useCoordinatedLoader} from '@/hooks/useCoordinatedLoader';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
@@ -38,6 +40,24 @@ import { getPatientReminderPreferences, upsertPatientReminderPreferences } from 
  */
 export default function PatientDiaryPage() {
   const { user } = useAuth();
+  return <PatientDiaryPageContent key={user?.id || 'signed-out'} />;
+}
+
+function PatientDiaryPageContent() {
+  const { user } = useAuth();
+  const userId = user?.id;
+  const [dataRevision, setDataRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const off = ['access'].map(domain => subscribeDomain(userId, domain, refresh));
+    return () => off.forEach(unsubscribe => unsubscribe());
+  }, [userId]);
+  const reads = useRef({ plan: 0, meals: 0, reminders: 0 });
+  useEffect(() => () => {
+    reads.current.plan += 1;
+    reads.current.meals += 1;
+    reads.current.reminders += 1;
+  }, []);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [selectedDate, setSelectedDate] = useState(new Date());
@@ -68,6 +88,7 @@ export default function PatientDiaryPage() {
     quiet_hours_start: '',
     quiet_hours_end: ''
   });
+  const reminderTouched = useRef(false);
   const [savingReminderPrefs, setSavingReminderPrefs] = useState(false);
 
   // Todos os tipos possíveis (para modal)
@@ -83,11 +104,13 @@ export default function PatientDiaryPage() {
   // Tipos filtrados pelo plano do paciente
   const planMealTypes = mealPlan?.meal_plan_meals?.map(m => m.meal_type) || [];
 
-  const loadMealPlan = useCallback(async () => {
-    if (!user) return;
+  const loadMealPlan = useCoordinatedLoader(useCallback(async () => {
+    if (!userId) return;
 
+    const generation = ++reads.current.plan;
     // Usar o helper padrão para evitar erro 400 de join com a view 'foods'
-    const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(user.id);
+    const { data: mealPlanData, error: mealPlanError } = await getActiveMealPlan(userId);
+    if (generation !== reads.current.plan) return;
 
     if (mealPlanError) {
       logDiagnostic('error', 'pages/patient/PatientDiaryPage.jsx:85', 'Erro ao carregar plano alimentar:', mealPlanError);
@@ -103,23 +126,26 @@ export default function PatientDiaryPage() {
       carbs: target(mealPlanData?.daily_carbs),
       fat: target(mealPlanData?.daily_fat)
     });
-  }, [user]);
+  }, [userId]), JSON.stringify([userId,'diary.plan']));
 
-  const loadMeals = useCallback(async () => {
-    if (!user) return;
+  const selectedDateKey = format(selectedDate, 'yyyy-MM-dd');
+  const loadMeals = useCoordinatedLoader(useCallback(async () => {
+    if (!userId) return;
     setLoading(true);
 
-    const dateStr = format(selectedDate, 'yyyy-MM-dd');
+    const generation = ++reads.current.meals;
+    const dateStr = selectedDateKey;
 
     // Buscar refeições do dia com itens e alimentos
     // Filtrar apenas refeições NÃO deletadas (deleted_at IS NULL)
     const { data: mealsData, error } = await supabase
       .from('meals')
       .select("id,patient_id,meal_date,meal_time,meal_type,notes,total_calories,total_protein,total_fat,total_carbs,created_at,updated_at,is_edited,meal_plan_meal_id,adherence_score,meal_plan_id,deleted_at,photo_url,care_episode_id,\n        meal_items(id,meal_id,name,quantity,calories,protein,fat,carbs,unit,reference_food_id,nutritionist_food_id,grams,measure_id)\n      ")
-      .eq('patient_id', user.id)
+      .eq('patient_id', userId)
       .eq('meal_date', dateStr)
       .is('deleted_at', null)
       .order('created_at', { ascending: true });
+    if (generation !== reads.current.meals) return;
 
     if (error) {
       logDiagnostic('error', 'pages/patient/PatientDiaryPage.jsx:132', 'Erro ao carregar refeições:', error);
@@ -133,19 +159,25 @@ export default function PatientDiaryPage() {
     }
 
     setLoading(false);
-  }, [user, selectedDate, toast]);
+  }, [userId, selectedDateKey, toast]), JSON.stringify([userId,'diary.meals',selectedDateKey]));
 
   useEffect(() => {
+    const sequences = reads.current;
     loadMealPlan();
-  }, [loadMealPlan]);
+    return () => { sequences.plan += 1; };
+  }, [loadMealPlan, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active]);
 
   useEffect(() => {
+    const sequences = reads.current;
     loadMeals();
-  }, [loadMeals]);
+    return () => { sequences.meals += 1; };
+  }, [loadMeals, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active]);
 
-  const loadReminderPreferences = useCallback(async () => {
-    if (!user?.id) return;
-    const { data } = await getPatientReminderPreferences(user.id);
+  const loadReminderPreferences = useCoordinatedLoader(useCallback(async () => {
+    if (!userId) return;
+    const generation = ++reads.current.reminders;
+    const { data } = await getPatientReminderPreferences(userId);
+    if (generation !== reads.current.reminders || reminderTouched.current) return;
     setReminderPrefs({
       daily_log_enabled: data?.daily_log_enabled ?? true,
       measurement_enabled: data?.measurement_enabled ?? true,
@@ -156,7 +188,7 @@ export default function PatientDiaryPage() {
       quiet_hours_start: data?.quiet_hours_start || '',
       quiet_hours_end: data?.quiet_hours_end || ''
     });
-  }, [user?.id]);
+  }, [userId]), JSON.stringify([userId,'diary.preferences']));
 
   useEffect(() => {
     loadReminderPreferences();
@@ -249,7 +281,7 @@ export default function PatientDiaryPage() {
       // - Detectar tentativas de manipulação (deletar e recriar com dados diferentes)
       if (meal) {
         await supabase.rpc('log_meal_action', {
-          p_patient_id: user.id,
+          p_patient_id: userId,
           p_meal_id: mealToDelete,
           p_action: 'delete',
           p_meal_type: meal.meal_type,
@@ -301,6 +333,7 @@ export default function PatientDiaryPage() {
   };
 
   const updateReminderPref = (field, value) => {
+    reminderTouched.current = true;
     setReminderPrefs((prev) => ({ ...prev, [field]: value }));
   };
 
@@ -308,7 +341,7 @@ export default function PatientDiaryPage() {
     if (!user?.id) return;
     setSavingReminderPrefs(true);
     try {
-      const { error } = await upsertPatientReminderPreferences(user.id, {
+      const { error } = await upsertPatientReminderPreferences(userId, {
         daily_log_enabled: reminderPrefs.daily_log_enabled,
         measurement_enabled: reminderPrefs.measurement_enabled,
         daily_log_time: reminderPrefs.daily_log_time,

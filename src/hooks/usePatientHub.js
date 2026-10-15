@@ -1,3 +1,7 @@
+import {queryRead} from '@/lib/utils/readPolicy';
+import { queryResource } from '@/lib/utils/queryResource';
+import { useQueryResource } from '@/hooks/useQueryResource';
+import { settleResources, classifyFailure, failurePresentation } from '@/lib/utils/failure';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useCallback } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -55,29 +59,37 @@ export const usePatientHub = (patientId) => {
 
     const summaryQuery = useQuery({
         queryKey: ['patient-hub-summary', patientId, user?.id],
-        queryFn: async () => {
+        queryFn: queryRead(async ({signal}) => {
             if (!patientId || !user?.id) throw new Error('Credenciais inválidas');
             const started = performance.now();
             
-            const [summaryResult, foundationResult, adherenceResult] = await Promise.all([
-                getPatientSummary(patientId, user.id),
-                getPatientRecordFoundation(patientId),
-                calculateDiaryAdherence(patientId, 7)
-            ]);
+            const { summary: summaryResult, foundation: foundationResult, adherence: adherenceResult } = await settleResources({
+                summary: () => getPatientSummary(patientId, user.id, {signal}),
+                foundation: () => getPatientRecordFoundation(patientId, {signal}),
+                adherence: () => calculateDiaryAdherence(patientId, 7,{signal:signal})
+            });
+            for (const result of [summaryResult, foundationResult, adherenceResult]) {
+                if (['forbidden', 'unauthenticated'].includes(classifyFailure(result.error))) throw result.error;
+            }
             
             if (summaryResult.error) throw summaryResult.error;
             
             const data = summaryResult.data;
-            if (!data) throw new Error('Paciente não encontrado');
+            if (!data) throw Object.assign(new Error('Paciente não encontrado'), { status: 404 });
 
             const loadedFoundation = foundationResult.error ? null : foundationResult.data;
             const episodeContract = getEpisodeContract(loadedFoundation, data.profile);
-            const [operationalResult, guardiansResult] = await Promise.all([
-                getPatientHubOperationalContext(patientId, user.id, episodeContract.viewedEpisodeId),
-                episodeContract.viewedEpisodeId
-                    ? listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId)
-                    : Promise.resolve({ data: [], error: null }),
-            ]);
+            const { operational: operationalResult, guardians: guardiansResult } = await settleResources({
+                operational: () => getPatientHubOperationalContext(patientId, user.id, episodeContract.viewedEpisodeId,{signal:signal}),
+                guardians: () => episodeContract.viewedEpisodeId
+                    ? listPatientLegalGuardians(patientId, episodeContract.viewedEpisodeId, {signal})
+                    : Promise.resolve({ data: [], error: null })
+            });
+            for (const result of [operationalResult, guardiansResult]) {
+                if (['forbidden', 'unauthenticated'].includes(classifyFailure(result.error))) throw result.error;
+            }
+            const partialFailures = Object.fromEntries(Object.entries({ foundation: foundationResult, adherence: adherenceResult, operational: operationalResult, guardians: guardiansResult })
+                .filter(([, result]) => result.error).map(([key, result]) => [key, failurePresentation(result.error)]));
             const guardians = guardiansResult.error ? [] : guardiansResult.data || [];
 
             const profile = loadedFoundation?.patient || data.profile || {};
@@ -104,7 +116,7 @@ export const usePatientHub = (patientId) => {
             track(Events.DATA_LOAD_TIMING, { operation: 'patient_hub_summary', duration_ms: Math.round(performance.now() - started) });
 
             return {
-                patientData: data.profile,
+                partialFailures, patientData: data.profile,
                 latestMetrics: data.metrics,
                 modulesStatus: data.modulesStatus,
                 foundation: loadedFoundation,
@@ -117,24 +129,24 @@ export const usePatientHub = (patientId) => {
                 adherence,
                 insights
             };
-        },
+        }),
         enabled: !!patientId && !!user?.id,
         staleTime: 1000 * 60 * 5, // 5 minutos de cache
     });
 
     const activitiesQuery = useQuery({
-        queryKey: ['patient-hub-activities', patientId],
-        queryFn: async () => {
+        queryKey: ['patient-hub-activities', patientId, user?.id, summaryQuery.data?.viewedEpisodeId],
+        queryFn: queryRead(async ({signal}) => {
             const started = performance.now();
-            const { data, error } = await getPatientActivities(patientId, 100);
+            const { data, error } = await getPatientActivities(patientId, 100, {signal});
             if (error) {
                 logDiagnostic('error', 'hooks/usePatientHub.js:130', 'Erro ao carregar atividades:', error);
-                return [];
+                throw error;
             }
             track(Events.DATA_LOAD_TIMING, { operation: 'patient_hub_activities', duration_ms: Math.round(performance.now() - started), result_count: data?.length || 0 });
             return data || [];
-        },
-        enabled: !!patientId && !!summaryQuery.data,
+        }),
+        enabled: !!patientId && !!summaryQuery.data && !['forbidden','unauthenticated'].includes(classifyFailure(summaryQuery.error)),
         staleTime: 1000 * 60 * 5,
     });
 
@@ -146,27 +158,34 @@ export const usePatientHub = (patientId) => {
     }, [queryClient, patientId]);
 
     const loadActivities = useCallback(() => {
-        activitiesQuery.refetch();
+        return activitiesQuery.refetch();
     }, [activitiesQuery]);
 
+    const summaryResource = useQueryResource(summaryQuery, JSON.stringify([user?.id,patientId,'summary']));
+    const activitySnapshot = useQueryResource(activitiesQuery, JSON.stringify([user?.id,patientId,summaryQuery.data?.viewedEpisodeId,'activities']), []);
+    const activitiesResource = ['forbidden','unauthenticated'].includes(summaryResource.error?.kind)
+        ? {...queryResource(activitiesQuery,[]),data:[],hasSnapshot:false,error:summaryResource.error,canAct:false}
+        : activitySnapshot;
+    const summary = summaryResource.data;
     return {
+        summaryResource, activitiesResource, partialFailures: summary?.partialFailures || {},
         // Estados
-        loading: summaryQuery.isLoading, // true apenas no primeiro carregamento sem cache
+        loading: summaryResource.initialLoading, // true apenas no primeiro carregamento sem cache
         error: summaryQuery.error,
-        patientData: summaryQuery.data?.patientData || null,
-        latestMetrics: summaryQuery.data?.latestMetrics || null,
-        modulesStatus: summaryQuery.data?.modulesStatus || {},
-        activities: activitiesQuery.data || [],
-        activitiesLoading: activitiesQuery.isLoading,
-        foundation: summaryQuery.data?.foundation || null,
-        viewedEpisodeId: summaryQuery.data?.viewedEpisodeId || null,
-        writableEpisodeId: summaryQuery.data?.writableEpisodeId || null,
-        canWriteEpisode: summaryQuery.data?.canWriteEpisode || false,
-        profileRequirements: summaryQuery.data?.profileRequirements || [],
-        legalGuardians: summaryQuery.data?.legalGuardians || [],
-        operationalContext: summaryQuery.data?.operationalContext || null,
-        adherence: summaryQuery.data?.adherence || null,
-        insights: summaryQuery.data?.insights || null,
+        patientData: summary?.patientData || null,
+        latestMetrics: summary?.latestMetrics || null,
+        modulesStatus: summary?.modulesStatus || {},
+        activities: activitiesResource.data,
+        activitiesLoading: activitiesResource.initialLoading,
+        foundation: summary?.foundation || null,
+        viewedEpisodeId: summary?.viewedEpisodeId || null,
+        writableEpisodeId: summary?.writableEpisodeId || null,
+        canWriteEpisode: Boolean(summaryResource.canAct && summary?.canWriteEpisode && !summary?.partialFailures?.foundation && !summary?.partialFailures?.guardians),
+        profileRequirements: summary?.profileRequirements || [],
+        legalGuardians: summary?.legalGuardians || [],
+        operationalContext: summary?.operationalContext || null,
+        adherence: summary?.adherence || null,
+        insights: summary?.insights || null,
 
         // Funções
         refresh,

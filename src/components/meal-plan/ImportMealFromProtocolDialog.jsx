@@ -1,3 +1,4 @@
+import {TemplateCatalogStatus} from '@/components/meal-plan/TemplateCatalogStatus';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Loader2, ChevronRight, Check } from 'lucide-react';
@@ -25,9 +26,11 @@ import { getDietTemplateWithMeals, getUnavailableTemplateFoods } from '@/lib/sup
  */
 export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutritionistId, onImport }) {
     const { toast } = useToast();
-    const { templates, loading: loadingTemplates, fetchTemplates } = useTemplates('diet');
+
 
     const [searchTerm, setSearchTerm]           = useState('');
+    const catalog = useTemplates('diet', {enabled:open, search:searchTerm});
+    const {templates, loading:loadingTemplates, fetchTemplates}=catalog;
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [templateMeals, setTemplateMeals]     = useState([]);
     const [loadingMeals, setLoadingMeals]       = useState(false);
@@ -123,6 +126,7 @@ export default function ImportMealFromProtocolDialog({ open, onOpenChange, nutri
                                 aria-label="Buscar protocolo"
                             />
                         </div>
+                        <TemplateCatalogStatus catalog={catalog}/>
                         <ScrollArea className="flex-1" viewportProps={{ tabIndex: 0, role: 'region', 'aria-label': 'Protocolos disponíveis', className: 'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-primary' }}>
                             {loadingTemplates ? (
                                 <div className="flex items-center justify-center py-10">

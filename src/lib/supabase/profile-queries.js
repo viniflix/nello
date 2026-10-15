@@ -1,3 +1,6 @@
+import { readReference, invalidateReference, referenceScope } from '@/lib/utils/referenceCache';
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { invalidateDomain } from '@/infrastructure/realtime/events';
@@ -9,6 +12,7 @@ import { invalidateDomain } from '@/infrastructure/realtime/events';
  * @returns {Promise<Object>}
  */
 export async function updateClinicSettings(userId, settingsObject) {
+    const cacheScope = referenceScope(userId);
     // First, get current preferences
     const { data: currentProfile, error: fetchError } = await supabase
         .from('user_profiles')
@@ -39,6 +43,7 @@ export async function updateClinicSettings(userId, settingsObject) {
         throw error;
     }
 
+    void invalidateReference('clinic', userId, {scope:cacheScope});
     invalidateDomain(userId, 'profile');
     return data;
 }
@@ -48,12 +53,12 @@ export async function updateClinicSettings(userId, settingsObject) {
  * @param {string} userId - User UUID
  * @returns {Promise<Object>}
  */
-export async function getClinicSettings(userId) {
-    const { data, error } = await supabase
+async function loadClinicSettings(userId, readOptions = {}) {
+    const { data, error } = await readRequest(() => supabase
         .from('user_profiles')
         .select('clinic_settings, preferences')
         .eq('id', userId)
-        .single();
+        .single(), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) {
         logSupabaseError('Error fetching clinic settings', error);
@@ -81,7 +86,7 @@ export async function getRecurringExpenses(userId) {
  * @returns {Promise<Object>}
  */
 export async function saveRecurringExpense(userId, expenseData) {
-    const settings = await getClinicSettings(userId);
+    const settings = await getClinicSettings(userId, {force:true});
     const expenses = settings.recurring_expenses || [];
     
     let updatedExpenses;
@@ -113,7 +118,7 @@ export async function saveRecurringExpense(userId, expenseData) {
  * @returns {Promise<Array>}
  */
 export async function deleteRecurringExpense(userId, expenseId) {
-    const settings = await getClinicSettings(userId);
+    const settings = await getClinicSettings(userId, {force:true});
     const expenses = settings.recurring_expenses || [];
     const updatedExpenses = expenses.filter(exp => exp.id !== expenseId);
 
@@ -124,3 +129,7 @@ export async function deleteRecurringExpense(userId, expenseId) {
     return updatedExpenses;
 }
 
+
+export function getClinicSettings(userId, options = {}) {
+  return readReference('clinic', userId, null, signal => loadClinicSettings(userId, {signal}), options);
+}

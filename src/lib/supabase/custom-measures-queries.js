@@ -1,3 +1,6 @@
+import { readReference, invalidateReference, referenceScope } from '@/lib/utils/referenceCache';
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 /**
  * Queries CRUD para medidas caseiras personalizadas do nutricionista.
  *
@@ -33,16 +36,16 @@ const generateMeasureCode = (name) => {
  * Busca todas as medidas personalizadas ativas do nutricionista logado.
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getCustomMeasures = async (nutritionistId) => {
+const loadgetCustomMeasures = async (nutritionistId, {signal} = {}) => {
   try {
     let query = supabase
       .from('nutritionist_custom_measures')
       .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at")
       .eq('is_active', true);
     if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);
-    const { data, error } = await query
+    const { data, error } = await readRequest(() => query
       .order('order_index', { ascending: true })
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }), {signal,policy:readPolicies.reference});
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -57,15 +60,15 @@ export const getCustomMeasures = async (nutritionistId) => {
  * Usado para a tela de gerenciamento.
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getAllCustomMeasures = async (nutritionistId) => {
+const loadgetAllCustomMeasures = async (nutritionistId, {signal} = {}) => {
   try {
     let query = supabase
       .from('nutritionist_custom_measures')
       .select("id,nutritionist_id,name,code,grams_equivalent,description,category,is_active,order_index,created_at,updated_at");
     if (nutritionistId) query = query.eq('nutritionist_id', nutritionistId);
-    const { data, error } = await query
+    const { data, error } = await readRequest(() => query
       .order('order_index', { ascending: true })
-      .order('created_at', { ascending: true });
+      .order('created_at', { ascending: true }), {signal,policy:readPolicies.reference});
 
     if (error) throw error;
     return { data: data || [], error: null };
@@ -104,6 +107,7 @@ export const countCustomMeasures = async (nutritionistId) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const createCustomMeasure = async (payload) => {
+  const cacheScope = referenceScope();
   try {
     const { name, grams_equivalent, category = 'volume', description } = payload;
 
@@ -142,6 +146,7 @@ export const createCustomMeasure = async (payload) => {
       .single();
 
     if (error) throw error;
+    void invalidateReference('custom', data?.nutritionist_id || null, {scope:cacheScope});
     return { data, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_criar_medida_personalizada", error);
@@ -158,6 +163,7 @@ export const createCustomMeasure = async (payload) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const updateCustomMeasure = async (id, payload) => {
+  const cacheScope = referenceScope();
   try {
     const { name, grams_equivalent, category, description, is_active } = payload;
 
@@ -183,6 +189,7 @@ export const updateCustomMeasure = async (id, payload) => {
       .single();
 
     if (error) throw error;
+    void invalidateReference('custom', data?.nutritionist_id || null, {scope:cacheScope});
     return { data, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_atualizar_medida_personalizada", error);
@@ -199,6 +206,7 @@ export const updateCustomMeasure = async (id, payload) => {
  * @returns {Promise<{data: boolean, error: object}>}
  */
 export const deleteCustomMeasure = async (id) => {
+  const cacheScope = referenceScope();
   try {
     const { error } = await supabase
       .from('nutritionist_custom_measures')
@@ -206,9 +214,20 @@ export const deleteCustomMeasure = async (id) => {
       .eq('id', id);
 
     if (error) throw error;
+    void invalidateReference('custom', null, {scope:cacheScope});
     return { data: true, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_excluir_medida_personalizada", error);
     return { data: false, error };
   }
 };
+
+export async function getCustomMeasures(nutritionistId, options = {}) {
+  try { return {data:await readReference('customActive', nutritionistId, null, signal => loadgetCustomMeasures(nutritionistId,{signal}), options), error:null}; }
+  catch(error) { return {data:[], error}; }
+}
+
+export async function getAllCustomMeasures(nutritionistId, options = {}) {
+  try { return {data:await readReference('customAll', nutritionistId, null, signal => loadgetAllCustomMeasures(nutritionistId,{signal}), options), error:null}; }
+  catch(error) { return {data:[], error}; }
+}

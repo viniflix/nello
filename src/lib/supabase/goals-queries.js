@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { getTodayIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
@@ -22,7 +24,7 @@ const MAX_SAFE_SURPLUS = 500; // kcal/dia para ganho de peso
 /**
  * Calcula a viabilidade de uma meta baseada em dados nutricionais
  */
-export const calculateGoalViability = async (goalData, patientId) => {
+export const calculateGoalViability = async (goalData, patientId, readOptions = {}) => {
     const {
         initial_weight,
         target_weight,
@@ -58,21 +60,21 @@ export const calculateGoalViability = async (goalData, patientId) => {
     const requiredDailyDeficit = dailyWeightChange * CALORIES_PER_KG;
 
     // Buscar gasto energético mais recente
-    const { data: energyData } = await supabase
+    const { data: energyData } = await readRequest(() => supabase
         .from('energy_expenditure_calculations')
         .select("id,patient_id,weight,height,age,gender,protocol,activity_level,tmb,get,created_at,updated_at,get_with_activities,activities,target_weight,venta_adjusted,body_fat_percentage,tmb_protocol,tmb_result,injury_factor,mets_activities,get_result,venta_target_weight,venta_timeframe_days,venta_adjustment_kcal,final_planned_kcal,activity_factor,nutritionist_id,care_episode_id,protocol_code,protocol_version,source_snapshot,input_snapshot,output_snapshot,confirmed_by,confirmed_at")
         .eq('patient_id', patientId)
         .order('created_at', { ascending: false })
         .limit(1)
-        .maybeSingle();
+        .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
     // Buscar plano alimentar ativo
-    const { data: mealPlanData } = await supabase
+    const { data: mealPlanData } = await readRequest(() => supabase
         .from('meal_plans')
         .select("id,patient_id,nutritionist_id,name,description,active_days,start_date,end_date,is_active,daily_calories,daily_protein,daily_carbs,daily_fat,created_at,updated_at,is_template,template_tags,is_draft,care_episode_id,plan_mode,prescription_status,source_snapshot,confirmed_by,confirmed_at,archived_at,archived_by,archive_reason")
         .eq('patient_id', patientId)
         .eq('is_active', true)
-        .maybeSingle();
+        .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
     // Extrair valores (schema novo: get_result, final_planned_kcal)
     const totalEnergyExpenditure = energyData?.get_result ?? energyData?.get ?? null;
@@ -304,16 +306,16 @@ export const getPatientGoals = async (patientId, options = {}) => {
 /**
  * Buscar meta ativa de um paciente
  */
-export const getActiveGoal = async (patientId) => {
+export const getActiveGoal = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('patient_goals')
             .select("id,patient_id,nutritionist_id,goal_type,title,description,initial_weight,target_weight,current_weight,start_date,target_date,daily_calorie_goal,required_daily_deficit,energy_expenditure_id,meal_plan_id,is_realistic,viability_score,viability_notes,warnings,status,progress_percentage,completion_date,created_at,updated_at,care_episode_id")
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
@@ -327,13 +329,13 @@ export const getActiveGoal = async (patientId) => {
 /**
  * Buscar meta por ID
  */
-export const getGoalById = async (goalId) => {
+export const getGoalById = async (goalId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('patient_goals')
             .select("id,patient_id,nutritionist_id,goal_type,title,description,initial_weight,target_weight,current_weight,start_date,target_date,daily_calorie_goal,required_daily_deficit,energy_expenditure_id,meal_plan_id,is_realistic,viability_score,viability_notes,warnings,status,progress_percentage,completion_date,created_at,updated_at,care_episode_id")
             .eq('id', goalId)
-            .single();
+            .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 

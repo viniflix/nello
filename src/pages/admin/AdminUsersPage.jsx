@@ -21,7 +21,7 @@ export default function AdminUsersPage() {
     const timer = setTimeout(() => { setQuery(search.trim()); setPage(1); }, 300);
     return () => clearTimeout(timer);
   }, [search]);
-  const source = useAdminSource(['people', query, type, page], () => listAdminPeople({ search: query, type, page }));
+  const source = useAdminSource(['people', query, type, page], options => listAdminPeople({ search: query, type, page }, options));
   const data = source.data;
   const loading = source.isPending && !data;
   return <div className="space-y-6">

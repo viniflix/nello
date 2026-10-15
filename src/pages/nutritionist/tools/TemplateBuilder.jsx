@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 import { useTemplateBuilder } from '@/hooks/useTemplateBuilder';
 import { useToast } from '@/components/ui/use-toast';
 import {
@@ -10,10 +11,16 @@ import AddFoodToMealDialog from '@/components/meal-plan/AddFoodToMealDialog';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
 
 export default function TemplateBuilder() {
+  const { user } = useAuth();
+  const { type, id } = useParams();
+  return <TemplateBuilderContent key={JSON.stringify([user?.id || null, type, id || null])} />;
+}
+
+function TemplateBuilderContent() {
   const { type, id } = useParams(); // /new/:type  ou  /edit/:type/:id
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { ownerId, formData, setFormData, handleSave, loading, isLoadingTemplate, isEditMode, shadow, restoreShadow } = useTemplateBuilder(type, id || null);
+  const { ownerId, formData, setFormData, handleSave, loading, isLoadingTemplate, isEditMode, loadError, retryLoad, shadow, restoreShadow } = useTemplateBuilder(type, id || null);
 
   const [isAddFoodOpen, setIsAddFoodOpen] = useState(false);
   const [activeMealIndex, setActiveMealIndex] = useState(null);
@@ -264,6 +271,14 @@ export default function TemplateBuilder() {
         </div>
       </div>
     );
+  }
+
+  if (loadError) {
+    return <div className="mx-auto max-w-5xl p-8 space-y-4">
+      <p role="alert">Não foi possível carregar o template. Nenhuma alteração foi salva.</p>
+      <button type="button" onClick={retryLoad} className="text-primary underline">Tentar novamente</button>
+      <button type="button" onClick={() => navigate('/nutritionist/templates')} className="block text-primary underline">Voltar aos templates</button>
+    </div>;
   }
 
   const foodList = type === 'meal' ? formData.foods : formData.ingredients;

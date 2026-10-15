@@ -12,8 +12,26 @@ import { useShadowDraft } from '@/hooks/useShadowDraft';
  * @param {string} type - 'diet' | 'meal' | 'recipe'
  * @param {string|null} templateId - UUID para modo de edição, null para criação
  */
+const emptyForm = () => ({ name: '', description: '', tags: [], meals: [], foods: [], ingredients: [],
+  yield_quantity: 1, yield_unit: 'portion', preparation_method: '' });
+
 export function useTemplateBuilder(type, templateId = null) {
   const { user } = useAuth();
+  const ownerId = user?.id;
+  const scope = JSON.stringify([ownerId || null, type, templateId]);
+  const scopeRef = useRef(scope);
+  const loadSequence = useRef(0);
+  const saveSequence = useRef(0);
+  if (scopeRef.current !== scope) {
+    loadSequence.current += 1;
+    saveSequence.current += 1;
+    scopeRef.current = scope;
+  }
+  const saveLock = useRef(false);
+  useEffect(() => () => { saveSequence.current += 1; loadSequence.current += 1; }, []);
+  const [stateScope, setStateScope] = useState(scope);
+  const [loadError, setLoadError] = useState(false);
+  const [loadRevision, setLoadRevision] = useState(0);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -21,22 +39,23 @@ export function useTemplateBuilder(type, templateId = null) {
   const [loadedUpdatedAt, setLoadedUpdatedAt] = useState(null);
   const isEditMode = Boolean(templateId);
 
-  const [formData, setFormDataState] = useState({
-    name: '',
-    description: '',
-    tags: [],
-    meals: [],
-    foods: [],
-    ingredients: [],
-    yield_quantity: 1,
-    yield_unit: 'portion',
-    preparation_method: '',
-  });
+  const [formData, setFormDataState] = useState(emptyForm);
   const touchedRef = useRef(false);
+  // Reset before committing the new context, so neither UI nor shadow receives the old draft.
+  if (stateScope !== scope) {
+    setStateScope(scope);
+    setFormDataState(emptyForm());
+    setLoadedUpdatedAt(null);
+    setIsLoadingTemplate(Boolean(templateId && ownerId));
+    setLoading(false);
+    setLoadError(false);
+    touchedRef.current = false;
+    saveLock.current = false;
+  }
   const shadow = useShadowDraft({
-    ownerId: user?.id,
+    ownerId,
     draftKey: `protocol:${type}:${templateId || 'new'}`,
-    enabled: Boolean(user?.id && type)
+    enabled: Boolean(ownerId && type)
   });
   const { ready: shadowReady, queue: queueShadow } = shadow;
   const setFormData = (next) => {
@@ -44,8 +63,8 @@ export function useTemplateBuilder(type, templateId = null) {
     setFormDataState(next);
   };
   useEffect(() => {
-    if (touchedRef.current && !isLoadingTemplate && shadowReady) queueShadow({ formData });
-  }, [formData, isLoadingTemplate, shadowReady, queueShadow]);
+    if (touchedRef.current && !isLoadingTemplate && !loadError && shadowReady) queueShadow({ formData });
+  }, [formData, isLoadingTemplate, loadError, shadowReady, queueShadow]);
   const restoreShadow = () => {
     const value = shadow.restore();
     if (value?.formData) {
@@ -56,20 +75,27 @@ export function useTemplateBuilder(type, templateId = null) {
 
   // Carregar dados do template em modo de edição
   useEffect(() => {
-    if (!templateId || !user) {
+    const generation = ++loadSequence.current;
+    const isCurrent = () => scopeRef.current === scope && loadSequence.current === generation;
+    if (!templateId || !ownerId) {
       setIsLoadingTemplate(false);
       return;
     }
-    loadTemplate(templateId);
+    loadTemplate(templateId, isCurrent);
+    return () => { loadSequence.current += 1; saveSequence.current += 1; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [templateId, user]);
+  }, [templateId, ownerId, type, scope, loadRevision]);
 
-  const loadTemplate = async (id) => {
+  const loadTemplate = async (id, isCurrent) => {
     setIsLoadingTemplate(true);
+    setLoadError(false);
     try {
       if (type === 'diet') {
-        const { data } = await getDietTemplateWithMeals(id);
-        if (data) {
+        const { data, error } = await getDietTemplateWithMeals(id);
+        if (!isCurrent()) return;
+        if (error) throw error;
+        if (!data) throw new Error('template_not_found');
+        if (!touchedRef.current) {
           setFormDataState({
             name: data.name || '',
             description: data.description || '',
@@ -108,12 +134,15 @@ export function useTemplateBuilder(type, templateId = null) {
           .eq('id', id)
           .single();
 
+        if (!isCurrent()) return;
         if (error) throw error;
-        setLoadedUpdatedAt(mealData.updated_at);
+        if (!mealData) throw new Error('template_not_found');
 
         // Fetch food details
         const foodIds = (mealData.meal_template_foods || []).map(f => f.food_id);
         const foodsMap = await getFoodsMapByIds(foodIds);
+        if (!isCurrent() || touchedRef.current) return;
+        setLoadedUpdatedAt(mealData.updated_at);
 
         setFormDataState({
           name: mealData.name || '',
@@ -151,12 +180,15 @@ export function useTemplateBuilder(type, templateId = null) {
           .eq('id', id)
           .single();
 
+        if (!isCurrent()) return;
         if (error) throw error;
-        setLoadedUpdatedAt(recipeData.updated_at);
+        if (!recipeData) throw new Error('template_not_found');
 
         // Fetch food details
         const foodIds = (recipeData.recipe_ingredients || []).map(f => f.food_id);
         const foodsMap = await getFoodsMapByIds(foodIds);
+        if (!isCurrent() || touchedRef.current) return;
+        setLoadedUpdatedAt(recipeData.updated_at);
 
         setFormDataState({
           name: recipeData.name || '',
@@ -182,10 +214,12 @@ export function useTemplateBuilder(type, templateId = null) {
         });
       }
     } catch (err) {
+      if (!isCurrent()) return;
+      setLoadError(true);
       logDiagnostic('error', 'hooks/useTemplateBuilder.js:184', '[useTemplateBuilder] Error loading template:', err.message);
       toast({ title: 'Erro', description: 'Não foi possível carregar o template.', variant: 'destructive' });
     } finally {
-      setIsLoadingTemplate(false);
+      if (isCurrent()) setIsLoadingTemplate(false);
     }
   };
 
@@ -216,8 +250,7 @@ export function useTemplateBuilder(type, templateId = null) {
 
     if (templateError) throw templateError;
 
-    toast({ title: 'Sucesso', description: 'Dieta Padrão criada com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Dieta Padrão criada com sucesso!';
   };
 
   const saveMealTemplate = async () => {
@@ -233,8 +266,7 @@ export function useTemplateBuilder(type, templateId = null) {
     });
     if (error) throw error;
 
-    toast({ title: 'Sucesso', description: 'Refeição salva com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Refeição salva com sucesso!';
   };
 
   const saveRecipe = async () => {
@@ -250,8 +282,7 @@ export function useTemplateBuilder(type, templateId = null) {
     });
     if (error) throw error;
 
-    toast({ title: 'Sucesso', description: 'Receita criada com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Receita criada com sucesso!';
   };
 
   // ─── UPDATE ────────────────────────────────────────────────────────────────
@@ -282,8 +313,7 @@ export function useTemplateBuilder(type, templateId = null) {
 
     if (updateError) throw updateError;
 
-    toast({ title: 'Sucesso', description: 'Dieta Padrão atualizada com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Dieta Padrão atualizada com sucesso!';
   };
 
   const updateMealTemplate = async () => {
@@ -299,8 +329,7 @@ export function useTemplateBuilder(type, templateId = null) {
     });
     if (error) throw error;
 
-    toast({ title: 'Sucesso', description: 'Refeição atualizada com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Refeição atualizada com sucesso!';
   };
 
   const updateRecipe = async () => {
@@ -316,13 +345,16 @@ export function useTemplateBuilder(type, templateId = null) {
     });
     if (error) throw error;
 
-    toast({ title: 'Sucesso', description: 'Receita atualizada com sucesso!' });
-    navigate('/nutritionist/templates');
+    return 'Receita atualizada com sucesso!';
   };
 
   // ─── SAVE (despachador) ────────────────────────────────────────────────────
 
   const handleSave = async () => {
+    if (!ownerId || isLoadingTemplate || loadError || saveLock.current) return;
+    const saveScope = scope;
+    const generation = ++saveSequence.current;
+    const isCurrent = () => scopeRef.current === saveScope && generation === saveSequence.current;
     if (!formData.name.trim()) {
       toast({ title: 'Nome obrigatório', description: 'Informe um nome para o template.', variant: 'destructive' });
       return;
@@ -332,31 +364,42 @@ export function useTemplateBuilder(type, templateId = null) {
       return;
     }
 
+    saveLock.current = true;
     setLoading(true);
     try {
+      let message;
       if (isEditMode) {
-        if (type === 'diet') await updateDietTemplate();
-        else if (type === 'meal') await updateMealTemplate();
-        else if (type === 'recipe') await updateRecipe();
+        if (type === 'diet') message = await updateDietTemplate();
+        else if (type === 'meal') message = await updateMealTemplate();
+        else if (type === 'recipe') message = await updateRecipe();
       } else {
-        if (type === 'diet') await saveDietTemplate();
-        else if (type === 'meal') await saveMealTemplate();
-        else if (type === 'recipe') await saveRecipe();
+        if (type === 'diet') message = await saveDietTemplate();
+        else if (type === 'meal') message = await saveMealTemplate();
+        else if (type === 'recipe') message = await saveRecipe();
       }
+      if (!isCurrent()) return;
       await shadow.discard();
+      if (!isCurrent()) return;
+      toast({ title: 'Sucesso', description: message });
+      navigate('/nutritionist/templates');
     } catch (err) {
+      if (!isCurrent()) return;
       logDiagnostic('error', 'hooks/useTemplateBuilder.js:347', '[useTemplateBuilder] Save error:', err.message);
-      toast({ title: 'Erro ao salvar', description: err.message || 'Tente novamente.', variant: 'destructive' });
+      toast({ title: 'Erro ao salvar', description: err.code === 'PT409'
+        ? 'Este template foi alterado em outra sessão. Sua edição foi preservada. Revise a versão atual antes de salvar novamente.'
+        : err.message || 'Tente novamente.', variant: 'destructive' });
     } finally {
-      setLoading(false);
+      if (isCurrent()) { saveLock.current = false; setLoading(false); }
     }
   };
 
   return {
-    ownerId: user?.id,
+    ownerId,
     loading,
     isLoadingTemplate,
     isEditMode,
+    loadError,
+    retryLoad: () => { if (!touchedRef.current) setLoadRevision(value => value + 1); },
     formData,
     setFormData,
     handleSave,

@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { invalidateDomain } from '@/infrastructure/realtime/events';
 
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
@@ -10,16 +12,16 @@ import {collectBoundedPages} from './bounded-pages';
 
 
 
-export const getLatestAnamnesisForEnergy = async (patientId) => {
+export const getLatestAnamnesisForEnergy = async (patientId, readOptions = {}) => {
     try {
         // Buscar último registro de anamnese
-        const { data: anamnesisRecord, error: recordError } = await supabase
+        const { data: anamnesisRecord, error: recordError } = await readRequest(() => supabase
             .from('anamnesis_records')
             .select('id, content, date')
             .eq('patient_id', patientId)
             .order('date', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (recordError) throw recordError;
 
@@ -81,16 +83,16 @@ export const getLatestAnamnesisForEnergy = async (patientId) => {
     }
 };
 
-export const getActiveGoalForEnergy = async (patientId) => {
+export const getActiveGoalForEnergy = async (patientId, readOptions = {}) => {
     try {
-        const { data: goal, error } = await supabase
+        const { data: goal, error } = await readRequest(() => supabase
             .from('patient_goals')
             .select('id, goal_type, target_weight, current_weight, description, status')
             .eq('patient_id', patientId)
             .eq('status', 'active')
             .order('created_at', { ascending: false })
             .limit(1)
-            .maybeSingle();
+            .maybeSingle(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
@@ -116,10 +118,10 @@ export const fetchAllNutritionistPatients = async (nutritionistId, {signal} = {}
         let pending = [];
         if (pendingIds.length > 0) {
             for (let offset = 0; offset < pendingIds.length; offset += 200) {
-            const { data: pendingProfiles, error: profileError } = await supabase
+            const { data: pendingProfiles, error: profileError } = await readRequest(() => supabase
                 .from('user_profiles')
                 .select('id,name,email,cpf,phone,avatar_url,created_at,birth_date,gender,is_active,patient_category')
-                .in('id', pendingIds.slice(offset, offset + 200)).abortSignal(signal);
+                .in('id', pendingIds.slice(offset, offset + 200)).abortSignal(signal), {signal:signal,policy:readPolicies.clinical});
             if (profileError) throw profileError;
             pending.push(...(pendingProfiles || []).map(profile => ({ ...profile, link_status: 'pending' })));
             }
@@ -157,7 +159,7 @@ export const getMyCareRelationship = async ({ signal } = {}) => {
 
         let request = supabase.rpc('get_my_care_relationship');
         if (signal) request = request.abortSignal(signal);
-        const { data, error } = await request;
+        const { data, error } = await readRequest(() => request, {signal});
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
@@ -194,11 +196,11 @@ export const unarchivePatient = async (patientId, nutritionistId) => {
     }
 };
 
-export const getEmptyPatientRemovalStatus = async (patientId) => {
+export const getEmptyPatientRemovalStatus = async (patientId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase.rpc('get_empty_patient_removal_status', {
+        const { data, error } = await readRequest(() => supabase.rpc('get_empty_patient_removal_status', {
             p_patient_id: patientId,
-        });
+        }), {signal:readOptions?.signal,policy:readPolicies.clinical});
         if (error) throw error;
         return { data, error: null };
     } catch (error) {
@@ -243,9 +245,9 @@ export const rejectPatientLink = async (patientId) => {
     }
 };
 
-export async function getInviteDetails(inviteCode) {
+export async function getInviteDetails(inviteCode, readOptions = {}) {
   try {
-    const { data, error } = await supabase.rpc('get_invite_details', { p_invite_code: inviteCode });
+    const { data, error } = await readRequest(() => supabase.rpc('get_invite_details', { p_invite_code: inviteCode }), {signal:readOptions?.signal,policy:readPolicies.clinical});
     if (error) throw error;
     return { success: true, data: data?.[0] };
   } catch (error) {

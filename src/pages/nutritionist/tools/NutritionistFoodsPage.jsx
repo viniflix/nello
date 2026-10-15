@@ -22,6 +22,8 @@ import SmartFoodForm from '@/components/nutrition/SmartFoodForm';
 import { supabase } from '@/infrastructure/supabase/client';
 import { SimpleListSkeleton } from '@/components/ui/custom-skeletons';
 import { formatNutrient } from '@/lib/utils';
+import { failurePresentation } from '@/lib/utils/failure';
+import { ResourceStatus } from '@/components/ui/resource-status';
 
 /**
  * NutritionistFoodsPage - Gerenciar Alimentos e Medidas Caseiras
@@ -44,6 +46,35 @@ export default function NutritionistFoodsPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [stats, setStats] = useState({ total: 0, custom: 0 });
   const observerTarget = useRef(null);
+  const editTriggerRef = useRef(null);
+  const createTriggerRef = useRef(null);
+  const loadMoreTriggerRef = useRef(null);
+  const appendFocusRef = useRef(false);
+  const appendReturnFocusRef = useRef(null);
+  const resultsContainerRef = useRef(null);
+  const statusContainerRef = useRef(null);
+  const restoreDialogFocus = (event, trigger) => {
+    if (trigger?.isConnected) {
+      event.preventDefault();
+      trigger.focus();
+    }
+  };
+  const searchOwner = useRef({ generation: 0, controller: null, busy: false, term: null });
+  const currentTerm = useRef(searchTerm); currentTerm.current = searchTerm;
+  const alive = useRef(true);
+  const [searchError, setSearchError] = useState(null);
+  useEffect(() => {
+    alive.current = true;
+    const owner = searchOwner.current;
+    return () => { alive.current = false; owner.generation += 1; owner.controller?.abort(); };
+  }, []);
+  useEffect(() => {
+    const owner = searchOwner.current;
+    if (owner.term !== searchTerm) {
+      owner.generation += 1; owner.controller?.abort(); owner.busy = false;
+      setLoading(false); setLoadingMore(false); setSearchError(null);
+    }
+  }, [searchTerm]);
 
   // Debounce search term (500ms)
   const debouncedSearchTerm = useDebounce(searchTerm, 500);
@@ -69,9 +100,18 @@ export default function NutritionistFoodsPage() {
 
   // Search foods with pagination
   const handleSearchFoods = useCallback(async (targetPage = 0, append = false) => {
+    const owner = searchOwner.current;
+    if (debouncedSearchTerm !== currentTerm.current || (append && owner.busy)) return;
+    owner.controller?.abort();
+    const controller = new AbortController(), generation = ++owner.generation;
+    owner.controller = controller; owner.term = debouncedSearchTerm; owner.busy = true;
+    const current = () => alive.current && generation === owner.generation
+      && debouncedSearchTerm === currentTerm.current && !controller.signal.aborted;
+    setSearchError(null);
     if (!debouncedSearchTerm.trim() || debouncedSearchTerm.length < 2) {
       setFoods([]);
       setHasMore(false);
+      owner.busy = false; setLoading(false); setLoadingMore(false);
       return;
     }
 
@@ -84,7 +124,8 @@ export default function NutritionistFoodsPage() {
     }
 
     try {
-      const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage);
+      const result = await searchFoodsPaginated(debouncedSearchTerm, targetPage, null, { signal: controller.signal });
+      if (!current()) return;
 
       if (append) {
         setFoods(prev => [...prev, ...result.data]);
@@ -93,20 +134,24 @@ export default function NutritionistFoodsPage() {
       }
 
       setHasMore(result.hasMore);
+      setPage(targetPage);
     } catch (error) {
+      if (!current()) return;
+      const failure = failurePresentation(error);
+      if (failure.kind === 'aborted') return;
+      setSearchError({ failure, targetPage, append });
       logDiagnostic('error', 'pages/nutritionist/tools/NutritionistFoodsPage.jsx:96', 'Erro ao buscar alimentos:', error);
       toast({
         title: 'Erro',
         description: 'Não foi possível buscar alimentos.',
         variant: 'destructive'
       });
-      if (!append) {
+      if (['unauthenticated', 'forbidden'].includes(failure.kind)) {
         setFoods([]);
+        setHasMore(false);
       }
-      setHasMore(false);
     } finally {
-      setLoading(false);
-      setLoadingMore(false);
+      if (current()) { owner.busy = false; setLoading(false); setLoadingMore(false); }
     }
   }, [debouncedSearchTerm, toast]);
 
@@ -124,12 +169,13 @@ export default function NutritionistFoodsPage() {
 
   // Load more function
   const loadMore = useCallback(() => {
-    if (hasMore && !loading && !loadingMore) {
+    if (hasMore && !loading && !loadingMore && !searchError) {
+      appendFocusRef.current = document.activeElement === loadMoreTriggerRef.current;
+      appendReturnFocusRef.current = [...(resultsContainerRef.current?.querySelectorAll('button[aria-haspopup="dialog"]') || [])].at(-1);
       const nextPage = page + 1;
-      setPage(nextPage);
       handleSearchFoods(nextPage, true);
     }
-  }, [hasMore, loading, loadingMore, page, handleSearchFoods]);
+  }, [hasMore, loading, loadingMore, searchError, page, handleSearchFoods]);
 
   // Infinite scroll with IntersectionObserver
   useEffect(() => {
@@ -151,10 +197,12 @@ export default function NutritionistFoodsPage() {
       if (currentTarget) {
         observer.unobserve(currentTarget);
       }
+      observer.disconnect();
     };
   }, [loadMore]);
 
-  const handleEditFood = async (food) => {
+  const handleEditFood = async (food, trigger) => {
+    editTriggerRef.current = trigger;
     try {
       const measures = await getFoodMeasures(food.id);
       setSelectedFood({ ...food, food_measures: measures });
@@ -210,6 +258,29 @@ export default function NutritionistFoodsPage() {
     }
   };
 
+  const waitingForTerm = searchTerm !== debouncedSearchTerm && searchTerm.trim().length >= 2;
+  const visibleFoods = searchTerm === debouncedSearchTerm ? foods : [];
+  const appendFailure = searchError?.append && visibleFoods.length > 0;
+  useEffect(() => {
+    if (loadingMore || !appendFocusRef.current) return;
+    appendFocusRef.current = false;
+    if (document.activeElement === document.body || document.activeElement === loadMoreTriggerRef.current
+      || document.activeElement === statusContainerRef.current?.querySelector('button')) {
+      if (appendFailure) statusContainerRef.current?.querySelector('button')?.focus();
+      else if (appendReturnFocusRef.current?.isConnected) appendReturnFocusRef.current.focus({ preventScroll: true });
+    }
+    appendReturnFocusRef.current = null;
+  }, [appendFailure, loadingMore]);
+  const searchStatus = <div ref={statusContainerRef}><ResourceStatus resource={{ error: searchError?.failure, hasSnapshot: visibleFoods.length > 0,
+    pending: loading || loadingMore || waitingForTerm, refreshing: loading && visibleFoods.length > 0 }}
+    label="alimentos" onRetry={searchError ? () => {
+      if (searchError.append) {
+        appendFocusRef.current = document.activeElement === statusContainerRef.current?.querySelector('button');
+        appendReturnFocusRef.current = [...(resultsContainerRef.current?.querySelectorAll('button[aria-haspopup="dialog"]') || [])].at(-1);
+      }
+      handleSearchFoods(searchError.targetPage, searchError.append);
+    } : undefined} /></div>;
+
   return (
     <div className="flex flex-col min-h-dvh bg-background overflow-x-hidden">
       <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-4 md:py-8 space-y-6 min-w-0">
@@ -225,7 +296,7 @@ export default function NutritionistFoodsPage() {
                 </span>
               </div>
             </div>
-            <Button onClick={() => setCreateDialogOpen(true)}>
+            <Button onClick={(event) => { createTriggerRef.current = event.currentTarget; setCreateDialogOpen(true); }}>
               <Plus className="w-4 h-4 mr-2" />
               Novo Alimento
             </Button>
@@ -267,6 +338,7 @@ export default function NutritionistFoodsPage() {
             <div className="relative">
               <Search className="absolute left-3 top-3 h-5 w-5 text-muted-foreground" />
               <Input
+                aria-label="Buscar alimentos"
                 placeholder="Buscar alimento (ex: Arroz, Abacate, Frango)..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -287,11 +359,12 @@ export default function NutritionistFoodsPage() {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
           >
-            {loading && foods.length === 0 ? (
+            {!appendFailure && searchStatus}
+            {(loading || waitingForTerm) && visibleFoods.length === 0 ? (
               <div className="space-y-4">
                 <SimpleListSkeleton />
               </div>
-            ) : foods.length === 0 ? (
+            ) : visibleFoods.length === 0 && !searchError ? (
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-sm text-muted-foreground">
@@ -300,8 +373,8 @@ export default function NutritionistFoodsPage() {
                 </CardContent>
               </Card>
             ) : (
-              <div className="space-y-3">
-                {foods.map((food) => (
+              <div ref={resultsContainerRef} className="space-y-3">
+                {visibleFoods.map((food) => (
                   <motion.div
                     key={food.id}
                     initial={{ opacity: 0, y: 10 }}
@@ -311,7 +384,7 @@ export default function NutritionistFoodsPage() {
                       <CardContent className="pt-6">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 min-w-0">
-                            <h3 className="font-semibold text-lg text-foreground mb-1">
+                            <h3 className="font-semibold text-lg text-foreground mb-1 break-words">
                               {food.name}
                             </h3>
                             {food.group && (
@@ -346,7 +419,7 @@ export default function NutritionistFoodsPage() {
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => handleEditFood(food)}
+                          aria-haspopup="dialog" onClick={(event) => handleEditFood(food, event.currentTarget)}
                             className="flex-shrink-0"
                           >
                             <Edit className="w-4 h-4 mr-2" />
@@ -358,23 +431,17 @@ export default function NutritionistFoodsPage() {
                   </motion.div>
                 ))}
 
+                {appendFailure && searchStatus}
+
                 {/* Infinite scroll trigger */}
-                {hasMore && (
+                {hasMore && !searchError && (
                   <div ref={observerTarget} className="py-4 text-center">
-                    {loadingMore ? (
-                      <div className="flex items-center justify-center gap-2 text-muted-foreground">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                        <span className="text-sm">Carregando mais...</span>
-                      </div>
-                    ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={loadMore}
-                      >
-                        Carregar mais
-                      </Button>
-                    )}
+                    <Button ref={loadMoreTriggerRef} variant="ghost" size="sm" onClick={loadMore}
+                      aria-disabled={loadingMore || undefined} aria-busy={loadingMore || undefined}
+                      className={loadingMore ? 'pointer-events-none opacity-60' : undefined}>
+                      {loadingMore && <Loader2 aria-hidden="true" className="mr-2 w-4 h-4 animate-spin" />}
+                      <span aria-live="polite">{loadingMore ? 'Carregando mais...' : 'Carregar mais'}</span>
+                    </Button>
                   </div>
                 )}
               </div>
@@ -397,7 +464,7 @@ export default function NutritionistFoodsPage() {
 
       {/* Create Food Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
+        <DialogContent onCloseAutoFocus={(event) => restoreDialogFocus(event, createTriggerRef.current)} className="max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
@@ -416,7 +483,7 @@ export default function NutritionistFoodsPage() {
 
       {/* Edit Food Dialog */}
       <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
-        <DialogContent className="max-w-3xl max-h-[90dvh] overflow-y-auto">
+        <DialogContent onCloseAutoFocus={(event) => restoreDialogFocus(event, editTriggerRef.current)} className="max-w-3xl max-h-[90dvh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit className="h-5 w-5" />

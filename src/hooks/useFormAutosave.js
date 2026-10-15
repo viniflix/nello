@@ -1,9 +1,10 @@
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
 import { readMemoryDraft, writeMemoryDraft, removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { useDraftGuard } from './useDraftGuard';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 /** Autosave for an existing draft record with a same-tab recovery copy. */
-export function useFormAutosave({ storageKey, enabled, serverValue, serverRevision, save, delay = 800 }) {
+export function useFormAutosave({ storageKey, enabled, serverValue, serverRevision, save, delay = 800, sessionIndependent = false }) {
   const [status, setStatus] = useState('idle');
   const [recovery, setRecovery] = useState(null);
   useDraftGuard(['local','saving','error','conflict'].includes(status));
@@ -15,6 +16,11 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
   const saveRef = useRef(save);
   const activeKeyRef = useRef(storageKey);
   const generationRef = useRef(0);
+  const session = useRef({key:storageKey,epoch:getPrivateSessionEpoch()});
+  if (session.current.key !== storageKey) session.current = {key:storageKey,epoch:getPrivateSessionEpoch()};
+  // Public capability keys remain server-authorized across private identity changes.
+  // Private editors retain the default identity epoch boundary.
+  const sessionEpoch = sessionIndependent ? null : session.current.epoch;
   saveRef.current = save;
   activeKeyRef.current = storageKey;
 
@@ -41,6 +47,7 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
   }, [storageKey, enabled]);
 
   const flush = useCallback(async () => {
+    if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch())) return false;
     if (!enabled || !storageKey || pendingRef.current === null) return true;
     if (inFlightRef.current) return inFlightRef.current;
     clearTimeout(timerRef.current);
@@ -54,10 +61,10 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
         setStatus('saving');
         try {
           const confirmed = await saveSnapshot(snapshot, revisionRef.current);
-          if (activeKeyRef.current !== targetKey || generationRef.current !== generation) return false;
+          if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch()) || activeKeyRef.current !== targetKey || generationRef.current !== generation) return false;
           revisionRef.current = confirmed?.updated_at ?? confirmed?.revision ?? revisionRef.current;
         } catch (error) {
-          if (activeKeyRef.current !== targetKey || generationRef.current !== generation) return false;
+          if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch()) || activeKeyRef.current !== targetKey || generationRef.current !== generation) return false;
           pendingRef.current = pendingRef.current ?? snapshot;
           setStatus(error?.code === 'PT409' ? 'conflict' : 'error');
           return false;
@@ -71,7 +78,7 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
     };
     const promise = run();
     promise.then((succeeded) => {
-      if (generationRef.current !== generation) return;
+      if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch()) || generationRef.current !== generation) return;
       inFlightRef.current = null;
       if (succeeded && pendingRef.current !== null && activeKeyRef.current === targetKey) {
         timerRef.current = setTimeout(() => { void flushRef.current?.(); }, delay);
@@ -79,10 +86,11 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
     });
     inFlightRef.current = promise;
     return promise;
-  }, [enabled, storageKey, delay]);
+  }, [enabled, storageKey, delay, sessionEpoch]);
   flushRef.current = flush;
 
   const queue = useCallback((value) => {
+    if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch())) return;
     if (!enabled || !storageKey) return;
     pendingRef.current = value;
     let stored = false;
@@ -90,28 +98,31 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
     setStatus(stored ? 'local' : 'error');
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => { void flush(); }, delay);
-  }, [enabled, storageKey, delay, flush]);
+  }, [enabled, storageKey, delay, flush, sessionEpoch]);
 
   const restore = useCallback(() => {
+    if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch())) return false;
     const value = recovery?.payload;
     if (value === undefined) return null;
     setRecovery(null);
     queue(value);
     return value;
-  }, [recovery, queue]);
+  }, [recovery, queue, sessionEpoch]);
 
   const discard = useCallback(() => {
+    if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch())) return false;
     clearTimeout(timerRef.current);
     pendingRef.current = null;
     try { if (storageKey) removeMemoryDraft(storageKey); } catch { /* Ignore storage errors. */ }
     setRecovery(null);
     setStatus('idle');
-  }, [storageKey]);
+  }, [storageKey, sessionEpoch]);
 
   const discardRecovery = useCallback(() => {
+    if ((sessionEpoch !== null && sessionEpoch !== getPrivateSessionEpoch())) return false;
     if (pendingRef.current !== null) setRecovery(null);
     else discard();
-  }, [discard]);
+  }, [discard, sessionEpoch]);
 
   return { status, recovery, queue, flush, restore, discard, discardRecovery, getRevision: () => revisionRef.current };
 }

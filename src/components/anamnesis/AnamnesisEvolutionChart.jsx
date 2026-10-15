@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {queryRead} from '@/lib/utils/readPolicy';
 import { VisibleChart } from '@/components/ui/visible-chart';
 import React, { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -21,17 +23,17 @@ import { ptBR } from 'date-fns/locale';
 export function AnamnesisEvolutionChart({ patientId }) {
     const { data: records = [], isLoading } = useQuery({
         queryKey: ['anamnesis_evolution', patientId],
-        queryFn: async () => {
+        queryFn: queryRead(async ({signal}) => {
             if (!patientId) return [];
-            const { data, error } = await supabase
+            const { data, error } = await readRequest(() => supabase
                 .from('anamnesis_records')
                 .select('id, date, content, template_snapshot, template:template_id(sections)')
                 .eq('patient_id', patientId)
                 .in('status', ['completed', 'validated'])
-                .order('date', { ascending: true });
+                .order('date', { ascending: true }), {signal:signal});
             if (error) throw error;
             return data || [];
-        },
+        }),
         enabled: !!patientId,
     });
 

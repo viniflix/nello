@@ -1,4 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useAdminManualResource } from '@/portals/admin/hooks/useAdminManualResource';
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
+import { ResourceStatus } from '@/components/ui/resource-status';
+import { useCallback, useState } from 'react';
 import { Loader2, RefreshCw, ShieldCheck } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -22,39 +25,32 @@ const RETENTION = [
 
 export default function AdminPrivacyRequestsPage() {
   const { toast } = useToast();
-  const generation = useRef(0);
-  const confirmedFilter = useRef(null);
-  const [loadError, setLoadError] = useState(false);
-  const [items, setItems] = useState([]);
   const [filter, setFilter] = useState('');
-  const [loading, setLoading] = useState(true);
   const [working, setWorking] = useState(null);
   const [transition, setTransition] = useState(null);
   const [reason, setReason] = useState('');
   const [retentionDecision, setRetentionDecision] = useState('');
   const [legalBasis, setLegalBasis] = useState('');
 
-  const load = useCallback(async () => {
-    const current = ++generation.current;
-    setLoading(true);
-    setLoadError(false);
-    const { data, error } = await listPrivacyRequestsForAdmin(filter || null);
-    if (current !== generation.current) return;
-    if (!error) { setItems(data || []); confirmedFilter.current = filter; }
-    else { setLoadError(true); if (confirmedFilter.current !== filter) setItems([]); }
-    setLoading(false);
-    if (error) toast({ title: 'FILA NÃO CARREGADA', description: 'Tente atualizar novamente.', variant: 'destructive' });
-  }, [filter, toast]);
-  useEffect(() => { void load(); return () => { generation.current += 1; }; }, [load]);
+  const access = useAdminAccess();
+  const loader = useCallback(options => listPrivacyRequestsForAdmin(filter || null, options), [filter]);
+  const resource = useAdminManualResource(['privacy', filter], loader, []);
+  const items = resource.data;
+  const loading = resource.initialLoading;
+  const loadError = resource.error;
+  const load = resource.load;
 
   const openTransition = (item, status) => {
     setTransition({ item, status });
     setReason(''); setRetentionDecision(item.retention_decision || ''); setLegalBasis(item.legal_basis || '');
   };
   const submitTransition = async () => {
-    if (!transition || transitionError) return;
+    if (!transition || transitionError || !resource.canAct || !access.canAct()) return;
+    const generation = access.getGeneration();
     setWorking(transition.item.id);
-    const { error } = await updatePrivacyRequest({ requestId: transition.item.id, revision: transition.item.revision, status: transition.status, reason: reason.trim(), retentionDecision: retentionDecision || null, legalBasis: legalBasis.trim() || null });
+    let error;
+    try { ({ error } = await updatePrivacyRequest({ requestId: transition.item.id, revision: transition.item.revision, status: transition.status, reason: reason.trim(), retentionDecision: retentionDecision || null, legalBasis: legalBasis.trim() || null })); } catch (failure) { error = failure; }
+    if (!access.canAct() || generation !== access.getGeneration()) return;
     setWorking(null);
     if (error) {
       toast({ title: 'ATUALIZAÇÃO NÃO APLICADA', description: 'Recarregue a fila e revise justificativa, transição e retenção.', variant: 'destructive' });
@@ -69,11 +65,11 @@ export default function AdminPrivacyRequestsPage() {
   const transitionError = transition ? privacyTransitionError({ requestType: transition.item.request_type, status: transition.status, reason, retentionDecision, legalBasis }) : null;
 
   return <div className="space-y-6 p-6">
-    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-2xl font-bold uppercase"><ShieldCheck className="h-6 w-6" />PRIVACIDADE E LGPD</h1><p className="text-muted-foreground">Fila minimizada, prazos, decisões de retenção e trilha administrativa.</p></div><Button variant="outline" onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />ATUALIZAR</Button></div>
+    <div className="flex flex-wrap items-center justify-between gap-3"><div><h1 className="flex items-center gap-2 text-2xl font-bold uppercase"><ShieldCheck className="h-6 w-6" />PRIVACIDADE E LGPD</h1><p className="text-muted-foreground">Fila minimizada, prazos, decisões de retenção e trilha administrativa.</p></div><Button variant="outline" disabled={resource.pending} onClick={() => void load()}><RefreshCw className="mr-2 h-4 w-4" />ATUALIZAR</Button></div>
     <p className="rounded-lg border bg-muted/40 p-4 text-sm">Arquivar ou responder uma solicitação não apaga suas cópias. Prontuários e documentos clínicos permanecem sob guarda legal. Exclusões de dados não clínicos exigem verificação separada no banco, arquivos, telemetria, e-mails e backups.</p>
     <div className="flex flex-wrap gap-2"><Button size="sm" variant={filter === '' ? 'default' : 'outline'} onClick={() => setFilter('')}>TODAS</Button>{STATUSES.map((status) => <Button key={status} size="sm" variant={filter === status ? 'default' : 'outline'} onClick={() => setFilter(status)}>{STATUS[status]}</Button>)}</div>
-    {loadError && <p role="alert" className="rounded-lg border p-4 text-sm">Não foi possível confirmar esta fila. Atualize para tentar novamente.</p>}
-    {loading ? <div className="flex justify-center p-12"><Loader2 className="h-7 w-7 animate-spin" /></div> : loadError && items.length === 0 ? null : items.length === 0 ? <Card><CardContent className="py-12 text-center text-muted-foreground">NENHUMA SOLICITAÇÃO NESTA FILA.</CardContent></Card> : <div className="grid gap-4">{items.map((item) => <Card key={item.id}><CardHeader><div className="flex flex-wrap justify-between gap-2"><CardTitle className="text-base uppercase">{item.subject_name} · {TYPES[item.request_type]}</CardTitle><Badge>{STATUS[item.status]}</Badge></div></CardHeader><CardContent className="space-y-3 text-sm"><p>{item.subject_email}</p>{item.subject_note ? <p className="rounded-md bg-muted p-3">{item.subject_note}</p> : null}<p className="text-muted-foreground">PRAZO: {new Date(item.due_at).toLocaleDateString('pt-BR')} · REVISÃO {item.revision}</p>{item.resolution_summary ? <p><strong>RESPOSTA:</strong> {item.resolution_summary}</p> : null}<div className="flex flex-wrap gap-2">{(NEXT[item.status] || []).map((status) => <Button key={status} size="sm" variant="outline" disabled={working === item.id} onClick={() => openTransition(item, status)}>{STATUS[status]}</Button>)}</div></CardContent></Card>)}</div>}
-    <Dialog open={Boolean(transition)} onOpenChange={(open) => !open && !working && setTransition(null)}><DialogContent><DialogHeader><DialogTitle>ATUALIZAR SOLICITAÇÃO</DialogTitle><DialogDescription>{TYPES[transition?.item.request_type]} · {STATUS[transition?.status]}</DialogDescription></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label htmlFor="privacy-reason">JUSTIFICATIVA/RESPOSTA AO TITULAR</Label><Textarea id="privacy-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} /><p className="text-xs text-muted-foreground">MÍNIMO DE 10 CARACTERES · {reason.length}/2000</p></div>{needsRetention && <div className="space-y-2"><Label>DECISÃO DE RETENÇÃO</Label><Select value={retentionDecision} onValueChange={setRetentionDecision}><SelectTrigger><SelectValue placeholder="SELECIONE" /></SelectTrigger><SelectContent>{RETENTION.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>}<div className="space-y-2"><Label htmlFor="legal-basis">BASE LEGAL/OBSERVAÇÃO {closing || (needsRetention && retentionDecision) ? '(OBRIGATÓRIA)' : '(OPCIONAL)'}</Label><Textarea id="legal-basis" value={legalBasis} onChange={(event) => setLegalBasis(event.target.value)} maxLength={1000} /></div>{transitionError && <p role="status" className="text-sm text-muted-foreground">{transitionError}</p>}</div><DialogFooter><Button variant="outline" disabled={Boolean(working)} onClick={() => setTransition(null)}>CANCELAR</Button><Button disabled={Boolean(working || transitionError)} onClick={() => void submitTransition()}>{working && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}REGISTRAR ETAPA</Button></DialogFooter></DialogContent></Dialog>
+    <ResourceStatus resource={resource} label="fila de privacidade" onRetry={load} />
+    {loading ? <div className="flex justify-center p-12"><Loader2 className="h-7 w-7 animate-spin" /></div> : loadError && items.length === 0 ? null : items.length === 0 ? <Card><CardContent className="py-12 text-center text-muted-foreground">NENHUMA SOLICITAÇÃO NESTA FILA.</CardContent></Card> : <div className="grid gap-4">{items.map((item) => <Card key={item.id}><CardHeader><div className="flex flex-wrap justify-between gap-2"><CardTitle className="text-base uppercase">{item.subject_name} · {TYPES[item.request_type]}</CardTitle><Badge>{STATUS[item.status]}</Badge></div></CardHeader><CardContent className="space-y-3 text-sm"><p>{item.subject_email}</p>{item.subject_note ? <p className="rounded-md bg-muted p-3">{item.subject_note}</p> : null}<p className="text-muted-foreground">PRAZO: {new Date(item.due_at).toLocaleDateString('pt-BR')} · REVISÃO {item.revision}</p>{item.resolution_summary ? <p><strong>RESPOSTA:</strong> {item.resolution_summary}</p> : null}<div className="flex flex-wrap gap-2">{(NEXT[item.status] || []).map((status) => <Button key={status} size="sm" variant="outline" disabled={working === item.id || !resource.canAct || !access.canAct()} onClick={() => openTransition(item, status)}>{STATUS[status]}</Button>)}</div></CardContent></Card>)}</div>}
+    <Dialog open={Boolean(transition) && resource.hasSnapshot && items.some(item => item.id === transition.item.id)} onOpenChange={(open) => !open && !working && setTransition(null)}><DialogContent><DialogHeader><DialogTitle>ATUALIZAR SOLICITAÇÃO</DialogTitle><DialogDescription>{TYPES[transition?.item.request_type]} · {STATUS[transition?.status]}</DialogDescription></DialogHeader><div className="space-y-4"><div className="space-y-2"><Label htmlFor="privacy-reason">JUSTIFICATIVA/RESPOSTA AO TITULAR</Label><Textarea id="privacy-reason" value={reason} onChange={(event) => setReason(event.target.value)} maxLength={2000} /><p className="text-xs text-muted-foreground">MÍNIMO DE 10 CARACTERES · {reason.length}/2000</p></div>{needsRetention && <div className="space-y-2"><Label>DECISÃO DE RETENÇÃO</Label><Select value={retentionDecision} onValueChange={setRetentionDecision}><SelectTrigger><SelectValue placeholder="SELECIONE" /></SelectTrigger><SelectContent>{RETENTION.map(([value, label]) => <SelectItem key={value} value={value}>{label}</SelectItem>)}</SelectContent></Select></div>}<div className="space-y-2"><Label htmlFor="legal-basis">BASE LEGAL/OBSERVAÇÃO {closing || (needsRetention && retentionDecision) ? '(OBRIGATÓRIA)' : '(OPCIONAL)'}</Label><Textarea id="legal-basis" value={legalBasis} onChange={(event) => setLegalBasis(event.target.value)} maxLength={1000} /></div>{transitionError && <p role="status" className="text-sm text-muted-foreground">{transitionError}</p>}</div><DialogFooter><Button variant="outline" disabled={Boolean(working)} onClick={() => setTransition(null)}>CANCELAR</Button><Button disabled={Boolean(working || transitionError || !resource.canAct || !access.canAct())} onClick={() => void submitTransition()}>{working && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}REGISTRAR ETAPA</Button></DialogFooter></DialogContent></Dialog>
   </div>;
 }

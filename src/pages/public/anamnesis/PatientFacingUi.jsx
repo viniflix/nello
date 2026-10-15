@@ -1,5 +1,5 @@
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { supabase } from '@/infrastructure/supabase/client';
 import {
@@ -59,20 +59,22 @@ const ERROR_SCREENS = {
 function ErrorScreen({ errorCode, customMessage }) {
     const screen = ERROR_SCREENS[errorCode] || ERROR_SCREENS.GENERIC;
     const Icon = screen.icon;
+    const titleRef = useRef(null);
+    useEffect(() => { titleRef.current?.focus(); }, [errorCode]);
     return (
-        <div className="min-h-dvh bg-slate-50 flex items-center justify-center p-4">
+        <main id="main-content" className="min-h-dvh bg-slate-50 flex items-center justify-center p-4">
             <Card className="max-w-md w-full shadow-xl">
-                <CardContent className="pt-8 pb-8 text-center space-y-4">
+                <CardContent role="alert" className="pt-8 pb-8 text-center space-y-4">
                     <div className={`w-16 h-16 ${screen.bgClass} rounded-full flex items-center justify-center mx-auto`}>
                         <Icon className={`w-8 h-8 ${screen.iconClass}`} />
                     </div>
-                    <h2 className="text-xl font-bold text-slate-800">{screen.title}</h2>
+                    <h1 ref={titleRef} tabIndex={-1} className="text-xl font-bold text-slate-800">{screen.title}</h1>
                     <p className="text-slate-500 text-sm leading-relaxed">
                         {customMessage || screen.message}
                     </p>
                 </CardContent>
             </Card>
-        </div>
+        </main>
     );
 }
 
@@ -89,7 +91,21 @@ export default function PatientFacingUi() {
     const [errorCode, setErrorCode] = useState(null);
     const [isCompleted, setIsCompleted] = useState(false);
     const [completionNonce] = useState(() => crypto.randomUUID());
+    const capabilityDeniedRef = useRef(false);
+    const closeDeniedCapability = (error) => {
+        const code = error?.message?.includes('TOKEN_EXPIRED') ? 'TOKEN_EXPIRED'
+            : error?.code === '42501' && error?.message?.includes('invalid_anamnesis_link') ? 'TOKEN_NOT_FOUND' : null;
+        if (!code) return false;
+        capabilityDeniedRef.current = true;
+        autosave.discard();
+        setRecord(null);
+        setContent({});
+        setLgpdConsented(false);
+        setErrorCode(code);
+        return true;
+    };
     const autosave = useFormAutosave({
+        sessionIndependent: true,
         storageKey: record?.id ? `nello_public_anamnesis:${record.id}:${token}` : null,
         enabled: Boolean(record?.id && !isCompleted),
         serverValue: { content: record?.content || {}, lgpdConsented: record?.lgpd_consented || false },
@@ -101,7 +117,7 @@ export default function PatientFacingUi() {
                 p_expected: expected,
                 p_lgpd_consented: snapshot.lgpdConsented,
             });
-            if (error) throw error;
+            if (error) { closeDeniedCapability(error); throw error; }
             setRecord(prev => ({ ...prev, content: snapshot.content, lgpd_consented: snapshot.lgpdConsented, updated_at: data.updated_at }));
             return data;
         }
@@ -215,6 +231,7 @@ export default function PatientFacingUi() {
         if (status === 'submitted' && !validateFields()) return;
         const flushed = await autosave.flush();
         if (!flushed) {
+            if (capabilityDeniedRef.current) return;
             toast({ title: 'Respostas não salvas', description: 'Tente novamente antes de enviar.', variant: 'destructive' });
             return;
         }
@@ -249,10 +266,7 @@ export default function PatientFacingUi() {
             }
         } catch (err) {
             if (!isAutoSave) {
-                // Detectar se o token expirou durante o preenchimento
-                if (err.message?.includes('TOKEN_EXPIRED')) {
-                    setErrorCode('TOKEN_EXPIRED');
-                } else {
+                if (!closeDeniedCapability(err)) {
                     toast({ title: 'Erro ao salvar', description: 'Tente novamente em alguns instantes.', variant: 'destructive' });
                 }
             }
@@ -268,7 +282,7 @@ export default function PatientFacingUi() {
 
         return (
             <div key={field.id} className="space-y-3 p-4 rounded-xl bg-white border border-slate-100 shadow-sm">
-                <Label className="text-[15px] font-semibold text-slate-800 leading-snug">
+                <Label id={`public-label-${field.id}`} htmlFor={`public-field-${field.id}`} className="text-[15px] font-semibold text-slate-800 leading-snug">
                     {field.label}{' '}
                     {field.required && <span className="text-red-500">*</span>}
                 </Label>
@@ -277,27 +291,27 @@ export default function PatientFacingUi() {
                 )}
 
                 {field.type === 'text' && (
-                    <Input className="h-12 bg-slate-50 text-[16px]" value={value}
+                    <Input id={`public-field-${field.id}`} className="h-12 bg-slate-50 text-[16px]" value={value}
                         onChange={(e) => handleChange(field.id, e.target.value)}
                         placeholder="Sua resposta..." />
                 )}
                 {field.type === 'textarea' && (
-                    <Textarea className="bg-slate-50 resize-none text-[16px]" value={value}
+                    <Textarea id={`public-field-${field.id}`} className="bg-slate-50 resize-none text-[16px]" value={value}
                         onChange={(e) => handleChange(field.id, e.target.value)}
                         rows={4} placeholder="Descreva aqui..." />
                 )}
                 {field.type === 'number' && (
-                    <Input className="h-12 bg-slate-50 text-[16px]" type="number"
+                    <Input id={`public-field-${field.id}`} className="h-12 bg-slate-50 text-[16px]" type="number"
                         value={value} onChange={(e) => handleChange(field.id, e.target.value)}
                         placeholder="0" />
                 )}
                 {field.type === 'date' && (
-                    <Input className="h-12 bg-slate-50" type="date"
+                    <Input id={`public-field-${field.id}`} className="h-12 bg-slate-50" type="date"
                         value={value} onChange={(e) => handleChange(field.id, e.target.value)} />
                 )}
                 {field.type === 'select' && (
                     <Select value={value} onValueChange={(v) => handleChange(field.id, v)}>
-                        <SelectTrigger className="h-12 bg-slate-50">
+                        <SelectTrigger id={`public-field-${field.id}`} className="h-12 bg-slate-50">
                             <SelectValue placeholder="Selecione..." />
                         </SelectTrigger>
                         <SelectContent>

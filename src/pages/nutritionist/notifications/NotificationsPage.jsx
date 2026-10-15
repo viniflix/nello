@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { useNotificationsData } from '@/hooks/useNotificationsData';
 import { markOwnNotificationsRead, markAllNotificationsRead } from '@/lib/supabase/notification-mutations';
 
@@ -137,7 +138,7 @@ const NotificationCard = ({ notification, onMarkAsRead, user }) => {
 const NotificationsPage = () => {
     const { user } = useAuth();
     const [mutationError, setMutationError] = useState(false);
-    const { notifications, loading, error: notificationsError } = useNotificationsData();
+    const { resource, countResource, refresh, notifications, loading, error: notificationsError } = useNotificationsData();
 
   const handleMarkAsRead = async (id) => {
         const { error } = await markOwnNotificationsRead(user?.id, [id]);
@@ -174,7 +175,9 @@ const NotificationsPage = () => {
                     </CardHeader>
                     <CardContent className="space-y-4">
                         {mutationError && <p role="alert" className="text-sm text-destructive">Não foi possível marcar a notificação como lida. Confira a conexão e tente novamente.</p>}
-                        {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
+                        <ResourceStatus resource={resource} label="notificações" onRetry={refresh} />
+<ResourceStatus resource={countResource} label="contagem de notificações" onRetry={refresh} />
+{notificationsError && !resource?.hasSnapshot ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loading ? (
                             <p>Carregando...</p>
                         ) : notifications.length > 0 ? (
                             notifications.map(n => (

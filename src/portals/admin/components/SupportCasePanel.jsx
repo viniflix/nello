@@ -1,3 +1,4 @@
+import { useAdminAccess } from '@/portals/admin/hooks/useAdminAccess';
 import React, { useRef, useState } from 'react';
 import { useAdminSource } from '@/portals/admin/hooks/useAdminSource';
 import { supportCase, supportCompose, supportUpdate, supportGateway } from '@/features/admin/services/supportService';
@@ -12,14 +13,16 @@ import { Badge } from '@/components/ui/badge';
 import { Dialog,DialogContent,DialogHeader,DialogTitle,DialogDescription,DialogFooter } from '@/components/ui/dialog';
 
 function CaseControls({item,canWrite,onRefresh}) {
+ const access=useAdminAccess();
  const [baseline,setBaseline]=useState(item);
  const [status,setStatus]=useState(item.status),[category,setCategory]=useState(item.category),[module,setModule]=useState(item.module),[issueId,setIssueId]=useState(item.issue_id||''),[reason,setReason]=useState(''),[body,setBody]=useState(''),[kind,setKind]=useState('note');
  const [review,setReview]=useState(false),[busy,setBusy]=useState(false),[error,setError]=useState(''),[feedback,setFeedback]=useState('');
  const intent=useRef(null);
  const nonceFor=payload=>{const fingerprint=JSON.stringify(payload);if(intent.current?.fingerprint!==fingerprint)intent.current={fingerprint,nonce:crypto.randomUUID()};return intent.current.nonce;};
  async function run(action,payload){
+  if(!access.canAct())return;const generation=access.getGeneration();
   setBusy(true);setError('');setFeedback('');
-  try {const result=await action({...payload,nonce:nonceFor(payload)});if(result.error)throw result.error;if(result.data?.success!==true)throw Error('unconfirmed_support_operation');intent.current=null;setBody('');setReason('');setReview(false);setFeedback('Alteração registrada.');const fresh=await onRefresh();if(fresh?.data?.item)setBaseline(fresh.data.item);}
+  try {const result=await action({...payload,nonce:nonceFor(payload)});if(!access.canAct()||generation!==access.getGeneration())return;if(result.error)throw result.error;if(result.data?.success!==true)throw Error('unconfirmed_support_operation');intent.current=null;setBody('');setReason('');setReview(false);setFeedback('Alteração registrada.');const fresh=await onRefresh();if(fresh?.data?.item)setBaseline(fresh.data.item);}
   catch(failure){setError(supportError(failure));}finally{setBusy(false);}
  }
  const choices=(id,label,value,setValue,options)=><div className="space-y-2"><Label htmlFor={id}>{label}</Label><select id={id} className="h-11 w-full rounded-md border bg-background px-3 text-sm" value={value} onChange={e=>setValue(e.target.value)} disabled={busy}>{Object.entries(options).map(([key,text])=><option key={key} value={key}>{text}</option>)}</select></div>;
@@ -32,24 +35,26 @@ function CaseControls({item,canWrite,onRefresh}) {
    <h3 className="font-semibold">Organização do caso</h3><div className="grid gap-3 sm:grid-cols-3">{choices('support-status','Situação',status,setStatus,CASE_STATES)}{choices('support-category','Categoria',category,setCategory,CASE_CATEGORIES)}{choices('support-module','Módulo',module,setModule,CASE_MODULES)}</div>
    <div className="space-y-2"><Label htmlFor="support-issue">ID de incidente Sentry (opcional)</Label><Input id="support-issue" value={issueId} onChange={e=>setIssueId(e.target.value)} pattern="[0-9]{1,30}" maxLength={30} disabled={busy}/></div>
    <div className="space-y-2"><Label htmlFor="support-reason">Motivo da alteração</Label><Textarea id="support-reason" value={reason} onChange={e=>setReason(e.target.value)} minLength={5} maxLength={500} required disabled={busy}/></div>
-   <p className="text-xs text-muted-foreground">Encerrar o atendimento não comprova que um defeito foi corrigido.</p><Button variant="outline" disabled={busy||changed||reason.trim().length<5}>Registrar triagem</Button>
+   <p className="text-xs text-muted-foreground">Encerrar o atendimento não comprova que um defeito foi corrigido.</p><Button variant="outline" disabled={busy||changed||!access.canAct()||reason.trim().length<5}>Registrar triagem</Button>
   </form>
   <form className="space-y-3 border-t pt-4" onSubmit={e=>{e.preventDefault();if(changed)return;if(kind==='outgoing')setReview(true);else void run(supportCompose,{id:baseline.id,revision:baseline.revision,body,kind});}}>
    <h3 className="font-semibold">Nota ou resposta</h3>{choices('support-kind','Destino do texto',kind,setKind,{note:'Nota interna · nunca enviada',outgoing:'Resposta por e-mail · revisar antes do envio'})}
    <div className="space-y-2"><Label htmlFor="support-body">{kind==='note'?'Nota interna':'Texto da resposta'}</Label><Textarea id="support-body" className="min-h-32" value={body} onChange={e=>setBody(e.target.value)} maxLength={20000} required disabled={busy}/></div>
-   <Button disabled={busy||changed||!body.trim()}>{kind==='note'?'Registrar nota':'Preparar resposta'}</Button>
+   <Button disabled={busy||changed||!access.canAct()||!body.trim()}>{kind==='note'?'Registrar nota':'Preparar resposta'}</Button>
   </form>
-  <Dialog open={review} onOpenChange={open=>{if(!busy)setReview(open);}}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Revisar resposta</DialogTitle><DialogDescription>Destino: {baseline.contact_email}. Esta etapa salva a intenção; o envio exige confirmação na mensagem preparada.</DialogDescription></DialogHeader><p className="whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-sm">{body}</p>{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}<DialogFooter><Button variant="outline" onClick={()=>setReview(false)} disabled={busy}>Voltar ao texto</Button><Button disabled={busy||changed} onClick={()=>void run(supportCompose,{id:baseline.id,revision:baseline.revision,body,kind:'outgoing'})}>Confirmar preparação</Button></DialogFooter></DialogContent></Dialog>
+  <Dialog open={review} onOpenChange={open=>{if(!busy)setReview(open);}}><DialogContent className="max-h-[90dvh] overflow-y-auto"><DialogHeader><DialogTitle>Revisar resposta</DialogTitle><DialogDescription>Destino: {baseline.contact_email}. Esta etapa salva a intenção; o envio exige confirmação na mensagem preparada.</DialogDescription></DialogHeader><p className="whitespace-pre-wrap break-words rounded-md bg-muted p-3 text-sm">{body}</p>{error&&<p role="alert" className="text-sm text-destructive">{error}</p>}<DialogFooter><Button variant="outline" onClick={()=>setReview(false)} disabled={busy}>Voltar ao texto</Button><Button disabled={busy||changed||!access.canAct()} onClick={()=>void run(supportCompose,{id:baseline.id,revision:baseline.revision,body,kind:'outgoing'})}>Confirmar preparação</Button></DialogFooter></DialogContent></Dialog>
  </div>;
 }
 
 export default function SupportCasePanel({id,onQueueRefresh,onClose,canWriteCeiling}) {
+ const access=useAdminAccess();
  const [page,setPage]=useState(1),[busy,setBusy]=useState(null),[error,setError]=useState(''),[feedback,setFeedback]=useState('');
- const query=useAdminSource(['support-case',id,page],()=>supportCase(id,page));const data=query.data,item=data?.item;
+ const query=useAdminSource(['support-case',id,page],options=>supportCase(id,page,options));const data=query.data,item=data?.item;
  const refresh=async()=>{const fresh=await query.refetch();await onQueueRefresh();return fresh;};
  async function deliver(messageId,action='send',attachmentId=null){
+  if(!access.canAct())return;const generation=access.getGeneration();
   setBusy(messageId);setError('');setFeedback('');
-  try {const result=await supportGateway(action,{message_id:messageId,...(attachmentId?{attachment_id:attachmentId}:{})});if(result.error)throw result.error;
+  try {const result=await supportGateway(action,{message_id:messageId,...(attachmentId?{attachment_id:attachmentId}:{})});if(!access.canAct()||generation!==access.getGeneration())return;if(result.error)throw result.error;
    if(action==='attachment') {const blob=new Blob([new Uint8Array(Array.from(atob(result.data.content),c=>c.charCodeAt(0)))],{type:result.data.content_type});const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download=result.data.filename;link.click();URL.revokeObjectURL(url);}
    else {setFeedback(result.data?.state==='sent'?'Resend aceitou a resposta. A entrega ainda precisa ser confirmada.':MESSAGE_STATES[result.data?.state]||'Consulte o estado atualizado da mensagem.');await refresh();}
   } catch(failure){setError(supportError(failure));await refresh();}finally{setBusy(null);}

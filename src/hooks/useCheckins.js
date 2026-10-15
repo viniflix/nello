@@ -1,3 +1,5 @@
+import {readRequest} from '@/lib/supabase/readRequest';
+import {queryRead} from '@/lib/utils/readPolicy';
 import { useCallback } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/infrastructure/supabase/client';
@@ -14,16 +16,16 @@ export function useCheckins() {
   // --- NUTRI: Listar Templates ---
   const useTemplates = () => useQuery({
     queryKey: ['checkinTemplates', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: queryRead(async ({signal}) => {
+      const { data, error } = await readRequest(() => supabase
         .from('checkin_templates')
         .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n          checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at)\n        ")
         .eq('nutritionist_id', user?.id)
-        .order('created_at', { ascending: false });
+        .order('created_at', { ascending: false }), {signal:signal});
       
       if (error) throw error;
       return data || [];
-    },
+    }),
     enabled: !!user?.id,
   });
 
@@ -89,16 +91,16 @@ export function useCheckins() {
   // --- NUTRI: Listar Schedules do Paciente ---
   const usePatientSchedules = (patientId) => useQuery({
     queryKey: ['checkinSchedules', patientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: queryRead(async ({signal}) => {
+      const { data, error } = await readRequest(() => supabase
         .from('checkin_schedules')
         .select("id,template_id,patient_id,nutritionist_id,is_active,next_send_at,last_sent_at,channel,created_at,care_episode_id,time_zone,\n          checkin_templates (name, frequency, send_time)\n        ")
         .eq('patient_id', patientId)
-        .eq('nutritionist_id', user?.id);
+        .eq('nutritionist_id', user?.id), {signal:signal});
       
       if (error) throw error;
       return data || [];
-    },
+    }),
     enabled: !!user?.id && !!patientId,
   });
 
@@ -141,18 +143,18 @@ export function useCheckins() {
   // --- PACIENTE: Buscar check-ins pendentes ---
   const usePendingCheckins = () => useQuery({
     queryKey: ['pendingCheckins', user?.id],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: queryRead(async ({signal}) => {
+      const { data, error } = await readRequest(() => supabase
         .from('checkin_sessions')
         .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n          checkin_templates (name, description, checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at))\n        ")
         .eq('patient_id', user?.id)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
-        .order('sent_at', { ascending: false });
+        .order('sent_at', { ascending: false }), {signal:signal});
         
       if (error) throw error;
       return data || [];
-    },
+    }),
     enabled: !!user?.id,
   });
 
@@ -180,8 +182,8 @@ export function useCheckins() {
   // --- Historico Check-in (Ambos) ---
   const useCheckinHistory = (patientId) => useQuery({
     queryKey: ['patientCheckinHistory', patientId],
-    queryFn: async () => {
-      const { data, error } = await supabase
+    queryFn: queryRead(async ({signal}) => {
+      const { data, error } = await readRequest(() => supabase
         .from('checkin_sessions')
         .select(`
           id, completed_at, score_total, score_max, adherence_percentage, sent_at,
@@ -189,11 +191,11 @@ export function useCheckins() {
         `)
         .eq('patient_id', patientId)
         .eq('status', 'completed')
-        .order('completed_at', { ascending: false });
+        .order('completed_at', { ascending: false }), {signal:signal});
         
       if (error) throw error;
       return data || [];
-    },
+    }),
     enabled: !!patientId,
   });
 

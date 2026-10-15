@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
@@ -19,16 +21,16 @@ const defaultRiskMeta = { risk_level: 'none', risk_reason: null, marker_key: nul
  * @param {number} limit - Número máximo de resultados (padrão: 50)
  * @returns {Promise<{data: Array, error: Object}>}
  */
-export async function getPatientLabResults(patientId, limit = 50) {
+export async function getPatientLabResults(patientId, limit = 50, readOptions = {}) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
             .order('test_date', { ascending: false })
-            .limit(limit);
+            .limit(limit), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         return { data, error };
     } catch (error) {
@@ -42,20 +44,20 @@ export async function getPatientLabResults(patientId, limit = 50) {
  * @param {string} patientId - ID do paciente
  * @returns {Promise<{data: Array, error: Object}>}
  */
-export async function getRecentLabResults(patientId) {
+export async function getRecentLabResults(patientId, readOptions = {}) {
     try {
         const thirtyDaysAgo = new Date();
         thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
         const dateString = formatDateToIsoDate(thirtyDaysAgo);
 
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
             .gte('test_date', dateString)
-            .order('test_date', { ascending: false });
+            .order('test_date', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         return { data, error };
     } catch (error) {
@@ -69,13 +71,13 @@ export async function getRecentLabResults(patientId) {
  * @param {number} labResultId - ID do exame
  * @returns {Promise<{data: Object, error: Object}>}
  */
-export async function getLabResultById(labResultId) {
+export async function getLabResultById(labResultId, readOptions = {}) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('id', labResultId)
-            .single();
+            .single(), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         return { data, error };
     } catch (error) {
@@ -200,16 +202,16 @@ export async function confirmLabResultInterpretation(labResultId, reason) {
  * @param {string} testName - Nome do exame
  * @returns {Promise<{data: Array, error: Object}>}
  */
-export async function getLabResultsByTestName(patientId, testName) {
+export async function getLabResultsByTestName(patientId, testName, readOptions = {}) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
             .ilike('test_name', `%${testName}%`)
-            .order('test_date', { ascending: false });
+            .order('test_date', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         return { data, error };
     } catch (error) {
@@ -223,16 +225,16 @@ export async function getLabResultsByTestName(patientId, testName) {
  * @param {string} patientId - ID do paciente
  * @returns {Promise<{data: Array, error: Object}>}
  */
-export async function getAbnormalLabResults(patientId) {
+export async function getAbnormalLabResults(patientId, readOptions = {}) {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
             .in('status', ['low', 'high'])
-            .order('test_date', { ascending: false });
+            .order('test_date', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         return { data, error };
     } catch (error) {

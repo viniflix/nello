@@ -1,3 +1,5 @@
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 
 
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
@@ -8,14 +10,14 @@ import { classifyLabResultsRiskBatch, getLabRiskRules } from '@/lib/supabase/lab
 
 
 
-export const getPatientsWithLowAdherence = async (nutritionistId) => {
+export const getPatientsWithLowAdherence = async (nutritionistId, readOptions = {}) => {
     try {
         // OTIMIZADO: Usa função SQL que faz tudo em 1 query ao invés de N+1
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .rpc('get_patients_low_adherence_optimized', {
                 p_nutritionist_id: nutritionistId,
                 p_days_threshold: 2 // 2 dias = 48 horas
-            });
+            }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
@@ -34,13 +36,13 @@ export const getPatientsWithLowAdherence = async (nutritionistId) => {
     }
 };
 
-export const getPatientsPendingData = async (nutritionistId) => {
+export const getPatientsPendingData = async (nutritionistId, readOptions = {}) => {
     try {
         // OTIMIZADO: Usa função SQL que faz 5 queries ao invés de 1+(4*N)
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .rpc('get_patients_pending_data_optimized', {
                 p_nutritionist_id: nutritionistId
-            });
+            }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
 
@@ -155,16 +157,16 @@ export const getPatientsHighRiskLabAlerts = async ({
     }
 };
 
-export const getFeedPriorityRules = async (nutritionistId) => {
+export const getFeedPriorityRules = async (nutritionistId, readOptions = {}) => {
     try {
-        const { data, error } = await supabase
+        const { data, error } = await readRequest(() => supabase
             .from('notification_rules')
             .select('id, scope, nutritionist_id, rule_key, weight, config, is_active, updated_at')
             .eq('scope', 'feed_priority')
             .eq('is_active', true)
             .or(`nutritionist_id.is.null,nutritionist_id.eq.${nutritionistId}`)
             .order('nutritionist_id', { ascending: true })
-            .order('weight', { ascending: false });
+            .order('weight', { ascending: false }), {signal:readOptions?.signal,policy:readPolicies.clinical});
 
         if (error) throw error;
         return { data: data || [], error: null };

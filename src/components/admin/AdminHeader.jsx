@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { PrivateImage } from '@/components/ui/private-image';
 import { markOwnNotificationsRead, deleteOwnNotifications } from '@/lib/supabase/notification-mutations';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
@@ -35,7 +36,7 @@ const NAV_ITEMS = [
 export default function AdminHeader() {
   const { user, signOut } = useAuth();
   const navigate = useNavigate();
-  const { notifications, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
+  const { resource, countResource, refresh, notifications, loading: loadingNotifications, unreadCount, error: notificationsError } = useNotificationsData();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const backPath = user?.profile?.user_type === 'nutritionist' ? '/nutritionist' : '/patient';
@@ -178,7 +179,9 @@ export default function AdminHeader() {
                 </div>
               </div>
               <div className="max-h-60 overflow-y-auto p-2">
-                {notificationsError ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
+                <ResourceStatus resource={resource} label="notificações" onRetry={refresh} />
+<ResourceStatus resource={countResource} label="contagem de notificações" onRetry={refresh} />
+{notificationsError && !resource?.hasSnapshot ? (<p role="alert" className="text-sm text-destructive">Falha ao atualizar. Tente novamente.</p>) : loadingNotifications ? (
                   <p className="text-center text-sm text-muted-foreground py-4">Carregando...</p>
                 ) : notifications.length === 0 ? (
                   <p className="text-center text-sm text-muted-foreground py-6">Nenhuma notificação.</p>

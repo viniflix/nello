@@ -15,7 +15,7 @@ describe('security evidence presentation', () => {
   it('distinguishes a failed request from an empty history', async () => {
     getAdminSecurityActivity.mockRejectedValue(new Error('unavailable'));
     render(<SecurityActivityCard />);
-    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível consultar');
+    expect(await screen.findByRole('alert')).toHaveTextContent('Não foi possível');
     expect(screen.queryByText(/Nenhum sinal registrado/)).not.toBeInTheDocument();
   });
   it('uses a server cursor and discards stale data on refresh', async () => {
@@ -23,8 +23,8 @@ describe('security evidence presentation', () => {
     getAdminSecurityActivity.mockResolvedValueOnce({ data: { ...payload, events } }).mockResolvedValue({ data: payload });
     const { rerender } = render(<SecurityActivityCard />);
     fireEvent.click(await screen.findByText('Alterações anteriores'));
-    await waitFor(() => expect(getAdminSecurityActivity).toHaveBeenCalledWith(6));
+    await waitFor(() => expect(getAdminSecurityActivity).toHaveBeenCalledWith(6, { signal: expect.any(AbortSignal) }));
     rerender(<SecurityActivityCard version={1} />);
-    await waitFor(() => expect(getAdminSecurityActivity).toHaveBeenLastCalledWith(null));
+    await waitFor(() => expect(getAdminSecurityActivity).toHaveBeenLastCalledWith(null, { signal: expect.any(AbortSignal) }));
   });
 });

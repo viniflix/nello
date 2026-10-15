@@ -4,7 +4,7 @@ import CustomMeasureFormDialog from '@/components/nutritionist/CustomMeasureForm
 import MeasureLoadError from './MeasureLoadError';
 import { useCreateCustomMeasure } from '@/hooks/useCustomMeasures';
 import { calculateNutrition, foodPer100Grams } from '@/lib/utils/nutrition-calculations';
-import { isGramUnit, portionGrams, changePortionMeasure } from '@/lib/utils/foodPortions';
+import { isGramUnit, portionGrams, portionMeasure, changePortionMeasure } from '@/lib/utils/foodPortions';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import {
@@ -40,14 +40,14 @@ export function PremiumPortionSelector({
   onNutritionChange = null,
   focusQuantityOnSelect = false,
 }) {
-  const { customMeasures = [], isLoading: loadingCustom, error: measuresError, refetch } = useAllMeasures();
+  const { customMeasures = [], isLoading: loadingCustom, error: measuresError, refetch, scope:customScope } = useAllMeasures();
   const [creatingMeasure, setCreatingMeasure] = useState(false);
   const [conversion, setConversion] = useState(null);
   const quantityRef = useRef(null);
   useEffect(() => { setConversion(null); }, [food?.id]);
   useEffect(() => { if (food?.id && focusQuantityOnSelect) quantityRef.current?.focus(); }, [food?.id, focusQuantityOnSelect]);
   const createMeasure = useCreateCustomMeasure();
-  const { data: foodMeasures = [], isLoading: loadingFood, error: foodMeasuresError, refetch: refetchFood } = useFoodMeasures(food?.id);
+  const { data: foodMeasures = [], isLoading: loadingFood, error: foodMeasuresError, refetch: refetchFood, scope:foodScope } = useFoodMeasures(food?.id);
   const isLoading = loadingCustom || loadingFood;
 
   // Determinar o code selecionado atualmente
@@ -59,7 +59,17 @@ export function PremiumPortionSelector({
 
   // Cálculo de gramas totais
   const measures = useMemo(() => [...customMeasures, ...foodMeasures.map(m => ({ ...m, name: m.label || m.measure_label, source: 'specific' }))], [customMeasures, foodMeasures]);
-  const totalGrams = useMemo(() => portionGrams(value.quantity, selectedCode, measures, value.measure), [selectedCode, value.quantity, value.measure, measures]);
+  // A refreshed catalogue updates available choices, not an already chosen portion.
+  // Selecting again uses the latest object; quantity edits retain the chosen conversion.
+  const chosen = useRef(null);
+  const chosenScope = JSON.stringify([customScope, foodScope]);
+  const chosenKey = JSON.stringify([food?.id, selectedCode, customScope, foodScope]);
+  if (chosen.current?.key !== chosenKey || chosen.current?.snapshot !== value.measure) {
+    const oldScope = chosen.current && chosen.current.scope !== chosenScope && chosen.current.snapshot === value.measure;
+    chosen.current = {key:chosenKey, scope:chosenScope, snapshot:value.measure, measure:oldScope ? null : value.measure || null};
+  }
+  if (!chosen.current.measure) chosen.current.measure = portionMeasure(selectedCode, measures);
+  const totalGrams = portionGrams(value.quantity, selectedCode, [], chosen.current.measure);
 
   // Cálculo Nutricional
   const nutrition = useMemo(() => {
@@ -114,10 +124,10 @@ export function PremiumPortionSelector({
     if (code === 'gram') return 'g (gramas)';
     if (String(code).startsWith('custom_')) {
       const m = customMeasures.find(c => c.code === code);
-      return m ? `${m.name} (Minha Medida)` : (value.measure?.name || 'Medida indisponível');
+      return m ? `${m.name} (Minha Medida)` : (chosen.current.measure?.name || 'Medida indisponível');
     }
     const m = foodMeasures.find(s => String(s.id) === code);
-    return m ? (m.label || m.measure_label) : (value.measure?.name || 'Medida indisponível');
+    return m ? (m.label || m.measure_label) : (chosen.current.measure?.name || 'Medida indisponível');
   };
 
   return (

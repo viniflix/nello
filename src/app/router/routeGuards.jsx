@@ -1,19 +1,13 @@
+import {SectionLoading} from '@/components/ui/section-loading';
 import { Navigate, useLocation } from 'react-router-dom';
-import { Loader2, WifiOff } from 'lucide-react';
+import { WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
 import { getHomePath, hasRequiredUserType, resolveAuthenticatedPath } from './homePath';
 import { hasDismissedPasswordReminder } from '@/features/auth/passwordReminder';
 
 // Fallback de carregamento para Suspense
-export const PageLoadingFallback = () => (
-    <div role="status" aria-label="Carregando página" className="flex items-center justify-center h-dvh bg-background">
-        <div className="flex flex-col items-center gap-3">
-            <Loader2 className="w-8 h-8 animate-spin text-primary" />
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-        </div>
-    </div>
-);
+export const PageLoadingFallback = () => <SectionLoading fullPage label="Carregando página…"/>;
 // Componente exibido quando o usuário está offline e não temos o perfil no cache (primeiro acesso)
 export const ConnectionRequired = () => (
     <div className="flex items-center justify-center h-dvh bg-background p-6">

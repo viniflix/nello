@@ -1,6 +1,10 @@
+import {failurePresentation} from '@/lib/utils/failure';
+import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
+import {useCoordinatedLoader} from '@/hooks/useCoordinatedLoader';
 import { civilDateToDate } from '@/lib/utils/date';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import {
@@ -55,22 +59,39 @@ import PatientPrivacyRequests from '@/features/privacy/components/PatientPrivacy
  * - Logout
  */
 export default function PatientProfilePage() {
+  const { user } = useAuth();
+  return <PatientProfilePageContent key={user?.id || 'signed-out'} />;
+}
+
+function PatientProfilePageContent() {
   const { user, signOut } = useAuth();
+  const userId = user?.id;
+  const reads = useRef(0);
+  const [dataRevision, setDataRevision] = useState(0);
+  useEffect(() => {
+    const refresh = () => setDataRevision(value => value + 1);
+    const off = [subscribeDomain(userId,'clinical',refresh),subscribeDomain(userId,'access',()=>{setCareRelationship(null);setCareError(null);refresh();})];
+    return () => off.forEach(unsubscribe => unsubscribe());
+  }, [userId]);
+  useEffect(() => () => { reads.current += 1; }, []);
   const navigate = useNavigate();
   const { toast } = useToast();
   const [achievements, setAchievements] = useState([]);
   const [loading, setLoading] = useState(true);
   const [careRelationship, setCareRelationship] = useState(null);
   const [endingCare, setEndingCare] = useState(false);
+  const [careError,setCareError]=useState(null),[carePending,setCarePending]=useState(false),[careRevision,setCareRevision]=useState(0);
 
-  const loadUserAchievements = useCallback(async () => {
-    if (!user) return;
+  const loadUserAchievements = useCoordinatedLoader(useCallback(async () => {
+    if (!userId) return;
+    const generation = ++reads.current;
     setLoading(true);
 
     const { data, error } = await supabase
       .from('user_achievements')
       .select("id,user_id,achievement_id,achieved_at, achievements(name, description, icon_name)")
-      .eq('user_id', user.id);
+      .eq('user_id', userId);
+    if (generation !== reads.current) return;
 
     if (error) {
       logDiagnostic('error', 'pages/patient/PatientProfilePage.jsx:74', 'Erro ao carregar conquistas:', error);
@@ -80,19 +101,30 @@ export default function PatientProfilePage() {
     }
 
     setLoading(false);
-  }, [user]);
+  }, [userId]), JSON.stringify([userId,'profile.achievements']), []);
 
   useEffect(() => {
     loadUserAchievements();
-  }, [loadUserAchievements]);
+    return () => { reads.current += 1; };
+  }, [loadUserAchievements, dataRevision]);
 
+  const readCare = useCoordinatedSources(JSON.stringify([userId,'profile.care']));
   useEffect(() => {
-    getMyCareRelationship().then(({ data }) => setCareRelationship(data));
-  }, []);
+    let cancelled = false; const controller=new AbortController();
+    if(userId){
+      setCarePending(true);
+      readCare('relationship', () => getMyCareRelationship({signal:controller.signal})).then(({data,error,cancelled:aborted})=>{
+        if(cancelled||aborted)return;
+        if(error){const failure=failurePresentation(error);setCareError(failure);if(['forbidden','unauthenticated'].includes(failure.kind))setCareRelationship(null);}
+        else {setCareError(null);setCareRelationship(data);}
+      }).catch(error=>{if(!cancelled)setCareError(failurePresentation(error));}).finally(()=>{if(!cancelled)setCarePending(false);});
+    }
+    return () => { cancelled = true; controller.abort(); };
+  }, [userId, dataRevision, careRevision, user?.profile?.nutritionist_id, user?.profile?.is_active, readCare]);
 
   const handleEndCare = async () => {
     setEndingCare(true);
-    const { success, error } = await endMyCareRelationship(user.id);
+    const { success, error } = await endMyCareRelationship(userId);
     setEndingCare(false);
     if (!success) {
       toast({
@@ -316,6 +348,7 @@ export default function PatientProfilePage() {
               <CardDescription>Recursos e acompanhamento</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+
               {/* Minhas Conquistas */}
               <Button
                 variant="ghost"
@@ -407,6 +440,8 @@ export default function PatientProfilePage() {
               <CardDescription>Gerencie seus dados pessoais</CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
+
+              {careError && <div role="alert"><p>{careError.message}</p><Button type="button" disabled={carePending} onClick={()=>setCareRevision(value=>value+1)}>Tentar novamente</Button></div>}
               {careRelationship?.status === 'active' && (
                 <>
                   <AlertDialog>
@@ -437,7 +472,7 @@ export default function PatientProfilePage() {
                       </AlertDialogHeader>
                       <AlertDialogFooter>
                         <AlertDialogCancel>Cancelar</AlertDialogCancel>
-                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleEndCare} disabled={endingCare}>
+                        <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleEndCare} disabled={endingCare || carePending || Boolean(careError)}>
                           {endingCare ? 'Encerrando...' : 'Confirmar encerramento'}
                         </AlertDialogAction>
                       </AlertDialogFooter>

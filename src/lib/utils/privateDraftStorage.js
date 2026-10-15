@@ -1,13 +1,15 @@
 import { clearMemoryDrafts } from './memoryDraftState';
+import { invalidatePrivateSession } from './privateSessionState';
 const PRIVATE_DRAFT_PREFIXES = ['nello_shadow:', 'nello_anamnesis:', 'nello_public_anamnesis:'];
 const PRIVATE_LOCAL_PREFIXES = ['anamnesis_step_'];
-const PRIVATE_LOCAL_KEYS = new Set(['nello_offline_queue']);
+const PRIVATE_LOCAL_KEYS = new Set(['nello_offline_queue', 'pending_invite_code']);
 
 /** Remove clinical working copies and pending account actions on identity loss. */
 export function clearPrivateDraftStorage(
   storage = typeof window === 'undefined' ? null : window.sessionStorage,
   persistentStorage = typeof window === 'undefined' ? null : window.localStorage
 ) {
+  invalidatePrivateSession();
   clearMemoryDrafts();
   if (storage) {
     for (let index = storage.length - 1; index >= 0; index -= 1) {

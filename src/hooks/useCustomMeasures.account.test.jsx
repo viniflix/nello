@@ -1,3 +1,4 @@
+import {queryClient} from '@/app/config/queryClient';
 import {beforeEach, it, expect, vi} from 'vitest';
 import {renderHook, act, waitFor} from '@testing-library/react';
 import {useCustomMeasures, useActiveCustomMeasures} from './useCustomMeasures';
@@ -8,7 +9,7 @@ const auth=vi.hoisted(()=>({user:{id:'account-a'}}));
 vi.mock('@/contexts/AuthContext',()=>({useAuth:()=>auth}));
 vi.mock('@/lib/supabase/custom-measures-queries',()=>({getAllCustomMeasures:vi.fn(),getCustomMeasures:vi.fn(),createCustomMeasure:vi.fn(),updateCustomMeasure:vi.fn(),deleteCustomMeasure:vi.fn()}));
 vi.mock('@/lib/supabase/food-measures-queries',()=>({getAllHouseholdMeasures:vi.fn()}));
-beforeEach(()=>{vi.resetAllMocks();auth.user={id:'account-a'};getAllHouseholdMeasures.mockResolvedValue({data:[{code:'g'}]});getCustomMeasures.mockResolvedValue({data:[]});getAllCustomMeasures.mockResolvedValue({data:[]});});
+beforeEach(()=>{queryClient.clear();vi.resetAllMocks();auth.user={id:'account-a'};getAllHouseholdMeasures.mockResolvedValue({data:[{code:'g'}]});getCustomMeasures.mockResolvedValue({data:[]});getAllCustomMeasures.mockResolvedValue({data:[]});});
 it('surfaces a private query failure without hiding public measures',async()=>{
  const failure={code:'42501'};getCustomMeasures.mockResolvedValue({data:[],error:failure});
  const {result}=renderHook(()=>useAllMeasures());await waitFor(()=>expect(result.current.isLoading).toBe(false));
@@ -20,14 +21,14 @@ it.each([[useCustomMeasures,getAllCustomMeasures],[useActiveCustomMeasures,getCu
  expect(result.current.data).toEqual([]);await waitFor(()=>expect(result.current.data).toEqual([{id:'b'}]));
  await act(async()=>finish({data:[{id:'a'}]}));expect(result.current.data).toEqual([{id:'b'}]);
  auth.user=null;rerender();expect(result.current.data).toEqual([]);expect(result.current.error).toBeNull();
- expect(query).toHaveBeenLastCalledWith('account-b');
+ expect(query).toHaveBeenLastCalledWith('account-b', {signal:expect.any(AbortSignal), cache:false});
 });
 it('ignores a superseded reload and clears private data on failure',async()=>{
  let finish;getCustomMeasures.mockImplementationOnce(()=>new Promise(resolve=>{finish=resolve})).mockResolvedValue({data:[{id:'fresh'}]});
  const {result}=renderHook(()=>useActiveCustomMeasures());await act(()=>result.current.refetch());
- await act(async()=>finish({data:[{id:'stale'}]}));expect(result.current.data).toEqual([{id:'fresh'}]);
+ await waitFor(()=>expect(result.current.data).toEqual([{id:'fresh'}]));await act(async()=>finish({data:[{id:'stale'}]}));expect(result.current.data).toEqual([{id:'fresh'}]);
  getCustomMeasures.mockResolvedValue({error:{status:401}});await act(()=>result.current.refetch());
- expect(result.current.data).toEqual([]);expect(result.current.error.status).toBe(401);
+ await waitFor(()=>expect(result.current.error?.status).toBe(401));expect(result.current.data).toEqual([]);
 });
 it('never relabels loaded private data as belonging to the next account while loading',async()=>{
  getCustomMeasures.mockResolvedValueOnce({data:[{id:'private-a'}]}).mockImplementationOnce(()=>new Promise(()=>{}));

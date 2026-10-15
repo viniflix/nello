@@ -1,3 +1,4 @@
+import {TemplateCatalogStatus} from '@/components/meal-plan/TemplateCatalogStatus';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Search, FileText, Tag, Loader2, Info, Utensils, Flame, Beef, Wheat, Droplets, Calendar, ChevronRight } from 'lucide-react';
@@ -61,9 +62,11 @@ export default function TemplateManagerDialog({
     onTemplateApplied
 }) {
     const { toast } = useToast();
-    const { templates, loading: loadingTemplates, fetchTemplates } = useTemplates('diet');
+
 
     const [searchTerm, setSearchTerm]       = useState('');
+    const catalog = useTemplates('diet', {enabled:open, search:searchTerm});
+    const {templates, loading:loadingTemplates, fetchTemplates}=catalog;
     const [selectedTemplate, setSelectedTemplate] = useState(null);
     const [templateDetail, setTemplateDetail] = useState(null);
     const [loadingDetail, setLoadingDetail] = useState(false);
@@ -190,6 +193,7 @@ export default function TemplateManagerDialog({
                             />
                         </div>
 
+                        <TemplateCatalogStatus catalog={catalog}/>
                         <ScrollArea className="flex-1">
                             {loadingTemplates ? (
                                 <div className="flex items-center justify-center py-12">

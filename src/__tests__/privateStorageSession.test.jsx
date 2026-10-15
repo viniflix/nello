@@ -28,7 +28,7 @@ describe('private images scoped to the current session', () => {
   it('downloads with the authenticated SDK and revokes on unmount', async () => {
     const { result, unmount } = renderHook(() => usePrivateStorageUrl('storage:avatars/id/a.png'));
     await waitFor(() => expect(result.current).toBe('blob:local-test'));
-    expect(api.download).toHaveBeenCalledWith('id/a.png');
+    expect(api.download).toHaveBeenCalledWith('id/a.png', {}, {signal:expect.any(AbortSignal)});
     unmount();
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:local-test');
     expect(api.unsubscribe).toHaveBeenCalledOnce();

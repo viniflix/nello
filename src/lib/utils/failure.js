@@ -1,13 +1,10 @@
 // Only reviewed technical categories cross the UI/telemetry boundary.
 export function classifyFailure(error, online = typeof navigator === 'undefined' ? undefined : navigator.onLine) {
   const code = String(error?.code || '');
-  const status = Number(error?.status || error?.statusCode || 0);
+  const status = Number(error?.status || error?.statusCode || error?.context?.status || 0);
   const message = String(error?.message || error || '');
   const cause = error?.cause && error.cause !== error ? error.cause : null;
   if (error?.name === 'AbortError' || code === 'ABORTED') return 'aborted';
-  if (error?.name === 'TimeoutError' || /timeout|timed out/i.test(message) || [408,504].includes(status)) return 'timeout';
-  if (code === 'OFFLINE' || (online === false && /fetch|network|load failed/i.test(message))) return 'offline';
-  if (code === 'NETWORK_FAILURE' || /failed to fetch|networkerror|network request failed|network error|load failed/i.test(message)) return 'network';
   if (status === 401 || /jwt expired|token has expired/i.test(message)) return 'unauthenticated';
   if (status === 403 || code === '42501') return 'forbidden';
   if ([409,412].includes(status) || ['40001','PT409','23505'].includes(code)) return 'conflict';
@@ -15,6 +12,9 @@ export function classifyFailure(error, online = typeof navigator === 'undefined'
   if (status === 429) return 'rate_limit';
   if (code === '23514' && message === 'responsible_document_identity_required') return 'validation';
   if (status === 400 || ['22P02','22023','23502'].includes(code)) return 'validation';
+  if (error?.name === 'TimeoutError' || /timeout|timed out/i.test(message) || [408,504].includes(status)) return 'timeout';
+  if (code === 'OFFLINE' || (online === false && /fetch|network|load failed/i.test(message))) return 'offline';
+  if (code === 'NETWORK_FAILURE' || /failed to fetch|networkerror|network request failed|network error|load failed/i.test(message)) return 'network';
   // Inspect the cause's category, never forward its arbitrary text or payload.
   if (cause) return classifyFailure({name:cause.name,code:cause.code,status:cause.status,message:cause.message},online);
   return 'unexpected';

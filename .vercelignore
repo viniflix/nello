@@ -1,0 +1,23 @@
+# Private workspace files and disposable evidence are never deployment inputs.
+/[Dd][Oo][Cc][Ss]/
+/AGENTS.md
+/.codex/
+/.codex-local/
+/.agent/
+/.agents/
+/.superpowers/
+/.backend-ci/
+/.qa-security/
+/test-results/
+/playwright-report/
+/coverage/
+/output/
+/scratch/
+/[Tt][Mm][Pp]/
+/[Tt][Ee][Mm][Pp]/
+/dist/
+.env*
+*.dump
+*.log
+
+# scripts/release/install.mjs and operations/availability/health.mjs are required.

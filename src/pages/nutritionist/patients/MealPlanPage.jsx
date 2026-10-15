@@ -1,3 +1,4 @@
+import { ResourceStatus } from '@/components/ui/resource-status';
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
@@ -88,12 +89,12 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
     const sessionScopeRef = useRef('');
     sessionScopeRef.current = `${nutritionistId}:${patientId}`;
     useEffect(() => () => { sessionScopeRef.current = ''; }, []);
-    const { plans, activePlan, pendingDrafts, loading, isFetching, error: plansError, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
+    const { resource: plansResource, plans, activePlan, pendingDrafts, loading, isFetching, error: plansError, loadPlans, invalidatePlans } = useMealPlan(patientId, nutritionistId);
 
     const {
         submitting, setSubmitting,
         patientName,
-        referenceValues,
+        referenceValues, contextResources,
         showForm, setShowForm,
         editingPlan, setEditingPlan,
         deleteDialogOpen, setDeleteDialogOpen,
@@ -310,7 +311,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
         );
     }
 
-    if (plansError && !isFetching) {
+    if (plansError && !plansResource.hasSnapshot) {
         return <div className="container mx-auto max-w-6xl px-4 py-8">
             <Alert variant="destructive"><AlertDescription className="flex flex-wrap items-center justify-between gap-3">
                 Não foi possível carregar o plano completo. Confira a conexão e tente novamente.
@@ -332,6 +333,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                 {sessionError && <p role="alert" className="mb-3 text-sm text-destructive">Não foi possível abrir a sessão. O rascunho foi preservado; tente novamente.</p>}
                 {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
+                <ResourceStatus resource={plansResource} label="plano alimentar" onRetry={loadPlans} />
+                <ResourceStatus resource={contextResources?.energy} label="meta energética" onRetry={retryContext} />
                 <MealPlanForm
                     patientName={patientName}
                     energyCalculation={energyCalculation}
@@ -394,8 +397,9 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
             {sessionError && <p role="alert" className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">A sessão salva foi preservada, mas não pôde ser aberta. Recarregue para tentar novamente.</p>}
             {session.recovery?.conflict && <ShadowRecovery recovery={session.recovery} onRestore={() => { void restoreSavedSession(session.recovery.payload).catch(() => setSessionError(true)); }} onDiscard={() => { void session.discardRecovery(); }} />}
 
+            <ResourceStatus resource={plansResource} label="plano alimentar" onRetry={loadPlans} />
             <MealPlanHeader patientId={patientId} patientSlugOrId={paramValue} patientName={patientName} hasPlan={Boolean(activePlan)} fetching={isFetching} onBrowse={() => setPlansModalOpen(true)} onNew={() => {setEditorIntent(null);setNewPlanChoiceOpen(true);}} onImport={() => setTemplateManagerOpen(true)} onExport={() => setExportDialogOpen(true)} onRefresh={loadPlans} />
-            <MealPlanOverview plan={activePlan} target={planEnergyTarget(energyCalculation)} formatDate={formatDate} energyLoading={energyLoading} energyError={energyError} />
+            <MealPlanOverview plan={activePlan} target={planEnergyTarget(energyCalculation)} formatDate={formatDate} energyLoading={energyLoading} energyError={energyError && !contextResources?.energy.hasSnapshot} />
             <div className="flex flex-col gap-5">
                 <WorkingDraftRecovery ownerId={nutritionistId} patientId={patientId} onResume={resumeWorkingDraft} maxDrafts={Math.max(0, 3 - (session.snapshots?.length || 0))} />
                 {/* Centro de Notificações Inteligentes */}
@@ -418,7 +422,8 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                     />
                 )}
 
-                {activePlan && (energyLoading ? <div role="status" className="rounded-2xl border bg-white p-5 text-sm text-muted-foreground">Carregando a meta energética…</div> : energyError ? <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Não foi possível carregar a meta energética. <Button variant="outline" size="sm" onClick={retryContext}>Tentar novamente</Button></div> : <PlanTargetMonitor targetCalories={planEnergyTarget(energyCalculation)} currentCalories={activePlan.daily_calories} patientId={patientId} patientSlugOrId={paramValue} energyCalculation={energyCalculation} />)}
+                <ResourceStatus resource={contextResources?.energy} label="meta energética" onRetry={retryContext} />
+                {activePlan && (energyLoading ? <div role="status" className="rounded-2xl border bg-white p-5 text-sm text-muted-foreground">Carregando a meta energética…</div> : energyError && !contextResources?.energy.hasSnapshot ? <div role="alert" className="rounded-2xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-950">Não foi possível carregar a meta energética. <Button variant="outline" size="sm" onClick={retryContext}>Tentar novamente</Button></div> : <PlanTargetMonitor targetCalories={planEnergyTarget(energyCalculation)} currentCalories={activePlan.daily_calories} patientId={patientId} patientSlugOrId={paramValue} energyCalculation={energyCalculation} />)}
                 <Tabs value={workspaceTab} onValueChange={setWorkspaceTab} className="min-w-0">
                     <TabsList className="mb-4 flex h-auto w-full flex-wrap items-stretch justify-start gap-1 rounded-xl bg-slate-100 p-1 sm:w-fit">
                         <TabsTrigger value="active" className="min-h-10 min-w-0 max-w-full flex-[1_1_5rem] sm:flex-auto whitespace-normal break-words rounded-lg px-3 data-[state=active]:bg-primary data-[state=active]:text-white">Plano ativo</TabsTrigger>
@@ -430,7 +435,7 @@ const MealPlanPageContent = ({ resolvedPatient }) => {
                         {!pendingDrafts.length && <p className="rounded-2xl border border-dashed bg-white p-8 text-center text-sm text-muted-foreground">Nenhum plano em rascunho.</p>}
                         {pendingDrafts.map(draft => <div key={draft.id} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-amber-200 bg-white p-4"><div className="min-w-0"><h3 className="break-words text-base font-semibold tracking-normal">{draft.name || 'Novo plano alimentar'}</h3><p className="mt-1 text-xs text-muted-foreground">{formatRelativeTime(draft.updated_at)} · Não aplicado</p></div><div className="flex gap-2"><Button size="sm" onClick={() => {setEditorIntent(null);void handleResumePendingDraft(draft);}}>Retomar edição</Button><Button size="sm" variant="outline" disabled={discardingDraft} onClick={() => setDraftToDelete(draft)}>Descartar</Button></div></div>)}
                     </TabsContent>
-                    <TabsContent value="history"><PlanVersionHistory versionsLoading={versionsLoading} versionsError={versionsError} retryContext={retryContext} mealPlanVersions={mealPlanVersions} versionsExpanded={versionsExpanded} setVersionsExpanded={setVersionsExpanded} selectedVersionId={selectedVersionId} setSelectedVersionId={setSelectedVersionId} restoringVersion={restoringVersion} handleRestoreVersion={handleRestoreVersion} currentMetrics={currentMetrics} baseMetrics={baseMetrics} buildDelta={buildDelta} /></TabsContent>
+                    <TabsContent value="history"><PlanVersionHistory resource={contextResources?.versions} versionsLoading={versionsLoading} versionsError={versionsError} retryContext={retryContext} mealPlanVersions={mealPlanVersions} versionsExpanded={versionsExpanded} setVersionsExpanded={setVersionsExpanded} selectedVersionId={selectedVersionId} setSelectedVersionId={setSelectedVersionId} restoringVersion={restoringVersion} handleRestoreVersion={handleRestoreVersion} currentMetrics={currentMetrics} baseMetrics={baseMetrics} buildDelta={buildDelta} /></TabsContent>
                     <TabsContent value="active" forceMount className="data-[state=inactive]:hidden">
                 {!activePlan && plans.length > 0 && <section aria-label="Sem plano ativo" className="rounded-2xl border border-dashed bg-white p-6 text-center sm:p-10">
                     <h2 className="font-sans text-lg font-semibold">Nenhum plano alimentar ativo</h2>

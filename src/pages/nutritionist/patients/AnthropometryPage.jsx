@@ -1,6 +1,7 @@
+import { ResourceStatus, ResourceSection } from '@/components/ui/resource-status';
 import { civilAge } from '@/lib/utils/date';
 import React, { useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { patientHubRoute } from '@/lib/utils/patientRoutes';
 import { ArrowLeft, RefreshCw, AlertCircle, BarChart3, TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -19,12 +20,17 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useAnthropometryController } from '@/hooks/useAnthropometryController';
 
 const AnthropometryPage = () => {
+    const { user } = useAuth();
+    const location = useLocation();
+    return <AnthropometryPageContent key={JSON.stringify([user?.id, location.pathname])} />;
+};
+const AnthropometryPageContent = () => {
     const { patientId, paramValue, loading: resolveLoading, error: resolveError } = useResolvedPatientId();
     const navigate = useNavigate();
     const { user } = useAuth();
 
     const {
-        loading,
+        resources, loading,
         submitting,
         error,
         records,
@@ -82,7 +88,7 @@ const AnthropometryPage = () => {
 
     if (resolveLoading || resolveError || !patientId) {
         if (resolveLoading) {
-            return (
+    return (
                 <div className="container mx-auto p-4 max-w-7xl">
                     <div className="animate-pulse space-y-4">
                         <div className="h-8 bg-muted rounded w-48" />
@@ -104,6 +110,8 @@ const AnthropometryPage = () => {
         );
     }
 
+    const denied = Object.values(resources).find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
+    if (denied) return <ResourceStatus resource={denied} label="avaliações" onRetry={loadData} />;
     return (
         <div className="container mx-auto p-4 sm:p-6 max-w-7xl space-y-6">
             {/* Header */}
@@ -140,7 +148,7 @@ const AnthropometryPage = () => {
                     <div className="mt-3 flex flex-wrap gap-2.5">
                         <div className="rounded-md border bg-muted/30 px-3 py-2 shadow-sm">
                             <p className="text-xs uppercase tracking-wide text-muted-foreground">Objetivo clínico</p>
-                            <p className="text-sm font-semibold text-foreground">{formatObjectiveLabel(patientObjective)}</p>
+                            <p className="text-sm font-semibold text-foreground">{resources.context.hasSnapshot ? formatObjectiveLabel(patientObjective) : resources.context.error ? 'Indisponível' : 'Aguardando confirmação'}</p>
                         </div>
                         {latestRecord && latestRecord.weight && (
                             <div className="rounded-md border bg-card px-3 py-2 shadow-sm">
@@ -227,6 +235,8 @@ const AnthropometryPage = () => {
             </div>
 
             {/* Erro geral */}
+            <ResourceStatus resource={resources.context} label="contexto clínico" onRetry={loadData} />
+            <ResourceStatus resource={resources.profile} label="perfil" onRetry={loadData} />
             {error && (
                 <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
@@ -284,13 +294,13 @@ const AnthropometryPage = () => {
 
                 {/* Gráficos tradicionais */}
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    <WeightChart data={chartData} />
-                    <IMCChart
+                    <ResourceSection resource={resources.charts} label="gráficos" onRetry={loadData}><WeightChart data={chartData} /></ResourceSection>
+                    <ResourceSection resource={resources.charts} label="gráficos" onRetry={loadData}><IMCChart
                         data={chartData}
                         patientAge={patientProfile?.birth_date ? civilAge(patientProfile.birth_date) : null}
                         patientSex={patientProfile?.gender}
                         patientEthnicity={patientProfile?.ethnicity}
-                    />
+                    /></ResourceSection>
                 </div>
             </div>
 
@@ -358,14 +368,14 @@ const AnthropometryPage = () => {
                         })}
                     </div>
                 </div>
-                <AnthropometryTable
+                <ResourceSection resource={resources.records} label="avaliações" onRetry={loadData}><AnthropometryTable
                     records={filteredRecords}
                     onEdit={handleEdit}
                     onView={handleViewRecord}
                     onDelete={handleDelete}
                     highlightSections={sectionHighlights}
                     loading={loading}
-                />
+                /></ResourceSection>
             </div>
 
             <Dialog open={recordDetailOpen} onOpenChange={setRecordDetailOpen}>

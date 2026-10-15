@@ -1,3 +1,6 @@
+import { readReference, invalidateReference, referenceScope } from '@/lib/utils/referenceCache';
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 /**
  * Queries do Supabase para o sistema de medidas caseiras
  *
@@ -14,13 +17,13 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
  * Busca todas as medidas genéricas ativas
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getAllHouseholdMeasures = async () => {
+const loadAllHouseholdMeasures = async (readOptions = {}) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('household_measures')
       .select("id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at")
       .eq('is_active', true)
-      .order('order_index', { ascending: true });
+      .order('order_index', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) throw error;
 
@@ -36,9 +39,9 @@ export const getAllHouseholdMeasures = async () => {
  * @param {number} foodId - ID do alimento
  * @returns {Promise<{data: Array, error: object}>}
  */
-export const getFoodMeasures = async (foodId) => {
+const loadLegacyFoodMeasures = async (foodId, readOptions = {}) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('food_household_measures')
       .select(`
         id,
@@ -58,7 +61,7 @@ export const getFoodMeasures = async (foodId) => {
         )
       `)
       .eq('food_id', foodId)
-      .order('measure(order_index)', { ascending: true });
+      .order('measure(order_index)', { ascending: true }), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) throw error;
 
@@ -74,13 +77,13 @@ export const getFoodMeasures = async (foodId) => {
  * @param {number} id - ID da food_household_measure
  * @returns {Promise<{data: object, error: object}>}
  */
-export const getFoodMeasureById = async (id) => {
+export const getFoodMeasureById = async (id, readOptions = {}) => {
   try {
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('food_household_measures')
       .select("id,measure_id,quantity,grams,food_id,\n        measure:household_measures(id,name,code,ml_equivalent,grams_equivalent,description,category,is_active,order_index,created_at,version,source_code,source_version,updated_at)\n      ")
       .eq('id', id)
-      .single();
+      .single(), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) throw error;
 
@@ -98,6 +101,7 @@ export const getFoodMeasureById = async (id) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const createFoodMeasure = async (payload) => {
+  const cacheScope = referenceScope();
   try {
     // Validações
     if (!payload.food_id) {
@@ -125,6 +129,7 @@ export const createFoodMeasure = async (payload) => {
 
     if (error) throw error;
 
+    void invalidateReference('food', null, {id:data?.food_id, source:'food_household_measures', scope:cacheScope});
     return { data, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_criar_medida_caseira", error);
@@ -140,6 +145,7 @@ export const createFoodMeasure = async (payload) => {
  * @returns {Promise<{data: object, error: object}>}
  */
 export const updateFoodMeasure = async (id, payload) => {
+  const cacheScope = referenceScope();
   try {
     if (payload.grams !== undefined && payload.grams <= 0) {
       throw new Error('grams deve ser maior que 0');
@@ -159,6 +165,7 @@ export const updateFoodMeasure = async (id, payload) => {
 
     if (error) throw error;
 
+    void invalidateReference('food', null, {id:data?.food_id, source:'food_household_measures', scope:cacheScope});
     return { data, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_atualizar_medida_caseira", error);
@@ -174,6 +181,7 @@ export const updateFoodMeasure = async (id, payload) => {
  * @returns {Promise<{data: boolean, error: object}>}
  */
 export const deleteFoodMeasure = async (id) => {
+  const cacheScope = referenceScope();
   try {
     const { error } = await supabase
       .from('food_household_measures')
@@ -182,6 +190,7 @@ export const deleteFoodMeasure = async (id) => {
 
     if (error) throw error;
 
+    void invalidateReference('food', null, {source:'food_household_measures', scope:cacheScope});
     return { data: true, error: null };
   } catch (error) {
     logSupabaseError("erro_ao_deletar_medida_caseira", error);
@@ -198,7 +207,7 @@ export const deleteFoodMeasure = async (id) => {
  * @param {Array} foodMeasures - Medidas cadastradas para o alimento (opcional, para evitar re-fetch)
  * @returns {Promise<{grams, calories, protein, carbs, fat, fiber, sodium}>}
  */
-export const calculateNutritionFromMeasure = async (food, quantity, measureId, foodMeasures = null) => {
+export const calculateNutritionFromMeasure = async (food, quantity, measureId, foodMeasures = null, readOptions = {}) => {
   try {
     let totalGrams = 0;
 
@@ -208,7 +217,7 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
     } else {
       // Buscar medidas do alimento se não foram fornecidas
       if (!foodMeasures) {
-        const { data } = await getFoodMeasures(food.id);
+        const { data } = await getFoodMeasures(food.id,{signal:readOptions?.signal});
         foodMeasures = data || [];
       }
 
@@ -220,11 +229,11 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
         totalGrams = foodMeasure.grams * (quantity / foodMeasure.quantity);
       } else {
         // Fallback: usar conversão padrão da medida genérica
-        const { data: measure } = await supabase
+        const { data: measure } = await readRequest(() => supabase
           .from('household_measures')
           .select('grams_equivalent')
           .eq('id', measureId)
-          .single();
+          .single(), {signal:readOptions?.signal,policy:readPolicies.reference});
 
         if (measure && measure.grams_equivalent) {
           totalGrams = measure.grams_equivalent * quantity;
@@ -249,7 +258,7 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
     }
 
     // Calcular todos os nutrientes (recalcula calorias baseado nos macros)
-    return calculateNutrition(foodPer100Grams(food), totalGrams);
+    return calculateNutrition(foodPer100Grams(food), totalGrams,undefined,{signal:readOptions?.signal});
   } catch (error) {
     logSupabaseError("erro_ao_calcular_nutricao", error);
     return {
@@ -269,12 +278,12 @@ export const calculateNutritionFromMeasure = async (food, quantity, measureId, f
  * @param {number} foodId - ID do alimento
  * @returns {Promise<boolean>}
  */
-export const foodHasMeasures = async (foodId) => {
+export const foodHasMeasures = async (foodId, readOptions = {}) => {
   try {
-    const { count, error } = await supabase
+    const { count, error } = await readRequest(() => supabase
       .from('food_household_measures')
       .select('id', { count: 'exact', head: true })
-      .eq('food_id', foodId);
+      .eq('food_id', foodId), {signal:readOptions?.signal,policy:readPolicies.reference});
 
     if (error) throw error;
 
@@ -284,3 +293,13 @@ export const foodHasMeasures = async (foodId) => {
     return false;
   }
 };
+
+export async function getAllHouseholdMeasures(options = {}) {
+  try { return {data:await readReference('household', null, null, signal => loadAllHouseholdMeasures({signal}), options), error:null}; }
+  catch(error) { return {data:null, error}; }
+}
+export async function getFoodMeasures(foodId, options = {}) {
+  const owner=options.owner || referenceScope().actor;
+  try { return {data:await readReference('foodLegacy', owner, foodId, signal => loadLegacyFoodMeasures(foodId,{signal}), options), error:null}; }
+  catch(error) { return {data:null, error}; }
+}

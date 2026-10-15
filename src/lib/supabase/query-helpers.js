@@ -1,9 +1,10 @@
+import { classifyFailure } from '@/lib/utils/failure';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { queryOperation } from '@/infrastructure/observability/queryOperations';
 import { captureOperationalError } from '@/infrastructure/observability/telemetry';
 
 export const isExpectedRequestCancellation = (error, signal) => {
-  if (signal?.aborted) return true;
+  if (signal?.aborted) return classifyFailure(signal.reason) !== 'timeout';
 
   const name = String(error?.name || '').toLowerCase();
   const message = String(error?.message || error || '').toLowerCase();

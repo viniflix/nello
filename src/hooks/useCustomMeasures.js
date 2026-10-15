@@ -4,7 +4,8 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
  * Padrão: useState + useEffect (sem React Query), consistente com o restante do codebase.
  */
 
-import { useState, useEffect, useCallback, useRef } from 'react';
+import { useState, useCallback } from 'react';
+import { useReferenceResource } from './useReferenceResource';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   getAllCustomMeasures,
@@ -16,7 +17,6 @@ import {
 import { useToast } from '@/hooks/use-toast';
 
 const MAX_CUSTOM_MEASURES = 20;
-const EMPTY_LIST = [];
 
 /**
  * Busca todas as medidas personalizadas do nutricionista (tela de gerenciamento).
@@ -25,33 +25,8 @@ const EMPTY_LIST = [];
 function useMeasureList(query) {
   const {user} = useAuth();
   const accountId = user?.id || null;
-  const owner = useRef(accountId), sequence = useRef(0);
-  owner.current = accountId;
-  const [state, setState] = useState({accountId: null, data: [], isLoading: false, error: null});
-  const load = useCallback(async () => {
-    if (!accountId) return;
-    const ticket = ++sequence.current;
-    const current = () => owner.current === accountId && sequence.current === ticket;
-    setState(previous => ({accountId, data: previous.accountId === accountId ? previous.data : [], isLoading: true, error: null}));
-    try {
-      const result = await query(accountId);
-      if (!current()) return;
-      if (result.error) throw result.error;
-      setState({accountId, data: result.data || [], isLoading: false, error: null});
-    } catch (err) {
-      if (!current()) return;
-      logDiagnostic('error', 'hooks/useCustomMeasures.js', 'Erro ao carregar medidas personalizadas:', err);
-      setState({accountId, data: [], isLoading: false, error: err});
-    }
-  }, [accountId, query]);
-
-  useEffect(() => {
-    load();
-    return () => { sequence.current += 1; };
-  }, [load]);
-  const visible = accountId && state.accountId === accountId
-    ? state : {data: EMPTY_LIST, isLoading: Boolean(accountId), error: null};
-  return {...visible, refetch: load};
+  const name = query === getAllCustomMeasures ? 'customAll' : 'customActive';
+  return useReferenceResource(name, accountId, null, signal => query(accountId, {signal, cache:false}), Boolean(accountId));
 }
 
 export const useCustomMeasures = () => {

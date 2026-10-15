@@ -1,3 +1,7 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { observeResources } from '@/lib/utils/resourceReads';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -44,10 +48,14 @@ import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { Events, track } from '@/infrastructure/analytics/posthog';
 import { readAgendaReturn } from '@/lib/agenda/navigation';
 import { getFinancialTransactionById } from '@/lib/supabase/financial-queries';
-import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution, formatFinancialDecimal } from '@/lib/utils/financial-math';
 
 export default function FinancialPage() {
+    const { user } = useAuth();
+    return <FinancialPageContent key={user?.id || 'signed-out'} />;
+}
+
+function FinancialPageContent() {
     const { user } = useAuth();
     const { toast } = useToast();
     const navigate = useNavigate();
@@ -59,21 +67,44 @@ export default function FinancialPage() {
 
     // State
     const [selectedMonth, setSelectedMonth] = useState(() => /^\d{4}-(0[1-9]|1[0-2])$/.test(returnView?.month || '') ? new Date(returnView.month + '-02T12:00:00') : new Date());
-    const [monthRows, setMonthRows] = useState([]);
-    const [patients, setPatients] = useState([]);
-    const [services, setServices] = useState([]);
-    const [projectedCashFlow, setProjectedCashFlow] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(false);
+    const monthKey = format(selectedMonth, 'yyyy-MM');
+    const monthResource = useResourceSnapshot(JSON.stringify([user?.id, monthKey]), []);
+    const { begin: beginMonth, succeed: confirmMonth, fail: failMonth } = monthResource;
+    const monthRows = monthResource.data;
+    const loading = monthResource.initialLoading;
+    const loadError = Boolean(monthResource.error);
+    const unavailable = loadError && !monthResource.hasSnapshot;
+    const goalResource = useResourceSnapshot(JSON.stringify([user?.id, 'goal']), null);
+    const { begin: beginGoal, succeed: confirmGoal, fail: failGoal } = goalResource;
+    const monthlyGoal = goalResource.data;
+    const goalState = goalResource.hasSnapshot ? 'ready' : goalResource.error ? 'error' : 'loading';
+    const patientsResource = useResourceSnapshot(JSON.stringify([user?.id, 'patients']), []);
+    const patients = patientsResource.data;
+    const { begin: beginPatients, succeed: confirmPatients, fail: failPatients } = patientsResource;
+    const servicesResource = useResourceSnapshot(JSON.stringify([user?.id, 'services']), []);
+    const services = servicesResource.data;
+    const { begin: beginServices, succeed: confirmServices, fail: failServices } = servicesResource;
+    const projectionResource = useResourceSnapshot(JSON.stringify([user?.id, 'projection']), []);
+    const projectedCashFlow = projectionResource.data;
+    const { begin: beginProjection, succeed: confirmProjection, fail: failProjection } = projectionResource;
     const [rankingRevision, setRankingRevision] = useState(0);
-    const [pendingPayments, setPendingPayments] = useState([]);
+    const pendingResource = useResourceSnapshot(JSON.stringify([user?.id, 'pending']), []);
+    const pendingPayments = pendingResource.data;
+    const { begin: beginPending, succeed: confirmPending, fail: failPending } = pendingResource;
     const transactionSaveLock = useRef(false);
     const mutationLock = useRef(false);
     const [mutationBusy, setMutationBusy] = useState(false);
     const [mutationError, setMutationError] = useState(false);
     const loadRequest = useRef(0);
     const auxiliaryRequest = useRef(0);
-    const [auxiliaryState, setAuxiliaryState] = useState({ projection: 'loading', patients: 'loading', services: 'loading', pending: 'loading' });
+    const auxiliaryState = Object.fromEntries(Object.entries({ projection: projectionResource, patients: patientsResource, services: servicesResource, pending: pendingResource })
+        .map(([key, resource]) => [key, resource.hasSnapshot ? 'ready' : resource.error ? 'error' : 'loading']));
+    const auxiliaryReads = useMemo(() => ({
+        projection: { begin: beginProjection, succeed: confirmProjection, fail: failProjection },
+        patients: { begin: beginPatients, succeed: confirmPatients, fail: failPatients },
+        services: { begin: beginServices, succeed: confirmServices, fail: failServices },
+        pending: { begin: beginPending, succeed: confirmPending, fail: failPending }
+    }), [beginProjection, confirmProjection, failProjection, beginPatients, confirmPatients, failPatients, beginServices, confirmServices, failServices, beginPending, confirmPending, failPending]);
     const [isDialogOpen, setIsDialogOpen] = useState(false);
     const [isServicesManagerOpen, setIsServicesManagerOpen] = useState(false);
     const [editingTransaction, setEditingTransaction] = useState(null);
@@ -93,10 +124,10 @@ export default function FinancialPage() {
         getFinancialTransactionById(user.id, agendaTransactionId)
             .then(row => { if (active) { setInspectedTransaction(row); setAgendaLinkState('ready'); } })
             .catch(() => { if (active) setAgendaLinkState('error'); });
-        return () => { active = false; };
+        const denied = [monthResource, goalResource, projectionResource, pendingResource, patientsResource, servicesResource].find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
+    if (denied) return <ResourceStatus resource={denied} label="financeiro" onRetry={loadData} />;
+    return () => { active = false; };
     }, [user?.id, agendaTransactionId]);
-    const [monthlyGoal, setMonthlyGoal] = useState(null);
-    const [goalState, setGoalState] = useState('loading');
     const [goalRevision, setGoalRevision] = useState(0);
     const openFinancialSettings = () => navigate('/nutritionist/profile?tab=financial', { state: { financialReturn: { userId: user?.id, month: format(selectedMonth, 'yyyy-MM'), filters, view: workspaceView } } });
     const monthStartKey = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
@@ -112,75 +143,52 @@ export default function FinancialPage() {
         (!filters.search || String(row.description || '').toLocaleLowerCase('pt-BR').includes(filters.search.toLocaleLowerCase('pt-BR')))
     ).sort((a, b) => String(b.transaction_date).localeCompare(String(a.transaction_date)) || b.id - a.id), [monthRows, filters]);
 
-    // Load monthly goal from clinic settings
-    useEffect(() => {
-        let cancelled = false;
-        setGoalState('loading');
-        setMonthlyGoal(null);
-        if (user?.id) {
-            getClinicSettings(user.id).then(settings => {
-                if (cancelled) return;
-                const raw = settings.monthlyFinancialGoal;
-                const value = raw == null || raw === '' ? null : Number(raw);
-                if (value !== null && (!Number.isFinite(value) || value < 0)) throw new Error('Invalid financial goal');
-                setMonthlyGoal(value);
-                setGoalState('ready');
-            }).catch(error => {
-                if (cancelled) return;
-                setGoalState('error');
-                logDiagnostic('error', 'financial.load_clinic_settings', error);
-            });
-        }
-        return () => { cancelled = true; };
-    }, [user?.id, goalRevision]);
+    const loadGoal = useCoordinatedLoader(useCallback(async () => {
+        if (!user?.id) return;
+        const ticket = beginGoal();
+        try {
+            const settings = await getClinicSettings(user.id), raw = settings.monthlyFinancialGoal;
+            const value = raw == null || raw === '' ? null : Number(raw);
+            if (value !== null && (!Number.isFinite(value) || value < 0)) throw new Error('Invalid financial goal');
+            confirmGoal(ticket, value);
+        } catch (error) { failGoal(ticket, error); }
+    }, [user?.id, beginGoal, confirmGoal, failGoal]), goalResource.scopeKey, ['profile','clinical']);
+    useEffect(() => { void loadGoal(); }, [loadGoal, goalRevision]);
 
     // Only transactions depend on the selected month.
-    const loadData = useCallback(async () => {
+    const loadData = useCoordinatedLoader(useCallback(async () => {
         if (!user?.id) return;
         const request = ++loadRequest.current;
         const started = performance.now();
-        setLoading(true);
-        setLoadError(false);
-        setMonthRows([]);
+        const ticket = beginMonth();
         try {
-            const rows = await getFinancialMonthRows(user.id, selectedMonth);
+            const rows = await getFinancialMonthRows(user.id, new Date(monthKey + '-02T12:00:00'));
             if (request !== loadRequest.current) return;
-            setMonthRows(rows);
+            confirmMonth(ticket, rows);
             track(Events.DATA_LOAD_TIMING, { operation: 'financial_month', duration_ms: Math.round(performance.now() - started), result_count: rows.length });
         } catch (error) {
             if (request !== loadRequest.current) return;
             logDiagnostic('error', 'pages/nutritionist/tools/FinancialPage.jsx:112', 'Falha ao carregar lançamentos financeiros', { code: error?.code || 'unknown' });
-            setLoadError(true);
+            failMonth(ticket, error);
             toast({ title: 'Erro', description: 'Não foi possível carregar os dados financeiros.', variant: 'destructive' });
-        } finally {
-            if (request === loadRequest.current) setLoading(false);
         }
-    }, [user?.id, selectedMonth, toast]);
+    }, [user?.id, monthKey, toast, beginMonth, confirmMonth, failMonth]), monthResource.scopeKey, ['clinical']);
 
-    const loadAuxiliaryData = useCallback(async () => {
+    const loadAuxiliaryData = useCoordinatedLoader(useCallback(async () => {
         if (!user?.id) return;
         const request = ++auxiliaryRequest.current;
-        setAuxiliaryState({ projection: 'loading', patients: 'loading', services: 'loading', pending: 'loading' });
-        setPendingPayments([]);
-        const [projection, patientsResult, servicesResult, pendingResult] = await Promise.allSettled([
-            getProjectedCashFlow(user.id, new Date()),
-            getPatientsForAutocomplete(user.id),
-            getServices(user.id),
-            getPendingPayments(user.id),
-        ]);
-        if (request !== auxiliaryRequest.current) return;
-        setAuxiliaryState({ projection: projection.status === 'fulfilled' ? 'ready' : 'error', patients: patientsResult.status === 'fulfilled' ? 'ready' : 'error', services: servicesResult.status === 'fulfilled' ? 'ready' : 'error', pending: pendingResult.status === 'fulfilled' ? 'ready' : 'error' });
-        setPendingPayments(pendingResult.status === 'fulfilled' ? pendingResult.value : []);
-        if (projection.status === 'rejected') setProjectedCashFlow([]);
-        if (patientsResult.status === 'rejected') setPatients([]);
-        if (servicesResult.status === 'rejected') setServices([]);
-        if (projection.status === 'fulfilled') setProjectedCashFlow(projection.value);
-        if (patientsResult.status === 'fulfilled') setPatients(patientsResult.value);
-        if (servicesResult.status === 'fulfilled') setServices(servicesResult.value);
-        if ([projection, patientsResult, servicesResult, pendingResult].some(result => result.status === 'rejected')) {
-            toast({ title: 'Dados complementares indisponíveis', description: 'Tente atualizar para recuperar cobranças, projeção, pacientes ou serviços.', variant: 'destructive' });
-        }
-    }, [user?.id, toast]);
+        const tickets = Object.fromEntries(Object.entries(auxiliaryReads).map(([key, resource]) => [key, resource.begin()]));
+        await observeResources({
+            projection: () => getProjectedCashFlow(user.id, new Date()),
+            patients: () => getPatientsForAutocomplete(user.id),
+            services: () => getServices(user.id),
+            pending: () => getPendingPayments(user.id),
+        }, (key, response) => {
+            if (request !== auxiliaryRequest.current) return;
+            if (response.error) auxiliaryReads[key].fail(tickets[key], response.error);
+            else auxiliaryReads[key].succeed(tickets[key], response.data);
+        });
+    }, [user?.id, auxiliaryReads]), patientsResource.scopeKey, ['clinical']);
 
     useEffect(() => {
         loadData();
@@ -188,11 +196,6 @@ export default function FinancialPage() {
     }, [loadData]);
 
     useEffect(() => { loadAuxiliaryData(); return () => { auxiliaryRequest.current += 1; }; }, [loadAuxiliaryData]);
-    useEffect(() => subscribeDomain(user?.id, 'clinical', () => {
-        void loadData();
-        void loadAuxiliaryData();
-        setRankingRevision(value => value + 1);
-    }), [user?.id, loadData, loadAuxiliaryData]);
 
     const refreshAfterMutation = async () => {
         await Promise.all([loadData(), loadAuxiliaryData()]);
@@ -211,6 +214,8 @@ export default function FinancialPage() {
     };
 
     const handleSaveTransaction = async (data) => {
+        if (!monthResource.canAct) { toast({ title: 'Atualize os lançamentos antes de salvar', variant: 'destructive' }); return false; }
+        if ((data.patient_id && !patientsResource.canAct) || (data.service_id && !servicesResource.canAct)) return false;
         if (transactionSaveLock.current) return false;
         transactionSaveLock.current = true;
         try {
@@ -258,6 +263,7 @@ export default function FinancialPage() {
     };
 
     const runTransactionAction = async (operation, close, title) => {
+        if (!monthResource.canAct) { setMutationError(true); return; }
         if (mutationLock.current) return;
         mutationLock.current = true; setMutationBusy(true); setMutationError(false);
         try {
@@ -276,6 +282,7 @@ export default function FinancialPage() {
     const handleRefund = id => runTransactionAction(() => refundTransaction(id), setRefundConfirm, 'Estorno registrado');
 
     const handleExportCSV = () => {
+        if (!monthResource.canAct) return;
         const csvData = monthRows.map(t => ({
             Competência: format(new Date(t.transaction_date + 'T00:00:00'), 'dd/MM/yyyy'),
             Tipo: t.type === 'income' ? 'Receita' : 'Despesa',
@@ -307,6 +314,7 @@ export default function FinancialPage() {
     };
 
     const handleExportReport = () => {
+        if (!monthResource.canAct) return;
         try {
             exportFinancialReport(monthRows, 'csv');
             toast({
@@ -324,6 +332,7 @@ export default function FinancialPage() {
     };
 
     const handleGenerateReceipt = async (transaction) => {
+        if (!monthResource.canAct) return;
         if (!user?.id) return;
 
         try {
@@ -371,6 +380,7 @@ export default function FinancialPage() {
     };
 
     const handleExportPDF = async () => {
+        if (!monthResource.canAct) return;
         try {
             const { exportFinancialsToPdf } = await import('@/lib/pdfUtils');
             await exportFinancialsToPdf(monthRows, summary, format(selectedMonth, 'MMMM yyyy'));
@@ -396,21 +406,28 @@ export default function FinancialPage() {
                 {agendaLinkState === 'error' && <p role="alert" className="mt-2 text-sm text-destructive">O lançamento não está disponível nesta conta ou foi alterado. Volte à agenda para conferir o estado atual.</p>}
             </div>}
             <section aria-label="Gestão financeira" className="mx-auto w-full max-w-7xl min-w-0 space-y-5 px-4 py-5 md:px-8 md:py-7">
-                <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={loading || loadError} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
+                <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={!monthResource.canAct} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
                 <Tabs value={workspaceView} onValueChange={setWorkspaceView} className="space-y-5">
                     <TabsList className="financial-view-tabs grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="history">Movimentações</TabsTrigger><TabsTrigger value="analysis">Análises</TabsTrigger></TabsList>
-                    {loadError && <div role="alert" className="rounded-xl border border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">Não foi possível carregar os lançamentos deste mês. <Button variant="outline" size="sm" className="ml-2" onClick={loadData}>Tentar novamente</Button></div>}
-                    {!loadError && <FinancialKPIs summary={summary} loading={loading} onInspect={(kind, target) => { metricTrigger.current = target; setMetricView(kind); }} />}
+                    <div className="grid gap-x-4 sm:grid-cols-3">
+                    <ResourceStatus resource={monthResource} label="lançamentos" onRetry={loadData} />
+                    <ResourceStatus resource={projectionResource} label="projeção" onRetry={loadAuxiliaryData} />
+                    <ResourceStatus resource={pendingResource} label="cobranças" onRetry={loadAuxiliaryData} />
+                    <ResourceStatus resource={patientsResource} label="pacientes" onRetry={loadAuxiliaryData} />
+                    <ResourceStatus resource={servicesResource} label="serviços" onRetry={loadAuxiliaryData} />
+                    <ResourceStatus resource={goalResource} label="meta" onRetry={() => setGoalRevision(value => value + 1)} />
+                    </div>
+                    {!unavailable && <FinancialKPIs summary={summary} loading={loading} onInspect={(kind, target) => { metricTrigger.current = target; setMetricView(kind); }} />}
                     <TabsContent value="overview" className="space-y-5">
-                        <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>
-                        <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={loadError} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
+                        <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} readOnly={!pendingResource.canAct} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>
+                        <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={unavailable} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
                         <div className="financial-history-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Últimas movimentações</h2><Button variant="ghost" aria-label="Abrir histórico completo" onClick={() => setWorkspaceView('history')}><span className="financial-desktop-label">Abrir histórico completo</span><span className="financial-mobile-label" aria-hidden="true">Ver histórico</span></Button></div>
-                        <TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
+                        <TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={unavailable} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
                     </TabsContent>
-                    <TabsContent value="history" className="space-y-5"><TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={loadError} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} /></TabsContent>
+                    <TabsContent value="history" className="space-y-5"><TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={unavailable} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} /></TabsContent>
                     <TabsContent value="analysis">
                         <Tabs defaultValue="cash" className="space-y-4"><TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto"><TabsTrigger value="cash">Caixa e projeção</TabsTrigger><TabsTrigger value="patients">Por paciente</TabsTrigger><TabsTrigger value="services">Serviços</TabsTrigger></TabsList>
-                            <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={loadError} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></TabsContent>
+                            <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></TabsContent>
                             <TabsContent value="patients"><TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} /></TabsContent>
                             <TabsContent value="services"><section aria-label="Catálogo de serviços" className="rounded-2xl bg-card p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold">Serviços do consultório</h2><p className="mt-1 text-sm text-muted-foreground">Preços cadastrados. Alterar um serviço não recalcula lançamentos anteriores.</p></div><Button variant="outline" onClick={() => setIsServicesManagerOpen(true)}>Gerenciar Serviços</Button></div>{auxiliaryState.services === 'error' ? <div role="alert" className="mt-4 text-sm">Catálogo indisponível. <Button variant="outline" onClick={loadAuxiliaryData}>Tentar carregar serviços</Button></div> : auxiliaryState.services === 'loading' ? <p role="status" className="mt-4 text-sm">Carregando serviços…</p> : !services.length ? <p className="mt-4 text-sm text-muted-foreground">Nenhum serviço cadastrado.</p> : <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{services.map(service => <li key={service.id} className="rounded-xl bg-muted/50 p-4"><p className="break-words text-sm font-medium">{service.name}</p><p className="mt-2 text-xl font-semibold tabular-nums">{formatCurrency(service.price)}</p>{service.description && <p className="mt-2 break-words text-sm text-muted-foreground">{service.description}</p>}</li>)}</ul>}</section></TabsContent>
                         </Tabs>

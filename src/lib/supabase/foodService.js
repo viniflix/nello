@@ -1,3 +1,6 @@
+import { readReference, referenceScope } from '@/lib/utils/referenceCache';
+import {readRequest} from './readRequest';
+import {readPolicies} from '@/lib/utils/readPolicy';
 import { nutritionClient as supabase } from '@/infrastructure/supabase/domainClients';
 import { logSupabaseError, isExpectedRequestCancellation } from '@/lib/supabase/query-helpers';
 import { Events, track } from '@/infrastructure/analytics/posthog';
@@ -17,13 +20,13 @@ const optionalNutrient = value => value == null || value === '' ? null : Number(
  * @param {string} foodId - ID do alimento (uuid, da view foods)
  * @returns {Promise<Array>} Lista de medidas {label, weight_in_grams, id}
  */
-export async function getFoodMeasures(foodId) {
+async function loadFoodMeasures(foodId, {signal} = {}) {
   if (!foodId) return [];
   try {
-    const { data, error } = await supabase
+    const { data, error } = await readRequest(() => supabase
       .from('food_measures')
       .select('id, label, weight_in_grams, reference_food_id, nutritionist_food_id')
-      .or(`reference_food_id.eq.${foodId},nutritionist_food_id.eq.${foodId}`);
+      .or(`reference_food_id.eq.${foodId},nutritionist_food_id.eq.${foodId}`), {signal,policy:readPolicies.reference});
     if (error) throw error;
     return (data || []).map((m) => ({
       id: m.id,
@@ -62,7 +65,7 @@ export async function searchFoodsPaginated(searchTerm, page = 0, source = null, 
     let query = supabase.rpc('search_foods_ranked', { p_query: searchTerm.trim().slice(0,120), p_source: source, p_limit: limit+1, p_offset: offset });
 
     if (signal) query = query.abortSignal(signal);
-    const { data, error } = await query;
+    const { data, error } = await readRequest(() => query, {signal,policy:readPolicies.search,rpcRead:true});
 
     if (error) {
       throw error;
@@ -157,4 +160,10 @@ export async function createFood(foodData) {
     logSupabaseError('Error creating food', error);
     return { data: null, error };
   }
+}
+
+export function getFoodMeasures(foodId, options = {}) {
+  if (!foodId) return Promise.resolve([]);
+  const owner = options.owner || referenceScope().actor;
+  return readReference('food', owner, foodId, signal => loadFoodMeasures(foodId, {signal}), options);
 }

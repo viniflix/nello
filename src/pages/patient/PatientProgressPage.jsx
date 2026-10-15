@@ -1,3 +1,4 @@
+import { ResourceStatus, ResourceSection } from '@/components/ui/resource-status';
 import {usePatientProgressPageController} from './usePatientProgressPageController';
 import {MIME_BY_EXT,formatCivilDate,formatWeightTooltip,CLINICAL_TYPE_LABELS,HISTORY_PAGE_SIZE,GROWTH_COLUMNS,SELF_MEASUREMENT_COLUMNS,GLYCEMIA_COLUMNS,mergeUnique} from './PatientProgressPage.model';
 import { VisibleChart } from '@/components/ui/visible-chart';
@@ -84,7 +85,13 @@ import {
  * - Dialog para adicionar novos registros
  */
 export default function PatientProgressPage() {
-const {activeDetail,setActiveDetail,setDialogOpen,activeTab,loading,loadError,loadProgressData,sortedWeightData,openDetail,weightOnlyData,indicatorCards,clinicalLoadError,timeline,user,setActiveTab,isDiabetic,weightChartData,goalWeight,glycemiaChartData,sortedGlycemiaData,measurementsData,sortedMeasurementsData,photosData,setLightboxPhoto,setDeletePhotoTarget,hasMoreHistory,loadingMoreHistory,loadMoreHistory,dialogOpen,handleAddWeightRecord,recordDate,setRecordDate,newWeight,setNewWeight,handleAddGlycemiaRecord,newGlycemiaCondition,setNewGlycemiaCondition,newGlycemia,setNewGlycemia,handleAddMeasurementRecord,newHeight,setNewHeight,newHeadCircumference,setNewHeadCircumference,selectedPhotoFile,handleAddPhotoRecord,photoNotes,setSelectedPhotoFile,setPhotoNotes,lightboxPhoto,deletePhotoTarget,handleDeletePhoto}=usePatientProgressPageController();
+  const { user } = useAuth();
+  return <PatientProgressPageContent key={user?.id || 'signed-out'} />;
+}
+function PatientProgressPageContent() {
+const {resources,activeDetail,setActiveDetail,setDialogOpen,activeTab,loading,loadError,loadProgressData,sortedWeightData,openDetail,weightOnlyData,indicatorCards,clinicalLoadError,timeline,user,setActiveTab,isDiabetic,weightChartData,goalWeight,glycemiaChartData,sortedGlycemiaData,measurementsData,sortedMeasurementsData,photosData,setLightboxPhoto,setDeletePhotoTarget,hasMoreHistory,loadingMoreHistory,loadMoreHistory,dialogOpen,handleAddWeightRecord,recordDate,setRecordDate,newWeight,setNewWeight,handleAddGlycemiaRecord,newGlycemiaCondition,setNewGlycemiaCondition,newGlycemia,setNewGlycemia,handleAddMeasurementRecord,newHeight,setNewHeight,newHeadCircumference,setNewHeadCircumference,selectedPhotoFile,handleAddPhotoRecord,photoNotes,setSelectedPhotoFile,setPhotoNotes,lightboxPhoto,deletePhotoTarget,handleDeletePhoto}=usePatientProgressPageController();
+const denied = Object.values(resources).find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
+if (denied) return <ResourceStatus resource={denied} label="progresso" onRetry={loadProgressData} />;
 return (
     <div className="flex flex-col min-h-dvh bg-background [&_h1]:uppercase [&_h2]:uppercase [&_h3]:uppercase [&_h4]:uppercase">
       <div className="patient-page-content">
@@ -111,6 +118,7 @@ return (
           </div>
         </header>
 
+        <ResourceStatus resource={resources.clinical} label="registros compartilhados" onRetry={loadProgressData} />
         {!loading && loadError && (
           <Card className="mb-6 border-destructive/30">
             <CardContent className="flex flex-col items-center gap-3 py-8 text-center">
@@ -221,7 +229,7 @@ return (
               )}
               <Card>
                 <CardContent className="p-4 sm:p-6">
-                  {timeline.length === 0 ? (
+                  {timeline.length === 0 && Object.values(resources).some(resource=>!resource.hasSnapshot) ? <p>Histórico ainda não confirmado por todas as fontes.</p> : timeline.length === 0 ? (
                     <div className="py-10 text-center">
                       <p className="font-semibold text-foreground">SUA LINHA DO TEMPO COMEÇA AQUI</p>
                       <p className="mt-1 text-sm text-muted-foreground">Abra um indicador para adicionar o primeiro registro.</p>
@@ -299,7 +307,7 @@ return (
           </TabsList>
 
           {/* Aba: Peso */}
-          <TabsContent value="peso" className="space-y-4">
+          <TabsContent value="peso" className="space-y-4"><ResourceSection resource={resources.peso} label="peso" onRetry={loadProgressData}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -359,11 +367,11 @@ return (
                 </Card>
               )}
             </motion.div>
-          </TabsContent>
+          </ResourceSection></TabsContent>
 
           {/* Aba: Glicemia */}
           {isDiabetic && (
-            <TabsContent value="glicemia" className="space-y-4">
+            <TabsContent value="glicemia" className="space-y-4"><ResourceSection resource={resources.glicemia} label="glicemia" onRetry={loadProgressData}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -449,11 +457,11 @@ return (
                 </CardContent>
               </Card>
             </motion.div>
-          </TabsContent>
+          </ResourceSection></TabsContent>
           )}
 
           {/* Aba: Medidas */}
-          <TabsContent value="medidas" className="space-y-4">
+          <TabsContent value="medidas" className="space-y-4"><ResourceSection resource={resources.medidas} label="medidas" onRetry={loadProgressData}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -556,10 +564,10 @@ return (
                 </CardContent>
               </Card>
             </motion.div>
-          </TabsContent>
+          </ResourceSection></TabsContent>
 
           {/* Aba: Fotos */}
-          <TabsContent value="fotos" className="space-y-4">
+          <TabsContent value="fotos" className="space-y-4"><ResourceSection resource={resources.fotos} label="fotos" onRetry={loadProgressData}>
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -663,7 +671,7 @@ return (
                 </CardContent>
               </Card>
             </motion.div>
-          </TabsContent>
+          </ResourceSection></TabsContent>
         </Tabs>
         )}
         {hasMoreHistory && !loadError && (

@@ -1,5 +1,7 @@
+import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { useState, useEffect, useRef, useMemo } from 'react';
+import { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useResolvedPatientId } from '@/hooks/useResolvedPatientId';
 import { TrendingUp, TrendingDown, Minus } from 'lucide-react';
@@ -28,12 +30,14 @@ export function useLabResultsPageController() {
     const { toast } = useToast();
     const { user } = useAuth();
 
-    const [loading, setLoading] = useState(true);
+    const resource = useResourceSnapshot(JSON.stringify([user?.id, patientId]), { data: [], summary: { total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' } });
+    const { begin, succeed, fail, current } = resource;
+    const loading = resource.initialLoading;
     const [saving, setSaving] = useState(false);
     const [patientName, setPatientName] = useState('');
-    const [labResults, setLabResults] = useState([]);
+    const labResults = resource.data.data;
     const [filteredResults, setFilteredResults] = useState([]);
-    const [riskSummary, setRiskSummary] = useState({ total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' });
+    const riskSummary = resource.data.summary;
     const [selectedMarkerKey, setSelectedMarkerKey] = useState('');
 
     // Modal states
@@ -67,12 +71,6 @@ export function useLabResultsPageController() {
     const [statusFilter, setStatusFilter] = useState('all');
 
     useEffect(() => {
-        if (!patientId) return;
-        loadPatientData();
-        loadLabResults();
-    }, [patientId, user?.id]);
-
-    useEffect(() => {
         applyFilters();
     }, [labResults, searchTerm, statusFilter]);
 
@@ -92,28 +90,29 @@ export function useLabResultsPageController() {
         }
     };
 
-    const loadLabResults = async () => {
-        setLoading(true);
+    const loadLabResults = useCoordinatedLoader(useCallback(async () => {
+        if (!patientId) return;
+        const ticket = begin();
         try {
             const { data, error } = await getPatientLabResults(patientId);
-            const { data: riskRules } = await getLabRiskRules(user?.id || null);
-
+            if (!current(ticket)) return;
             if (error) throw error;
-
-            const classified = classifyLabResultsRiskBatch(data || [], riskRules || []);
-            setLabResults(classified.data || []);
-            setRiskSummary(classified.summary || { total: 0, high: 0, medium: 0, low: 0, highest_risk: 'none' });
+            const rules = await getLabRiskRules(user?.id || null);
+            if (!current(ticket)) return;
+            if (rules.error) throw rules.error;
+            const classified = classifyLabResultsRiskBatch(data || [], rules.data || []);
+            succeed(ticket, classified);
         } catch (error) {
-            logDiagnostic('error', 'pages/nutritionist/patients/LabResultsPage.jsx:117', 'Erro ao carregar exames:', error);
-            toast({
-                title: 'Erro',
-                description: toPortugueseError(error, 'Não foi possível carregar os exames.'),
-                variant: 'destructive'
-            });
-        } finally {
-            setLoading(false);
+            fail(ticket, error);
         }
-    };
+    }, [patientId, user?.id, begin, succeed, fail, current]), resource.scopeKey, ['clinical']);
+    useEffect(() => {
+        if (!patientId) return;
+        loadPatientData();
+        void loadLabResults();
+    // Profile name is auxiliary; its callback does not own clinical classification.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [patientId, user?.id, loadLabResults]);
 
     const applyFilters = () => {
         let filtered = [...labResults];
@@ -429,5 +428,5 @@ export function useLabResultsPageController() {
     };
 
     
-return {resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl};
+return {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl};
 }
