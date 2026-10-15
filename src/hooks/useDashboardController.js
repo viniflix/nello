@@ -99,7 +99,6 @@ export function useDashboardController({ user }) {
   const fetchStats = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.stats;
     const current=()=>owner.current===account&&requests.current.stats===ticket;
-    clearFailure('stats');
     if (!user?.id) return;
     controllers.current.stats?.abort();const controller=new AbortController();controllers.current.stats=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
@@ -197,6 +196,7 @@ export function useDashboardController({ user }) {
       setAdherence24hSeries(adherenceSeries);
       setPatients(patientData);
       confirmStats(readTicket,true);
+      clearFailure('stats');
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_stats', duration_ms: Math.round(performance.now() - started), result_count: patientData.length });
 
     } catch(error){
@@ -211,7 +211,6 @@ export function useDashboardController({ user }) {
   const fetchAppointments = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.appointments;
     const current=()=>owner.current===account&&requests.current.appointments===ticket;
-    clearFailure('appointments');
     if (!user?.id) return;
     controllers.current.appointments?.abort();const controller=new AbortController();controllers.current.appointments=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
@@ -233,6 +232,7 @@ export function useDashboardController({ user }) {
       if(!current())return;
       setAppointments(data || []);
       confirmAppointments(readTicket,true);
+      clearFailure('appointments');
 
       const localDayStart = new Date();
       localDayStart.setHours(0, 0, 0, 0);
@@ -271,7 +271,6 @@ export function useDashboardController({ user }) {
   const fetchNoShowStats = useCoordinatedLoader(useCallback(async () => {
     const account=user?.id,ticket=++requests.current.noShow;
     const current=()=>owner.current===account&&requests.current.noShow===ticket;
-    clearFailure('noShow');
     if (!user?.id) return;
     controllers.current.noShow?.abort();const controller=new AbortController();controllers.current.noShow=controller;
     const timeout=setTimeout(()=>controller.abort(new DOMException('request_timeout','TimeoutError')),15000);
@@ -315,6 +314,7 @@ export function useDashboardController({ user }) {
         noShowRate
       });
       confirmNoShow(readTicket,true);
+      clearFailure('noShow');
       track(Events.DATA_LOAD_TIMING, { operation: 'dashboard_no_show', duration_ms: Math.round(performance.now() - started), result_count: noShowCount + completedCount + (typeof canceledCount==='number'?canceledCount:0) });
     } catch(error){
       if(!current())return;

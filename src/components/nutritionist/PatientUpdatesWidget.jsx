@@ -1,4 +1,6 @@
 import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
+import { ResourceStatus } from '@/components/ui/resource-status';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -23,14 +25,13 @@ import { subscribeDomain } from '@/infrastructure/realtime/events';
  * Widget que mostra TODOS os registros DOS PACIENTES com filtros e pesquisa
  */
 const PatientUpdatesWidget = () => {
-    const [allUpdates, setAllUpdates] = useState([]);
-    const [loading, setLoading] = useState(true);
-    const [loadError, setLoadError] = useState(false);
     const [retryKey, setRetryKey] = useState(0);
     const [searchTerm, setSearchTerm] = useState('');
     const [activeFilter, setActiveFilter] = useState('all'); // 'all', 'meal', 'weight', 'edit'
     const { user } = useAuth();
     const navigate = useNavigate();
+    const resource = useResourceSnapshot(JSON.stringify([user?.id, 'nutritionist.updates']), []);
+    const { data: allUpdates, initialLoading: loading, error: loadError, begin, succeed, fail } = resource;
 
     const formatCalories = (value) => {
         const parsed = Number.parseFloat(value);
@@ -44,8 +45,7 @@ const PatientUpdatesWidget = () => {
         const fetchUpdates = async () => {
             if (!user?.id) return;
 
-            setLoading(true);
-            setLoadError(false);
+            const ticket = begin();
 
             try {
                 // Buscar pacientes do nutricionista (com slug para URLs legíveis)
@@ -55,8 +55,7 @@ const PatientUpdatesWidget = () => {
                 if (controller.signal.aborted) return;
 
                 if (!patientsData || patientsData.length === 0) {
-                    setAllUpdates([]);
-                    setLoading(false);
+                    succeed(ticket, []);
                     return;
                 }
 
@@ -147,20 +146,19 @@ const PatientUpdatesWidget = () => {
 
                 // Ordenar por timestamp
                 activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-                if (!controller.signal.aborted) setAllUpdates(activities);
+                if (!controller.signal.aborted) succeed(ticket, activities);
 
             } catch (error) {
                 if (controller.signal.aborted) return;
                 logDiagnostic('error', 'components/nutritionist/PatientUpdatesWidget.jsx:147', 'Erro ao buscar atualizações:', error?.code || 'unknown');
-                setLoadError(true);
+                fail(ticket, error);
             }
 
-            if (!controller.signal.aborted) setLoading(false);
         };
 
         fetchUpdates();
         return () => controller.abort();
-    }, [user?.id, retryKey, readSource]);
+    }, [user?.id, retryKey, readSource, begin, succeed, fail]);
 
     useEffect(() => {
         if (!user?.id) return;
@@ -218,12 +216,13 @@ const PatientUpdatesWidget = () => {
         );
     }
 
-    if (loadError) {
+    if (loadError && !resource.hasSnapshot) {
         return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Registros Recentes</CardTitle></CardHeader><CardContent className="space-y-3"><p role="alert" className="text-sm text-destructive">Não foi possível carregar os registros.</p><Button variant="outline" onClick={() => setRetryKey((value) => value + 1)}>Tentar novamente</Button></CardContent></Card>;
     }
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden">
+            {loadError && <div className="px-4 pt-3"><ResourceStatus resource={resource} onRetry={() => setRetryKey(value => value + 1)} /></div>}
             <CardHeader className="pb-3">
                 <CardTitle className="font-clash text-base md:text-lg font-semibold text-primary break-words">
                     Registros Recentes

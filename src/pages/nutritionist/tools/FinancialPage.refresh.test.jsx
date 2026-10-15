@@ -29,6 +29,7 @@ describe('Finance same-month confirmed snapshots', () => {
     mocks.rows.mockReturnValue(new Promise(() => {})); await act(async () => { invalidateDomain('synthetic-finance', 'clinical'); await new Promise(resolve => setTimeout(resolve, 130)); });
     expect(screen.getByText('Synthetic transaction')).toBeInTheDocument();
     expect(screen.queryByText('Initial KPI')).not.toBeInTheDocument();
+    expect(screen.queryByText(/Atualizando/i)).not.toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Export probe' })).toBeDisabled();
   });
   it('keeps the confirmed list after a transient error, but removes it after 403', async () => {

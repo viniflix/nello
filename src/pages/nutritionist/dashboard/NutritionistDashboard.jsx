@@ -336,7 +336,6 @@ export default function NutritionistDashboard() {
 
   return (
     <div className="flex flex-col min-h-dvh bg-background">
-      {[resources.stats,resources.appointments,resources.noShow].some(resource=>resource.refreshing)&&<p role="status" className="m-4 text-sm text-muted-foreground">Atualizando painel…</p>}
       {Object.keys(failures).length>0&&<section role="alert" className="m-4 rounded-lg border p-4"><h2 className="font-semibold">Alguns dados não foram atualizados</h2><p>Os resultados disponíveis foram mantidos. Não interprete os indicadores indisponíveis como zero.</p>{Object.entries(failures).map(([key,failure])=><p key={key}>{({stats:'Estatísticas',appointments:'Agenda',noShow:'Faltas',upcoming_count:'Total da agenda',today_count:'Agenda de hoje',canceled_count:'Canceladas'})[key]}: {failure.message} {failure.correlationId&&('Código: '+failure.correlationId)}</p>)}<Button variant="outline" onClick={retry}>Tentar novamente</Button></section>}
 
 

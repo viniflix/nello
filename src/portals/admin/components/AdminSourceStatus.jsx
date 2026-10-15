@@ -27,6 +27,6 @@ export default function AdminSourceStatus({ query, cadenceMs = 120000, queryOnly
       {query.data && <p className="text-xs text-muted-foreground">{query.data.source || 'Banco Nello'} · {queryOnly ? 'consulta em' : 'dados até'} {operationalDate(queryOnly ? query.data.generated_at : query.data.data_through || query.data.generated_at)}</p>}
       {query.isError && <p role="alert" className="text-xs text-destructive">{denied ? 'Valide sua sessão e o MFA. Atualizar esta fonte não autoriza o painel.' : 'A consulta não foi confirmada. Não interprete campos ausentes como zero.'}</p>}
     </div>
-    <Button variant="outline" size="sm" disabled={query.isFetching} onClick={() => void query.refetch()}><RefreshCw className={`mr-2 h-4 w-4 ${query.isFetching ? 'animate-spin' : ''}`} />{query.isFetching ? 'Atualizando' : 'Atualizar'}</Button>
+    <Button variant="outline" size="sm" disabled={query.isFetching} aria-busy={query.isFetching || undefined} onClick={() => void query.refetch()}><RefreshCw aria-hidden="true" className="mr-2 h-4 w-4" />Atualizar</Button>
   </div>;
 }

@@ -22,6 +22,19 @@ beforeEach(()=>{
    return chain;
  });
 });
+it('keeps failures visible through another pending read and clears them only after confirmation',async()=>{
+ resolveScope=()=>({data:null,error:{status:503}});
+ resolveQuery=()=>({data:null,error:{status:503}});
+ const {result}=renderHook(()=>useDashboardController({user:{id:'synthetic-dashboard'}}));
+ await waitFor(()=>expect(Object.keys(result.current.failures)).toEqual(expect.arrayContaining(['stats','appointments','noShow'])));
+ let finish;const pending=new Promise(resolve=>{finish=resolve;});
+ resolveScope=()=>pending.then(()=>({data:[],error:null}));
+ resolveQuery=()=>pending.then(()=>({data:[],count:0,error:null}));
+ act(()=>result.current.retry());
+ expect(Object.keys(result.current.failures)).toEqual(expect.arrayContaining(['stats','appointments','noShow']));
+ await act(async()=>finish());
+ await waitFor(()=>expect(result.current.failures).toEqual({}));
+});
 it('does not replace confirmed dashboard resources with initial loaders on refresh',async()=>{
  const user={id:'synthetic-dashboard'};
  const {result}=renderHook(()=>useDashboardController({user}));

@@ -64,6 +64,7 @@ describe('Feed session and selection', () => {
     expect(screen.getByText('Synthetic activity')).toBeInTheDocument();
     expect(screen.getByText('1 selecionado(s)')).toBeInTheDocument();expect(document.activeElement).toBe(control);
     expect(screen.getByRole('button',{name:'Marcar como resolvido'})).toBeDisabled();
+    expect(screen.queryByText(/Atualizando/i)).not.toBeInTheDocument();
     await act(async()=>finish({data:[]}));
   });
   it('preserves a confirmed card on transient background failure', async () => {

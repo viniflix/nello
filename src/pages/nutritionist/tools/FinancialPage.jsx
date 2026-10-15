@@ -409,7 +409,7 @@ function FinancialPageContent() {
                 <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={!monthResource.canAct} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
                 <Tabs value={workspaceView} onValueChange={setWorkspaceView} className="space-y-5">
                     <TabsList className="financial-view-tabs grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="history">Movimentações</TabsTrigger><TabsTrigger value="analysis">Análises</TabsTrigger></TabsList>
-                    {[monthResource,projectionResource,pendingResource,patientsResource,servicesResource,goalResource].some(resource=>resource.error||resource.refreshing)&&<div className="grid gap-x-4 sm:grid-cols-3">
+                    {[monthResource,projectionResource,pendingResource,patientsResource,servicesResource,goalResource].some(resource=>resource.error)&&<div className="grid gap-x-4 sm:grid-cols-3">
                     <ResourceStatus resource={monthResource} label="lançamentos" onRetry={loadData} />
                     <ResourceStatus resource={projectionResource} label="projeção" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={pendingResource} label="cobranças" onRetry={loadAuxiliaryData} />

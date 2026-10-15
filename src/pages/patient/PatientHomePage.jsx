@@ -51,9 +51,6 @@ export default function PatientHomePage() {
         transition={{ duration: 0.5 }}
         className="patient-page-content"
       >
-        <div className="mb-3 min-h-6">
-          {fetching && <p role="status" className="text-sm text-muted-foreground">Atualizando início…</p>}
-        </div>
         {error && <div role="alert" className="fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-xl rounded-xl border bg-background p-3 text-sm shadow-sm">
           <p>{error.message} A última consulta foi preservada; a atualização não foi confirmada.</p>
           {error.retryable && <Button variant="outline" className="mt-2" onClick={() => loadData()}>Tentar novamente</Button>}

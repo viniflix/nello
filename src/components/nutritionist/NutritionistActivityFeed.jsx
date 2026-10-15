@@ -666,7 +666,6 @@ const NutritionistActivityFeedContent = () => {
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden" aria-busy={loading || undefined}>
-            {loading && <p role="status" aria-live="polite" className="mx-6 mt-4 text-sm text-muted-foreground">Atualizando feed…</p>}
             {loadError && <div role="alert" className="mx-6 mt-4 text-sm text-destructive">
                 Não foi possível atualizar o feed. A última consulta confirmada continua visível.
                 <Button variant="link" onClick={handleRefresh}>Tentar novamente</Button>

@@ -31,10 +31,10 @@ export default function AgendaCalendarNavigator({ month, onMonthChange, selected
       return <span className="agenda-nav-day"><span>{format(date, 'd')}</span><span className="agenda-nav-signals" aria-hidden="true">{unique.slice(0, 3).map(status => <i key={status} className={`agenda-status-dot agenda-color--${status}`} />)}{unique.length > 3 && <b>+</b>}</span>{statuses.length > 0 && <span className="sr-only">, {statuses.length} registros: {unique.map(status => agendaStatusLabels[status] || status).join(', ')}</span>}</span>;
     },
   }), [byDate]);
-  return <aside className="agenda-calendar-navigator" aria-label="Calendário de navegação">
+  return <aside className="agenda-calendar-navigator" aria-label="Calendário de navegação" aria-busy={loading || undefined}>
     <div className="agenda-navigator-title"><span>Seu calendário</span><small>Visão do mês</small></div>
     <Calendar mode="single" locale={ptBR} month={month} onMonthChange={onMonthChange} selected={selected} onDayClick={day => onSelect(day)} components={components} classNames={{ months: 'rdp-months', month: 'rdp-month', table: 'rdp-table', head_row: 'rdp-head_row', head_cell: 'rdp-head_cell', row: 'rdp-row', cell: 'rdp-cell', day: 'rdp-day rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-primary' }} labels={{ labelPrevious: () => 'Mês anterior', labelNext: () => 'Próximo mês' }} />
-    {error ? <div role="alert" className="agenda-calendar-error">Não foi possível atualizar os sinais.<button type="button" onClick={onRetry}>Tentar novamente</button></div> : loading ? <p role="status" className="agenda-navigator-caption">Atualizando calendário…</p> : <p className="agenda-navigator-caption">Selecione um dia. Os pontos mostram os status dos registros, incluindo cancelamentos.</p>}
+    {error ? <div role="alert" className="agenda-calendar-error">Não foi possível atualizar os sinais.<button type="button" onClick={onRetry}>Tentar novamente</button></div> : <p className="agenda-navigator-caption">Selecione um dia. Os pontos mostram os status dos registros, incluindo cancelamentos.</p>}
     <AgendaStatusLegend />
   </aside>;
 }

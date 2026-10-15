@@ -62,6 +62,7 @@ it('keeps the same snapshot, button focus and scroll during a domain refresh and
   const pending = deferred(); mock.plan.mockReturnValue(pending.promise);
   await act(async () => { invalidateDomain('synthetic-a', 'clinical'); await new Promise(r => setTimeout(r, 130)); });
   expect(mock.plan).toHaveBeenCalledTimes(2); expect(screen.getByText('Plano fictício atual')).toBeVisible();
+  expect(screen.queryByText(/Atualizando/i)).not.toBeInTheDocument();
   expect(document.activeElement).toBe(action); expect(document.documentElement.scrollTop).toBe(240);
   await act(async () => pending.resolve({ data: null, error: new Error('Failed to fetch') }));
   expect(screen.getByText('Plano fictício atual')).toBeVisible(); expect(screen.getByRole('alert')).toHaveTextContent('conexão');

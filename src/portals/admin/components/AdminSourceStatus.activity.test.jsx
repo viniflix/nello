@@ -16,6 +16,16 @@ it('avoids recurring display ticks while the source is offscreen or hidden',()=>
   const interval=vi.spyOn(window,'setInterval');const q=query();render(<AdminSourceStatus query={q}/>);
   expect(interval).not.toHaveBeenCalled();expect(vi.getTimerCount()).toBe(0);
 });
+it('keeps automatic refresh silent with stable copy and no spinning icon',()=>{
+  const q=query();const ui=render(<AdminSourceStatus query={q}/>);
+  const button=screen.getByRole('button',{name:'Atualizar'});
+  ui.rerender(<AdminSourceStatus query={{...q,isFetching:true}}/>);
+  expect(screen.getByRole('button',{name:'Atualizar'})).toBe(button);
+  expect(button).toBeDisabled();expect(button).toHaveAttribute('aria-busy','true');
+  expect(ui.container.querySelector('.animate-spin')).toBeNull();
+  expect(screen.queryByText(/Atualizando/)).not.toBeInTheDocument();
+  expect(q.refetch).not.toHaveBeenCalled();
+});
 it('changes freshness at the exact boundary and recomputes after hidden time',()=>{
   const q=query();const ui=render(<AdminSourceStatus query={q}cadenceMs={1000}/>);show(ui);
   expect(screen.getByText('Consulta recente')).toBeInTheDocument();expect(vi.getTimerCount()).toBe(1);
@@ -34,7 +44,7 @@ it('preserves recovery and denial copy; errors never authorize or start display 
   const q={...query(),isError:true,error:{status:403}};const ui=render(<AdminSourceStatus query={q}/>);show(ui);
   expect(screen.getByText('Acesso à fonte não confirmado')).toBeInTheDocument();expect(vi.getTimerCount()).toBe(0);
   fireEvent.click(screen.getByRole('button',{name:'Atualizar'}));expect(q.refetch).toHaveBeenCalledOnce();
-  ui.rerender(<AdminSourceStatus query={{...q,isFetching:true}}/>);expect(screen.getByRole('button',{name:'Atualizando'})).toBeDisabled();
+  ui.rerender(<AdminSourceStatus query={{...q,isFetching:true}}/>);expect(screen.getByRole('button',{name:'Atualizar'})).toBeDisabled();
 });
 it('cleans the scheduled boundary when unmounted and does not refetch at expiry',()=>{
   const q=query();const ui=render(<AdminSourceStatus query={q}/>);show(ui);expect(vi.getTimerCount()).toBe(1);ui.unmount();expect(vi.getTimerCount()).toBe(0);expect(q.refetch).not.toHaveBeenCalled();
