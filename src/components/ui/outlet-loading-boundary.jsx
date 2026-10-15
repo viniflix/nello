@@ -5,7 +5,7 @@ function Waiting({onFinish,onStart}) {
  useLayoutEffect(()=>{onStart();return onFinish},[onStart,onFinish]);
  return <SectionLoading/>;
 }
-export function OutletLoadingBoundary({children}) {
+export function OutletLoadingBoundary({children,className=''}) {
  const root=useRef(null),last=useRef(null),saved=useRef(null),frame=useRef(null),alive=useRef(true);
  const waiting=useRef(false),scroll=useRef({x:0,y:0,ancestors:new Map()});
  const remember=event=>{
@@ -43,7 +43,7 @@ export function OutletLoadingBoundary({children}) {
   document.addEventListener('scroll',record,{capture:true,passive:true});
   return()=>{alive.current=false;cancelAnimationFrame(frame.current);document.removeEventListener('scroll',record,true)};
  },[]);
- return <div ref={root} className="min-w-0" onFocusCapture={remember} onSelectCapture={remember}>
+ return <div ref={root} className={`min-w-0 ${className}`} onFocusCapture={remember} onSelectCapture={remember}>
   <Suspense fallback={<Waiting onStart={onStart}onFinish={onFinish}/>}>{children}</Suspense>
  </div>;
 }

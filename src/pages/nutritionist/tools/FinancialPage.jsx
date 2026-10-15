@@ -409,14 +409,14 @@ function FinancialPageContent() {
                 <FinancialToolbar month={selectedMonth} onMonthChange={value => value && setSelectedMonth(new Date(value + '-02'))} onNew={handleNewTransaction} onSettings={openFinancialSettings} onServices={() => setIsServicesManagerOpen(true)} exportDisabled={!monthResource.canAct} onExportPDF={handleExportPDF} onExportCSV={handleExportCSV} onExportReport={handleExportReport} />
                 <Tabs value={workspaceView} onValueChange={setWorkspaceView} className="space-y-5">
                     <TabsList className="financial-view-tabs grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="history">Movimentações</TabsTrigger><TabsTrigger value="analysis">Análises</TabsTrigger></TabsList>
-                    <div className="grid gap-x-4 sm:grid-cols-3">
+                    {[monthResource,projectionResource,pendingResource,patientsResource,servicesResource,goalResource].some(resource=>resource.error||resource.refreshing)&&<div className="grid gap-x-4 sm:grid-cols-3">
                     <ResourceStatus resource={monthResource} label="lançamentos" onRetry={loadData} />
                     <ResourceStatus resource={projectionResource} label="projeção" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={pendingResource} label="cobranças" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={patientsResource} label="pacientes" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={servicesResource} label="serviços" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={goalResource} label="meta" onRetry={() => setGoalRevision(value => value + 1)} />
-                    </div>
+                    </div>}
                     {!unavailable && <FinancialKPIs summary={summary} loading={loading} onInspect={(kind, target) => { metricTrigger.current = target; setMetricView(kind); }} />}
                     <TabsContent value="overview" className="space-y-5">
                         <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} readOnly={!pendingResource.canAct} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>

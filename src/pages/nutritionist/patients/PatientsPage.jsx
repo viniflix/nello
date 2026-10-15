@@ -248,7 +248,6 @@ const PatientsPageContent = () => {
     return (
         <div className="flex flex-col min-h-dvh bg-background">
 <ResourceStatus resource={resource} label="pacientes" onRetry={fetchPatients} />
-{listError&&!resource.hasSnapshot&&<section role="alert" className="m-4 rounded-lg border p-4"><p>{listError.message}</p><Button onClick={fetchPatients} variant="outline">Tentar novamente</Button></section>}
             <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}

@@ -58,7 +58,7 @@ test('admin verification: real role matrix, invalid date recovery, approval and 
   try {
     sql(`update private.admin_operators set revoked_at=now() where user_id='${fixture.id}';`);
     await page.getByRole('button', { name: 'Atualizar', exact: true }).click();
-    await expect(page.getByText('Fonte indisponível', { exact: true })).toBeVisible(); await expect(row).toHaveCount(0);
+    await expect(page.getByText('Acesso à fonte não confirmado', { exact: true })).toBeVisible(); await expect(row).toHaveCount(0);
     await expect(page.getByText('Nenhuma verificação encontrada.', { exact: true })).toHaveCount(0);
   } finally { sql(`update private.admin_operators set revoked_at=null,role='owner' where user_id='${fixture.id}';`); }
   expect(diagnostics).toEqual([]);

@@ -125,7 +125,9 @@ test('failed settings and services loads offer recovery instead of editable defa
         return monthFail && select.includes('attachment_url') ? route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"synthetic unavailable"}' }) : route.continue();
     });
     await page.goto('/nutritionist/financial');
-    const monthlyError = page.getByRole('alert').filter({ hasText: 'Não foi possível carregar os lançamentos deste mês.' });
+    // ResourceStatus normalizes transport errors. Scope recovery to the monthly
+    // history: the independent projection may fail on the same table as well.
+    const monthlyError = page.getByRole('alert').filter({ hasText: 'Histórico indisponível.' });
     await expect(monthlyError).toBeVisible();
     await expect(page.getByText('Histórico indisponível.', { exact: false })).toBeVisible();
     await expect(page.getByText('Nenhuma transação registrada neste mês.', { exact: true })).toHaveCount(0);

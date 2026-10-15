@@ -1,6 +1,11 @@
 import { render, screen, fireEvent } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
-import { ResourceSection } from './resource-status';
+import { ResourceSection, ResourceStatus } from './resource-status';
+
+it('does not accumulate empty status rows for confirmed resources', () => {
+  const view = render(<>{Array.from({length:6},(_,index)=><ResourceStatus key={index} resource={{hasSnapshot:true,pending:false}} />)}</>);
+  expect(view.container).toBeEmptyDOMElement();
+});
 
 it('keeps the same focused draft node mounted through refresh and transient failure, then removes denied content', () => {
   const retry = vi.fn(), base = { hasSnapshot: true, pending: false };

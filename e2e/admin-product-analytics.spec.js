@@ -48,7 +48,7 @@ test('admin product analytics: real Auth, MFA and SQL with independent provider 
    for(const button of await page.getByRole('button',{name:'Atualizar',exact:true}).all())await button.click();
    await expect(page.getByText('Definições e limites',{exact:true})).toHaveCount(0);
    await expect(page.getByText('4 capturas',{exact:false})).toHaveCount(0);
-   await expect(page.getByText('Fonte indisponível',{exact:true})).toHaveCount(2);
+   await expect(page.getByText('Acesso à fonte não confirmado',{exact:true})).toHaveCount(2);
   } finally {revoke('null');}
   await page.goto('/admin/operations');await expect(page.getByRole('heading',{name:'Jornadas da plataforma'})).toBeVisible();await expect(page.getByText('Pendências operacionais',{exact:true})).toBeVisible();
  expect(await page.evaluate(()=>document.documentElement.scrollWidth<=window.innerWidth)).toBe(true);

@@ -133,7 +133,7 @@ export default function PatientLayout() {
       {/* MAIN CONTENT AREA */}
       <main ref={mainRef} id="main-content" tabIndex={-1} className={`min-h-0 min-w-0 flex-1 overscroll-contain md:ml-64 ${isChatPage ? 'flex flex-col overflow-hidden' : 'overflow-y-auto'}`}>
         <PortalBreadcrumbs />
-        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary><Outlet /></OutletLoadingBoundary></ClientErrorBoundary></div>
+        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary className={isChatPage ? 'h-full min-h-0' : undefined}><Outlet /></OutletLoadingBoundary></ClientErrorBoundary></div>
       </main>
 
       {/* BOTTOM NAV (Mobile apenas) */}

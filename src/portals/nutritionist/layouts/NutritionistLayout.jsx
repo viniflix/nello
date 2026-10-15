@@ -23,7 +23,7 @@ const NutritionistLayout = () => {
       />
       <main id="main-content" tabIndex={-1} className={`flex-1 min-w-0 ${isChatPage ? 'flex min-h-0 flex-col' : ''}`}>
         <PortalBreadcrumbs />
-        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary><Outlet /></OutletLoadingBoundary></ClientErrorBoundary></div>
+        <div className={isChatPage ? 'min-h-0 flex-1' : undefined}><ClientErrorBoundary resetKey={`${user?.id}:${location.pathname}`}><OutletLoadingBoundary className={isChatPage ? 'h-full min-h-0' : undefined}><Outlet /></OutletLoadingBoundary></ClientErrorBoundary></div>
       </main>
     </div>
   );

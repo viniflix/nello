@@ -2,6 +2,7 @@ import { Button } from '@/components/ui/button';
 
 export function ResourceStatus({ resource, label = 'dados', onRetry }) {
   const error = resource?.error;
+  if (!error && !resource?.refreshing) return null;
   return <div className="min-h-8 text-sm" aria-busy={resource?.pending || undefined}>
     {error ? <div role="alert" className="flex flex-wrap items-center gap-2 text-destructive">
       <span>{error.message}{resource.hasSnapshot ? ' A última consulta confirmada continua visível.' : ''}</span>
