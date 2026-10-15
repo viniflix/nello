@@ -48,8 +48,8 @@ function HubSkeleton() {
     return (
         <div className="min-h-dvh bg-[#ecebe8]">
             <section aria-label="Resumo clínico do paciente" className="mx-auto w-full max-w-[1440px] space-y-4 px-3 py-4 sm:px-6 lg:px-8">
-                <div className="flex justify-between"><Skeleton className="h-9 w-24" /><Skeleton className="h-9 w-36" /></div>
-                <Card className="border-[#d8d5d0] bg-white shadow-card"><CardContent className="p-4 sm:p-5"><div className="flex gap-4"><Skeleton className="h-24 w-24 rounded-2xl" /><div className="flex-1 space-y-3"><Skeleton className="h-7 w-52" /><Skeleton className="h-4 w-72 max-w-full" /><Skeleton className="h-8 w-48" /></div></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}</div></CardContent></Card>
+                <div className="flex flex-wrap justify-between gap-2"><Skeleton className="h-9 w-24 max-w-full" /><Skeleton className="h-9 w-36 max-w-full" /></div>
+                <Card className="border-[#d8d5d0] bg-white shadow-card"><CardContent className="p-4 sm:p-5"><div className="flex min-w-0 gap-4"><Skeleton className="aspect-square w-24 max-w-[35%] shrink-0 self-start rounded-2xl" /><div className="min-w-0 flex-1 space-y-3"><Skeleton className="h-7 w-52 max-w-full" /><Skeleton className="h-4 w-72 max-w-full" /><Skeleton className="h-8 w-48 max-w-full" /></div></div><div className="mt-5 grid grid-cols-2 gap-2 sm:grid-cols-4">{[1, 2, 3, 4].map((item) => <Skeleton key={item} className="h-16 rounded-xl" />)}</div></CardContent></Card>
                 <Skeleton className="h-16 w-full rounded-xl" />
                 <SimpleListSkeleton count={4} />
             </section>

@@ -27,18 +27,39 @@ for (const width of [320, 820, 1440]) test(`contextual navigation and ancestor m
   await expect(nav.getByRole('link', { name: 'Protocolos' })).toHaveAttribute('href', '/nutritionist/templates?group=forms&ftab=forms');
   await nav.getByRole('link', { name: 'Protocolos' }).click();
   await expect(page).toHaveURL(/templates\?group=forms&ftab=forms/);
-  await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/anamnese`);
-  await expect(nav.locator('[aria-current="page"]')).toHaveText('Anamneses');
-  await nav.getByRole('button', { name: 'Ver níveis anteriores' }).focus();
-  await page.keyboard.press('Enter');
-  await expect(page.getByRole('menuitem', { name: 'Prontuário', exact: true })).toBeVisible();
-  await page.getByRole('menuitem', { name: 'Prontuário', exact: true }).click();
-  await expect(page).toHaveURL(/\/hub$/);
-  await expect(nav.locator('[aria-current="page"]')).toHaveText('Prontuário');
-  const audit = await new AxeBuilder({ page }).include('nav[aria-label="Navegação estrutural"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
-  expect(audit.violations).toEqual([]);
-  await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
-  expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  let releaseHub;
+  let hubReadRequested = false;
+  const hubResponse = new Promise(resolve => { releaseHub = resolve; });
+  const hubReadPattern = '**/rest/v1/rpc/get_patient_record_foundation';
+  await page.route(hubReadPattern, async route => {
+    hubReadRequested = true;
+    await hubResponse;
+    await route.continue();
+  });
+  try {
+    await page.goto(`/nutritionist/patients/${fixture.personas['patient-a'].id}/anamnese`);
+    await expect(nav.locator('[aria-current="page"]')).toHaveText('Anamneses');
+    await nav.getByRole('button', { name: 'Ver níveis anteriores' }).focus();
+    await page.keyboard.press('Enter');
+    await expect(page.getByRole('menuitem', { name: 'Prontuário', exact: true })).toBeVisible();
+    await page.getByRole('menuitem', { name: 'Prontuário', exact: true }).click();
+    await expect(page).toHaveURL(/\/hub$/);
+    await expect(nav.locator('[aria-current="page"]')).toHaveText('Prontuário');
+    await expect.poll(() => hubReadRequested).toBe(true);
+    const hubAreas = page.getByRole('navigation', { name: 'Áreas do prontuário' });
+    await expect(page.getByRole('region', { name: 'Resumo clínico do paciente' })).toBeVisible();
+    await expect(hubAreas).toHaveCount(0);
+    const audit = await new AxeBuilder({ page }).include('nav[aria-label="Navegação estrutural"]').withTags(['wcag2a', 'wcag2aa', 'wcag21aa']).analyze();
+    expect(audit.violations).toEqual([]);
+    await page.evaluate(() => { document.documentElement.style.fontSize = '200%'; });
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+    releaseHub();
+    await expect(hubAreas).toBeVisible();
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
+  } finally {
+    releaseHub();
+    await page.unrouteAll({ behavior: 'wait' });
+  }
 });
 
 test('patient primary navigation and direct-entry forms retain deterministic return paths', async ({ page }) => {
