@@ -36,6 +36,7 @@ test('feed retry really saves the failed subset and removes its warning',async({
  const patients=Array.from({length:26},(_,index)=>createPatient(fixture.personas['nutritionist-a'].id,`QA Retry ${index}`));
  try {
  let fail=true;let failReads=true;const failed=new Set();const retried=new Set();
+ let retryGatewayKey=null;const retryGatewayNonces=[];
  const gatewayFailures=new Map();
  // A synthetic failure followed by a real upstream 502 exhausted the bounded
  // read retry in CI. Exercise that complete recovery before testing writes.
@@ -50,7 +51,18 @@ test('feed retry really saves the failed subset and removes its warning',async({
  await page.route('**/rest/v1/rpc/save_feed_task',async route=>{
   const body=route.request().postDataJSON();const key=body.p_values.source_type+':'+body.p_values.source_id;
   if(fail){failed.add(key);await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'PGRST003',message:'Synthetic transient outage'})});}
-  else {retried.add(key);await route.continue();}
+  else {
+   retried.add(key);
+   // A real upstream 502 during the retry must keep one unconfirmed write
+   // visible. Exercise a further manual retry, rather than expecting success
+   // after every real request regardless of its response.
+   if(retryGatewayKey===null){
+    retryGatewayKey=key;retryGatewayNonces.push(body.p_nonce);
+    return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic retry gateway unavailable'})});
+   }
+   if(key===retryGatewayKey)retryGatewayNonces.push(body.p_nonce);
+   await route.continue();
+  }
  });
  await login(page);
  await expect(page.getByRole('alert').filter({hasText:'Não foi possível carregar o feed.'})).toBeVisible();
@@ -63,7 +75,13 @@ test('feed retry really saves the failed subset and removes its warning',async({
  expect(gatewayFailures.get('get_comprehensive_activity_feed_optimized')).toBeGreaterThanOrEqual(3);
  expect(failed.size).toBe(100);fail=false;
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
+ await expect(page.getByRole('alert').filter({hasText:/^1 alterações do feed não foram salvas/})).toBeVisible();
+ await expect(page.getByRole('button',{name:'Tentar salvar novamente',exact:true})).toBeEnabled();
+ await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toHaveCount(0);
+ expect(retryGatewayNonces).toHaveLength(2);
+ expect(retryGatewayNonces[0]).toBeTruthy();
+ expect(new Set(retryGatewayNonces).size).toBe(1);
  await expect.poll(()=>retried.size).toBeGreaterThan(100);
  await expect.poll(()=>[...failed].every(key=>retried.has(key))).toBe(true);
  const confirmed=await client.rpc('get_my_feed_task_states');expect(confirmed.error).toBeNull();
