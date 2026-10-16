@@ -97,6 +97,9 @@ test('guest notices explain account eligibility and a calendar download excludes
   const api = await client(); let appointment;
   try {
     appointment = await seed(api); await login(page); await page.setViewportSize({ width: 320, height: 568 });
+    // +35h can be outside the current week (Friday afternoon -> Sunday).
+    // Search the future list explicitly, as the other notices journeys do.
+    await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Lista', exact: true }).click();
     await page.getByLabel('Buscar agendamento pelo paciente', { exact: true }).fill(appointment.unregistered_patient_name);
     await menu(page, appointment.id, 'Avisos da consulta');
     await expect(page.getByRole('dialog')).toContainText('precisa de uma conta');
@@ -114,6 +117,7 @@ test('notice history failure allows read retry without another clinical save', a
   const api = await client(); let appointment;
   try {
     appointment = await seed(api); await login(page);
+    await page.getByRole('group', { name: 'Visualização da agenda' }).getByRole('button', { name: 'Lista', exact: true }).click();
     await page.getByLabel('Buscar agendamento pelo paciente', { exact: true }).fill(appointment.unregistered_patient_name);
     let clinicalWrites = 0; page.on('request', req => { if (req.url().includes('/rpc/perform_clinical_operation')) clinicalWrites++; });
     await page.route('**/rest/v1/appointment_notifications?*', route => route.fulfill({ status: 503, contentType: 'application/json', body: '{"message":"Synthetic notice read failure"}' }));
