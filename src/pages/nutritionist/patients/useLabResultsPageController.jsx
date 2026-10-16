@@ -19,6 +19,7 @@ import { supabase } from '@/infrastructure/supabase/client';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { cn } from '@/lib/utils';
 import { getTodayIsoDate } from '@/lib/utils/date';
+import { laboratoryNumber, laboratoryPayload, laboratoryTrend } from '@/lib/utils/laboratory';
 import { getPatientLabResults, getLabRiskRules, classifyLabResultsRiskBatch, createLabResult, updateLabResult, deleteLabResult, confirmLabResultInterpretation, getLabResultPDFUrl, uploadLabResultPDF } from '@/lib/supabase/lab-results-queries';
 
 
@@ -37,6 +38,8 @@ export function useLabResultsPageController() {
     const [patientName, setPatientName] = useState('');
     const labResults = resource.data.data;
     const [filteredResults, setFilteredResults] = useState([]);
+    const [resultsLimit, setResultsLimit] = useState(25);
+    const [timelineLimit, setTimelineLimit] = useState(8);
     const riskSummary = resource.data.summary;
     const [selectedMarkerKey, setSelectedMarkerKey] = useState('');
 
@@ -69,6 +72,8 @@ export function useLabResultsPageController() {
     // Filters
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    useEffect(() => { setResultsLimit(25); }, [searchTerm, statusFilter, patientId]);
+    useEffect(() => { setTimelineLimit(8); }, [selectedMarkerKey]);
 
     useEffect(() => {
         applyFilters();
@@ -175,21 +180,7 @@ export function useLabResultsPageController() {
         if (!selectedTimeline.length) return null;
         const latest = selectedTimeline[selectedTimeline.length - 1];
         const previous = selectedTimeline.length > 1 ? selectedTimeline[selectedTimeline.length - 2] : null;
-        const latestValue = Number(latest?.test_value);
-        const previousValue = Number(previous?.test_value);
-
-        if (!Number.isFinite(latestValue) || !Number.isFinite(previousValue)) {
-            return {
-                latest,
-                previous,
-                direction: 'stable',
-                delta: null
-            };
-        }
-
-        const delta = latestValue - previousValue;
-        const direction = delta > 0 ? 'up' : delta < 0 ? 'down' : 'stable';
-        return { latest, previous, direction, delta };
+        return laboratoryTrend(latest, previous);
     }, [selectedTimeline]);
 
     const handleOpenModal = (lab = null) => {
@@ -290,6 +281,17 @@ export function useLabResultsPageController() {
             return;
         }
 
+        let prepared;
+        try {
+            prepared = laboratoryPayload({
+                test_value: formData.test_value,
+                reference_min: formData.reference_min,
+                reference_max: formData.reference_max,
+            }, editingLab);
+        } catch (error) {
+            toast({ title: 'Revise os valores', description: error.message, variant: 'destructive' });
+            return;
+        }
         setSaving(true);
         setUploading(true);
         try {
@@ -314,10 +316,10 @@ export function useLabResultsPageController() {
                 test_date: formData.test_date,
                 notes: formData.notes || null,
                 // Valores manuais (opcionais)
-                test_value: formData.test_value || null,
+                test_value: prepared.test_value,
                 test_unit: formData.test_unit || null,
-                reference_min: formData.reference_min ? parseFloat(formData.reference_min) : null,
-                reference_max: formData.reference_max ? parseFloat(formData.reference_max) : null,
+                reference_min: prepared.reference_min,
+                reference_max: prepared.reference_max,
                 // PDF (opcional)
                 pdf_url: pdfUrl,
                 pdf_filename: pdfFilename
@@ -412,21 +414,23 @@ export function useLabResultsPageController() {
 
     const getRiskBadge = (riskLevel) => {
         const configs = {
-            none: { label: 'Risco baixo', className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+            none: { label: 'Sem alerta calculado', className: 'bg-emerald-100 text-emerald-800 border-emerald-300' },
+            unknown: { label: 'Avaliação indisponível', className: 'bg-gray-100 text-gray-800 border-gray-300' },
             low: { label: 'Risco leve', className: 'bg-sky-100 text-sky-800 border-sky-300' },
             medium: { label: 'Risco moderado', className: 'bg-amber-100 text-amber-800 border-amber-300' },
             high: { label: 'Risco alto', className: 'bg-red-100 text-red-800 border-red-300' }
         };
-        const config = configs[riskLevel] || configs.none;
+        const config = configs[riskLevel] || configs.unknown;
         return <Badge variant="outline" className={cn('text-xs', config.className)}>{config.label}</Badge>;
     };
 
     const getTrendMeta = (direction) => {
+        if (direction === 'unknown') return { icon: Minus, label: 'Sem comparação numérica', className: 'text-muted-foreground' };
         if (direction === 'up') return { icon: TrendingUp, label: 'Em alta', className: 'text-red-600' };
         if (direction === 'down') return { icon: TrendingDown, label: 'Em queda', className: 'text-emerald-600' };
         return { icon: Minus, label: 'Estável', className: 'text-muted-foreground' };
     };
 
     
-return {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl};
+return {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl,resultsLimit,setResultsLimit,timelineLimit,setTimelineLimit,resultIsNumeric:laboratoryNumber(formData.test_value).kind === 'number'};
 }

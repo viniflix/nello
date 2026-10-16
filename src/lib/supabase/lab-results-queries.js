@@ -1,5 +1,7 @@
 import {readRequest} from './readRequest';
 import {readPolicies} from '@/lib/utils/readPolicy';
+import { collectBoundedPages, pageBounds } from './bounded-pages';
+import { laboratoryNumber, laboratoryUnit, laboratoryReference, laboratoryPayload } from '@/lib/utils/laboratory';
 import { clinicalRpc } from '@/lib/supabase/idempotent-mutations';
 import { uploadVerifiedFile } from '@/lib/storage/verifiedUpload';
 import { parsePrivateFile, signPrivateFile } from '@/lib/storage/privateFiles';
@@ -12,27 +14,29 @@ import { clinicalClient as supabase } from '@/infrastructure/supabase/domainClie
 import { formatDateToIsoDate } from '@/lib/utils/date';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
-const riskOrder = { none: 0, low: 1, medium: 2, high: 3 };
-const defaultRiskMeta = { risk_level: 'none', risk_reason: null, marker_key: null };
+const riskOrder = { unknown: -1, none: 0, low: 1, medium: 2, high: 3 };
+const defaultRiskMeta = { risk_level: 'unknown', risk_reason: 'Avaliação numérica indisponível.', marker_key: null };
 
 /**
  * Busca todos os exames de um paciente
  * @param {string} patientId - ID do paciente
- * @param {number} limit - Número máximo de resultados (padrão: 50)
+ * @param {number|null} limit - Recorte explícito; sem recorte lê páginas limitadas ou falha visivelmente.
  * @returns {Promise<{data: Array, error: Object}>}
  */
-export async function getPatientLabResults(patientId, limit = 50, readOptions = {}) {
+export async function getPatientLabResults(patientId, limit = null, readOptions = {}) {
     try {
-        const { data, error } = await readRequest(() => supabase
+        const build = () => supabase
             .from('lab_results')
             .select("id,patient_id,test_name,test_value,test_unit,reference_min,reference_max,status,test_date,notes,created_at,updated_at,pdf_url,pdf_filename,care_episode_id,reference_source,reference_snapshot,interpretation_status,confirmed_by,confirmed_at,root_result_id,supersedes_result_id,revision_number,is_latest_revision,record_status,invalidated_at,invalidated_by,invalidation_reason")
             .eq('patient_id', patientId)
             .eq('is_latest_revision', true)
             .eq('record_status', 'active')
-            .order('test_date', { ascending: false })
-            .limit(limit), {signal:readOptions?.signal,policy:readPolicies.clinical});
-
-        return { data, error };
+            .order('test_date', { ascending: false }).order('id', { ascending: false });
+        if (limit != null) {
+            return await readRequest(() => build().limit(pageBounds(limit).size), {signal:readOptions?.signal,policy:readPolicies.clinical});
+        }
+        const data = await collectBoundedPages((offset, size) => build().range(offset, offset + size - 1), { signal: readOptions.signal });
+        return { data, error: null };
     } catch (error) {
         logSupabaseError("erro_ao_buscar_exames", error);
         return { data: null, error };
@@ -101,18 +105,8 @@ export async function getLabResultById(labResultId, readOptions = {}) {
  */
 export async function createLabResult(labResult) {
     try {
-        // Calcular status apenas se houver valores manuais
-        let status = 'pending';
-        if (labResult.test_value !== null && labResult.test_value !== undefined && labResult.test_value !== '') {
-            status = calculateStatus(
-                labResult.test_value,
-                labResult.reference_min,
-                labResult.reference_max
-            );
-        }
-
         const { data, error } = await clinicalRpc('lab_result', {
-            p_payload: { ...labResult, status }
+            p_payload: laboratoryPayload(labResult)
         });
 
         return { data, error };
@@ -131,29 +125,13 @@ export async function createLabResult(labResult) {
 export async function updateLabResult(labResultId, updates) {
     try {
         // Buscar dados atuais
-        const { data: current } = await getLabResultById(labResultId);
-
-        // Recalcular status apenas se houver valores manuais e mudaram
-        const finalTestValue = updates.test_value !== undefined ? updates.test_value : current?.test_value;
-        const hasManualValue = finalTestValue !== null && finalTestValue !== undefined && finalTestValue !== '';
-        const shouldRecalculateStatus =
-            hasManualValue &&
-            (updates.test_value !== undefined || updates.reference_min !== undefined || updates.reference_max !== undefined);
-
-        if (shouldRecalculateStatus && current) {
-            updates.status = calculateStatus(
-                finalTestValue,
-                updates.reference_min !== undefined ? updates.reference_min : current.reference_min,
-                updates.reference_max !== undefined ? updates.reference_max : current.reference_max
-            );
-        } else if (!hasManualValue && updates.test_value === null) {
-            // Se removeu o test_value, setar status como pending
-            updates.status = 'pending';
-        }
+        const { data: current, error: currentError } = await getLabResultById(labResultId);
+        if (currentError) throw currentError;
+        if (!current) throw new Error('Não foi possível carregar o exame para revisão.');
 
         const { data, error } = await supabase.rpc('revise_lab_result_record', {
             p_result_id: labResultId,
-            p_payload: updates,
+            p_payload: laboratoryPayload(updates, current),
             p_reason: 'Nova versão confirmada pelo nutricionista na interface'
         });
 
@@ -251,27 +229,7 @@ export async function getAbnormalLabResults(patientId, readOptions = {}) {
  * @returns {string} Status: 'normal', 'low', 'high', ou 'pending'
  */
 export function calculateStatus(testValue, refMin, refMax) {
-    // Se não há valores de referência ou valor é inválido, retornar pending
-    if (refMin == null || refMax == null || testValue == null || testValue === '') {
-        return 'pending';
-    }
-
-    // Tentar converter para número
-    const numericValue = parseFloat(testValue);
-
-    // Se não for um número válido, retornar pending
-    if (isNaN(numericValue)) {
-        return 'pending';
-    }
-
-    // Calcular status
-    if (numericValue < refMin) {
-        return 'low';
-    } else if (numericValue > refMax) {
-        return 'high';
-    } else {
-        return 'normal';
-    }
+    return laboratoryReference(testValue, refMin, refMax);
 }
 
 const normalizeMarkerKey = (value = '') => (
@@ -325,18 +283,19 @@ export function classifyLabResultRisk(labResult, rules = []) {
 
     const markerKey = normalizeMarkerKey(labResult.marker_key || labResult.test_name);
     const scopedRule = (rules || []).find((rule) => normalizeMarkerKey(rule.marker_key) === markerKey);
-    const testValue = Number(labResult?.test_value);
-    const hasNumericValue = Number.isFinite(testValue);
-
-    if (!hasNumericValue) {
-        return { ...defaultRiskMeta, marker_key: markerKey };
-    }
+    const result = laboratoryNumber(labResult.test_value);
+    const unavailable = reason => ({ ...defaultRiskMeta, marker_key: markerKey, risk_reason: reason });
+    if (result.kind !== 'number') return unavailable(result.kind === 'missing' ? 'Resultado numérico não informado.' : 'Resultado não numérico; confira o laudo.');
+    const testValue = result.value;
+    const unit = laboratoryUnit(labResult.test_unit);
+    if (!unit) return unavailable('Unidade do resultado não informada.');
 
     if (scopedRule) {
-        const lowThreshold = Number(scopedRule?.low_threshold);
-        const highThreshold = Number(scopedRule?.high_threshold);
-        const hasLow = Number.isFinite(lowThreshold);
-        const hasHigh = Number.isFinite(highThreshold);
+        if (!laboratoryUnit(scopedRule.unit) || unit !== laboratoryUnit(scopedRule.unit)) return unavailable('Unidade incompatível com a regra; confira o laudo e a referência.');
+        const low = laboratoryNumber(scopedRule.low_threshold), high = laboratoryNumber(scopedRule.high_threshold);
+        const hasLow = low.kind === 'number', hasHigh = high.kind === 'number';
+        if (low.kind === 'invalid' || high.kind === 'invalid' || (!hasLow && !hasHigh) || (hasLow && hasHigh && low.value > high.value)) return unavailable('Limites da regra indisponíveis ou inválidos.');
+        const lowThreshold = low.value, highThreshold = high.value;
 
         if (hasLow && testValue < lowThreshold) {
             return {
@@ -355,16 +314,17 @@ export function classifyLabResultRisk(labResult, rules = []) {
         return { marker_key: markerKey, risk_level: 'none', risk_reason: 'Dentro da faixa esperada' };
     }
 
-    const refMin = Number(labResult?.reference_min);
-    const refMax = Number(labResult?.reference_max);
-    if (Number.isFinite(refMin) && testValue < refMin) {
+    const min = laboratoryNumber(labResult.reference_min), max = laboratoryNumber(labResult.reference_max);
+    if (min.kind === 'invalid' || max.kind === 'invalid' || (min.kind === 'number' && max.kind === 'number' && min.value > max.value)) return unavailable('Referência numérica inválida.');
+    if (min.kind === 'number' && testValue < min.value) {
         return { marker_key: markerKey, risk_level: 'medium', risk_reason: 'Abaixo da referência' };
     }
-    if (Number.isFinite(refMax) && testValue > refMax) {
+    if (max.kind === 'number' && testValue > max.value) {
         return { marker_key: markerKey, risk_level: 'high', risk_reason: 'Acima da referência' };
     }
 
-    return { marker_key: markerKey, risk_level: 'none', risk_reason: null };
+    if (min.kind !== 'number' || max.kind !== 'number') return unavailable('Referência numérica incompleta ou não informada.');
+    return { marker_key: markerKey, risk_level: 'none', risk_reason: 'Dentro da referência informada.' };
 }
 
 /**
@@ -385,7 +345,7 @@ export function classifyLabResultsRiskBatch(labResults = [], rules = []) {
         const accLevel = riskOrder[acc] ?? 0;
         const currentLevel = riskOrder[current.risk_level] ?? 0;
         return currentLevel > accLevel ? current.risk_level : acc;
-    }, 'none');
+    }, 'unknown');
 
     return {
         data: enriched,
@@ -394,6 +354,7 @@ export function classifyLabResultsRiskBatch(labResults = [], rules = []) {
             high: enriched.filter((item) => item.risk_level === 'high').length,
             medium: enriched.filter((item) => item.risk_level === 'medium').length,
             low: enriched.filter((item) => item.risk_level === 'low').length,
+            unknown: enriched.filter((item) => item.risk_level === 'unknown').length,
             highest_risk: highestRisk
         }
     };

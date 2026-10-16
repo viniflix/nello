@@ -42,7 +42,7 @@ const LabResultsPage = () => {
     return <LabResultsPageContent key={JSON.stringify([user?.id, location.pathname])} />;
 };
 const LabResultsPageContent = () => {
-const {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl}=useLabResultsPageController();
+const {resource,loadLabResults,resolveLoading,patientId,resolveError,navigate,loading,paramValue,patientName,handleOpenModal,searchTerm,setSearchTerm,statusFilter,setStatusFilter,labResults,getRiskBadge,riskSummary,markerOptions,selectedMarkerKey,setSelectedMarkerKey,selectedTrend,getTrendMeta,selectedTimeline,filteredResults,getStatusBadge,setLabToConfirm,handleViewPdf,setLabToDelete,setDeleteConfirmOpen,modalOpen,setModalOpen,editingLab,formData,handleInputChange,pdfFile,fileInputRef,handleFileChange,setPdfFile,handleCloseModal,saving,uploading,handleSave,labToConfirm,confirmationReason,setConfirmationReason,handleConfirmInterpretation,confirming,deleteConfirmOpen,labToDelete,handleDelete,pdfViewerOpen,setPdfViewerOpen,viewingPdfUrl,resultsLimit,setResultsLimit,timelineLimit,setTimelineLimit,resultIsNumeric}=useLabResultsPageController();
 if (resolveLoading || !patientId) {
         return (
             <div className="max-w-7xl mx-auto w-full px-4 md:px-8 py-8 space-y-6">
@@ -122,7 +122,7 @@ if (resolveLoading || !patientId) {
                                 </div>
                             </div>
                             <div>
-                                <Label htmlFor="status-filter">Filtrar por status</Label>
+                                <Label htmlFor="status-filter">Filtrar por status registrado</Label>
                                 <Select value={statusFilter} onValueChange={setStatusFilter}>
                                     <SelectTrigger id="status-filter">
                                         <SelectValue />
@@ -155,9 +155,11 @@ if (resolveLoading || !patientId) {
                                 {getRiskBadge('medium')} <span className="text-sm text-muted-foreground">{riskSummary.medium}</span>
                                 {getRiskBadge('low')} <span className="text-sm text-muted-foreground">{riskSummary.low}</span>
                                 {getRiskBadge('none')} <span className="text-sm text-muted-foreground">
-                                    {Math.max(0, (riskSummary.total || 0) - (riskSummary.high || 0) - (riskSummary.medium || 0) - (riskSummary.low || 0))}
+                                    {Math.max(0, (riskSummary.total || 0) - (riskSummary.high || 0) - (riskSummary.medium || 0) - (riskSummary.low || 0) - (riskSummary.unknown || 0))}
                                 </span>
+                                {getRiskBadge('unknown')} <span className="text-sm text-muted-foreground">{riskSummary.unknown || 0}</span>
                             </div>
+                            <p className="text-xs text-muted-foreground">Avaliação calculada com os valores, unidades e referências disponíveis. O status registrado e a confirmação profissional anteriores permanecem no histórico.</p>
 
                             {markerOptions.length > 0 && (
                                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -211,7 +213,7 @@ if (resolveLoading || !patientId) {
                                 <div className="space-y-2 rounded-lg border p-3">
                                     <p className="text-sm font-medium">Linha do tempo</p>
                                     <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-                                        {[...selectedTimeline].reverse().slice(0, 8).map((item) => (
+                                        {[...selectedTimeline].reverse().slice(0, timelineLimit).map((item) => (
                                             <div key={item.id} className="flex items-center justify-between rounded-md border p-2">
                                                 <div>
                                                     <p className="text-sm font-medium">
@@ -230,6 +232,8 @@ if (resolveLoading || !patientId) {
                                             </div>
                                         ))}
                                     </div>
+                                    <p className="text-xs text-muted-foreground">Mostrando {Math.min(timelineLimit, selectedTimeline.length)} de {selectedTimeline.length} registros deste marcador.</p>
+                                    {timelineLimit < selectedTimeline.length && <Button variant="outline" size="sm" onClick={() => setTimelineLimit(value => value + 25)}>Ver mais registros do marcador</Button>}
                                 </div>
                             )}
                         </CardContent>
@@ -268,7 +272,8 @@ if (resolveLoading || !patientId) {
                     </Card>
                 ) : (
                     <div className="space-y-3">
-                        {filteredResults.map((lab) => (
+                        <p className="text-sm text-muted-foreground">Histórico carregado: {labResults.length} exames. Mostrando {Math.min(resultsLimit, filteredResults.length)} de {filteredResults.length} resultados encontrados.</p>
+                        {filteredResults.slice(0, resultsLimit).map((lab) => (
                             <Card key={lab.id} className="hover:shadow-md transition-all">
                                 <CardContent className="py-4">
                                     <div className="flex items-start justify-between gap-4">
@@ -370,6 +375,7 @@ if (resolveLoading || !patientId) {
                                 </CardContent>
                             </Card>
                         ))}
+                        {resultsLimit < filteredResults.length && <Button variant="outline" onClick={() => setResultsLimit(value => value + 25)}>Carregar mais resultados</Button>}
                     </div>
                 )}
 
@@ -383,7 +389,7 @@ if (resolveLoading || !patientId) {
                                 </span>
                                 {filteredResults.length !== labResults.length && (
                                     <span className="text-muted-foreground">
-                                        Exibindo: <strong>{filteredResults.length}</strong>
+                                    Encontrados no filtro: <strong>{filteredResults.length}</strong>
                                     </span>
                                 )}
                             </div>
@@ -433,6 +439,8 @@ if (resolveLoading || !patientId) {
                                         value={formData.test_value}
                                         onChange={(e) => handleInputChange('test_value', e.target.value)}
                                     />
+                                    <p className="text-xs text-muted-foreground">Use ponto ou vírgula decimal, sem separadores de milhar.</p>
+                                    {formData.test_value?.trim() && !resultIsNumeric && <p className="text-xs text-muted-foreground">Resultado textual ou formato não numérico: confira o laudo. A avaliação numérica ficará indisponível.</p>}
                                 </div>
                                 <div className="space-y-2">
                                     <Label htmlFor="test_unit">Unidade</Label>
@@ -450,8 +458,8 @@ if (resolveLoading || !patientId) {
                                     <Label htmlFor="reference_min">Referência Mínima</Label>
                                     <Input
                                         id="reference_min"
-                                        type="number"
-                                        step="0.01"
+                                        type="text"
+                                        inputMode="decimal"
                                         placeholder="Ex: 70"
                                         value={formData.reference_min}
                                         onChange={(e) => handleInputChange('reference_min', e.target.value)}
@@ -461,8 +469,8 @@ if (resolveLoading || !patientId) {
                                     <Label htmlFor="reference_max">Referência Máxima</Label>
                                     <Input
                                         id="reference_max"
-                                        type="number"
-                                        step="0.01"
+                                        type="text"
+                                        inputMode="decimal"
                                         placeholder="Ex: 100"
                                         value={formData.reference_max}
                                         onChange={(e) => handleInputChange('reference_max', e.target.value)}
@@ -470,7 +478,7 @@ if (resolveLoading || !patientId) {
                                 </div>
                             </div>
 
-                            {formData.test_value && formData.reference_min && formData.reference_max && (
+                            {formData.test_value && (formData.reference_min || formData.reference_max) && (
                                 <div className="p-3 bg-background rounded-lg border">
                                     <div className="text-xs font-medium text-muted-foreground mb-1">Status calculado:</div>
                                     <div>
