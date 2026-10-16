@@ -1,11 +1,13 @@
 import {test,expect} from '@playwright/test';
 import {createClient} from '@supabase/supabase-js';
 import {readFileSync} from 'node:fs';import {execFileSync} from 'node:child_process';import {randomBytes,randomUUID} from 'node:crypto';
+import {assertSyntheticRecoveryIdentities} from '../scripts/qa/recovery-identities.mjs';
 import {assertIsolatedRuntime,supabaseCommand,supabaseArgs} from '../scripts/qa/isolated-runtime.mjs';
 assertIsolatedRuntime();
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if(!['http://localhost:54321','http://localhost:4180'].includes(fixture.url))throw Error('Loopback synthetic QA required');
-const owner=fixture.personas['nutritionist-a'].id,password=randomBytes(24).toString('hex')+'Aa1!',email='rc03-'+randomUUID()+'@example.invalid';
+const owner=fixture.personas['nutritionist-a'].id,password=randomBytes(24).toString('hex')+'Aa1!';
+let email=randomUUID()+'@example.invalid';
 const sql=input=>execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1','-t','-A'],{input,encoding:'utf8',stdio:['pipe','pipe','pipe']}).trim();
 let patient,patientClient;
 const sessions=[];
@@ -23,7 +25,9 @@ test.beforeAll(async()=>{
  const status=JSON.parse(execFileSync(supabaseCommand,supabaseArgs(['status','--workdir','.backend-ci','--output','json']),{encoding:'utf8',stdio:['pipe','pipe','pipe']}));
  const url=new URL(status.API_URL);if(!['localhost','127.0.0.1'].includes(url.hostname)||url.port!==new URL(fixture.url).port)throw Error('Wrong local provider');
  const admin=createClient(fixture.url,status.SERVICE_ROLE_KEY,{auth:{persistSession:false,autoRefreshToken:false}});
- const result=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{user_type:'nutritionist',name:'Synthetic RC03',legal_version:'2026-10-01.2',terms_accepted:true,analytics_allowed:false}});expect(result.error).toBeNull();patient=result.data.user.id;
+ const result=await admin.auth.admin.createUser({email,password,email_confirm:true,user_metadata:{user_type:'nutritionist',name:'Synthetic RC03',legal_version:'2026-10-01.2',terms_accepted:true,analytics_allowed:false}});expect(result.error).toBeNull();patient=result.data.user.id;email=patient+'@example.invalid';
+ const registered=await admin.auth.admin.updateUserById(patient,{email,email_confirm:true});expect(registered.error).toBeNull();
+ expect(assertSyntheticRecoveryIdentities([...Object.values(fixture.personas),{id:patient,email}],fixture.personas)).toBe(10);
  sql(`UPDATE public.user_profiles SET user_type='patient',nutritionist_id='${owner}' WHERE id='${patient}';UPDATE public.professional_verifications SET status='suspended' WHERE user_id='${patient}';INSERT INTO public.nutritionist_patients(nutritionist_id,patient_id,status) VALUES('${owner}','${patient}','active');`);
  patientClient=createClient(fixture.url,fixture.anonKey,{auth:{persistSession:false,autoRefreshToken:false}});expect((await patientClient.auth.signInWithPassword({email,password})).error).toBeNull();
 });
@@ -68,4 +72,18 @@ test('nutritionist configures an explicit criterion and the atomic template RPC 
  const response=await saved;expect(response.ok()).toBe(true);const id=await response.json();expect(id).toMatch(/^[a-f0-9-]{36}$/);
  await expect(page).toHaveURL(/\/nutritionist\/templates\?/);
  const record=sql(`SELECT scoring_rule->>'mode'||':'||score_weight::text FROM public.checkin_fields WHERE template_id='${id}';`);expect(record).toBe('no:2');
+});
+
+test('legacy template with a null criterion saves without changing an issued v1 result',async({page})=>{
+ const legacy=session({type:'yes_no',mode:'none',name:'Synthetic RC03 legacy null'});
+ sql(`UPDATE public.checkin_fields SET scoring_rule=NULL WHERE id='${legacy.field}';UPDATE public.checkin_sessions SET score_version=1,fields_snapshot=(SELECT jsonb_agg(to_jsonb(f)) FROM public.checkin_fields f WHERE template_id='${legacy.template}') WHERE id='${legacy.id}';`);
+ const sent=await patientClient.rpc('submit_checkin_session',{p_session_id:legacy.id,p_responses:{[legacy.field]:'yes'}});expect(sent.error).toBeNull();expect(Number(sent.data)).toBe(100);
+ const before=sql(`SELECT md5(to_jsonb(c)::text) FROM public.checkin_sessions c WHERE id='${legacy.id}';`);
+ await login(page,'nutritionist');await page.goto('/nutritionist/templates/checkins/'+legacy.template+'/edit');
+ await expect(page.getByRole('combobox',{name:'Critério da pergunta 1'})).toHaveText('Descritiva — sem pontuação');
+ await page.getByPlaceholder('Ex: Relato Semanal de Adesão').fill('Synthetic RC03 legacy renamed');
+ const saved=page.waitForResponse(response=>new URL(response.url()).pathname==='/rest/v1/rpc/save_checkin_template'&&response.request().method()==='POST');await page.getByRole('button',{name:'Salvar Check-in',exact:true}).click();const response=await saved;expect(response.ok()).toBe(true);
+ await expect(page).toHaveURL(/\/nutritionist\/templates\?/);
+ expect(sql(`SELECT scoring_rule->>'mode' FROM public.checkin_fields WHERE id='${legacy.field}';`)).toBe('none');
+ expect(sql(`SELECT md5(to_jsonb(c)::text) FROM public.checkin_sessions c WHERE id='${legacy.id}';`)).toBe(before);
 });

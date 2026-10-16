@@ -69,4 +69,40 @@ END;
 $stale$;
 RESET ROLE;
 SELECT pg_temp.assert_checkin((SELECT status='pending' AND responses='{}'::jsonb FROM public.checkin_sessions WHERE id='30000000-0000-0000-0000-000000316046'),'revocation and restart preserve old responses');
+
+-- Real legacy serialization: SQL NULL returns as a JSON null property.
+SELECT set_config('request.jwt.claims','{}',true);
+INSERT INTO public.checkin_templates(id,nutritionist_id,name,frequency) VALUES('40000000-0000-0000-0000-000000316048','10000000-0000-0000-0000-000000316041','Legacy nullable criterion','weekly');
+INSERT INTO public.checkin_fields(template_id,label,field_type,score_weight,scoring_rule) VALUES('40000000-0000-0000-0000-000000316048','Legacy symptom','yes_no',1,NULL);
+INSERT INTO public.checkin_sessions(id,template_id,patient_id,nutritionist_id,status,score_version,fields_snapshot,adherence_percentage)
+SELECT '40000000-0000-0000-0000-000000316049','40000000-0000-0000-0000-000000316048','20000000-0000-0000-0000-000000316042','10000000-0000-0000-0000-000000316041','completed',1,jsonb_agg(to_jsonb(f)),100 FROM public.checkin_fields f WHERE template_id='40000000-0000-0000-0000-000000316048';
+CREATE TEMP TABLE legacy_checkin_before AS SELECT md5(to_jsonb(c)::text) digest FROM public.checkin_sessions c WHERE id='40000000-0000-0000-0000-000000316049';
+SET LOCAL ROLE authenticated;
+SELECT set_config('request.jwt.claims','{"sub":"10000000-0000-0000-0000-000000316041","role":"authenticated","aal":"aal1"}',true);
+DO $legacy$
+DECLARE t uuid; payload jsonb; meta jsonb:='{"name":"Legacy nullable criterion","frequency":"weekly","channel":"in_app","send_days":[1]}';
+BEGIN
+ SELECT jsonb_agg(to_jsonb(f) ORDER BY order_index) INTO payload FROM public.checkin_fields f WHERE template_id='40000000-0000-0000-0000-000000316048';
+ PERFORM public.save_checkin_template('40000000-0000-0000-0000-000000316048',meta,payload);
+ PERFORM pg_temp.assert_checkin((SELECT bool_and(scoring_rule='{"version":2,"mode":"none"}'::jsonb) FROM public.checkin_fields WHERE template_id='40000000-0000-0000-0000-000000316048'),'legacy null becomes descriptive without replacing issued fields');
+ SELECT jsonb_agg(jsonb_set(to_jsonb(f),'{scoring_rule}','{"version":2,"mode":"no"}')) INTO payload FROM public.checkin_fields f WHERE template_id='40000000-0000-0000-0000-000000316048';
+ PERFORM public.save_checkin_template('40000000-0000-0000-0000-000000316048',meta,payload);
+ SELECT jsonb_agg(to_jsonb(f)-'scoring_rule') INTO payload FROM public.checkin_fields f WHERE template_id='40000000-0000-0000-0000-000000316048';
+ PERFORM public.save_checkin_template('40000000-0000-0000-0000-000000316048',meta,payload);
+ PERFORM pg_temp.assert_checkin((SELECT bool_and(scoring_rule->>'mode'='no') FROM public.checkin_fields WHERE template_id='40000000-0000-0000-0000-000000316048'),'omitted legacy-client rule preserves existing explicit criterion');
+ t:=public.save_checkin_template(NULL,meta,'[{"label":"Nullable new criterion","field_type":"yes_no","score_weight":1,"is_required":true,"scoring_rule":null}]');
+ PERFORM pg_temp.assert_checkin((SELECT bool_and(scoring_rule='{"version":2,"mode":"none"}'::jsonb) FROM public.checkin_fields WHERE template_id=t),'new explicit JSON null is descriptive');
+ SELECT jsonb_agg(jsonb_set(to_jsonb(f),'{scoring_rule}','{"version":2,"mode":"yes"}')) INTO payload FROM public.checkin_fields f WHERE template_id=t;
+ PERFORM public.save_checkin_template(t,meta,payload);
+ SELECT jsonb_agg(to_jsonb(f)-'scoring_rule') INTO payload FROM public.checkin_fields f WHERE template_id=t;
+ PERFORM public.save_checkin_template(t,meta,payload);
+ PERFORM pg_temp.assert_checkin((SELECT bool_and(scoring_rule->>'mode'='yes') FROM public.checkin_fields WHERE template_id=t),'omitted rule also survives an unissued template edit');
+ SELECT jsonb_agg(jsonb_set(to_jsonb(f)-'scoring_rule','{field_type}','"text"')) INTO payload FROM public.checkin_fields f WHERE template_id=t;
+ PERFORM public.save_checkin_template(t,meta,payload);
+ PERFORM pg_temp.assert_checkin((SELECT bool_and(scoring_rule->>'mode'='none') FROM public.checkin_fields WHERE template_id=t),'changing type without a rule resets to descriptive');
+END;
+$legacy$;
+RESET ROLE;
+SELECT pg_temp.assert_checkin((SELECT md5(to_jsonb(c)::text)=(SELECT digest FROM legacy_checkin_before) FROM public.checkin_sessions c WHERE id='40000000-0000-0000-0000-000000316049'),'editing null criterion preserves issued snapshot and v1 result');
+
 ROLLBACK;

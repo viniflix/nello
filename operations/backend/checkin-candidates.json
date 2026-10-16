@@ -4,6 +4,10 @@
     {
       "file": "supabase/migrations/releases/20261016211500_checkin_explicit_scoring.sql",
       "sha256": "a97e0b429555d68fdac436d5307d42dd1c9681aab941154b493870682c65f3d2"
+    },
+    {
+      "file": "supabase/migrations/releases/20261016221500_checkin_null_rule_compatibility.sql",
+      "sha256": "1b6353ea2dc136d4ea9c893de5473b0c78cb934978ad891046fe3b23bdb7dbf9"
     }
   ]
 }
