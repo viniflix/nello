@@ -37,6 +37,12 @@ test('feed retry really saves the failed subset and removes its warning',async({
  try {
  let fail=true;let failReads=true;const failed=new Set();const retried=new Set();
  let retryGatewayKey=null;const retryGatewayNonces=[];
+ const syntheticRetryFailures=new Set();const unconfirmedRetryWrites=new Set();
+ page.on('response',response=>{
+  if(fail||new URL(response.url()).pathname!=='/rest/v1/rpc/save_feed_task')return;
+  const body=response.request().postDataJSON();const key=body.p_values.source_type+':'+body.p_values.source_id;
+  if(response.ok())unconfirmedRetryWrites.delete(key);else unconfirmedRetryWrites.add(key);
+ });
  const gatewayFailures=new Map();
  const stateReadPages=new Set();
  // A synthetic failure followed by a real upstream 502 exhausted the bounded
@@ -55,14 +61,15 @@ test('feed retry really saves the failed subset and removes its warning',async({
   if(fail){failed.add(key);await route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({code:'PGRST003',message:'Synthetic transient outage'})});}
   else {
    retried.add(key);
-   // A real upstream 502 during the retry must keep one unconfirmed write
-   // visible. Exercise a further manual retry, rather than expecting success
-   // after every real request regardless of its response.
-   if(retryGatewayKey===null){
-    retryGatewayKey=key;retryGatewayNonces.push(body.p_nonce);
+   // Two distinct gateway failures reproduce the remote case: one injected
+   // response plus a real upstream 502 left two writes unconfirmed. Account
+   // for every unsuccessful response instead of assuming exactly one.
+   if(retryGatewayKey===null)retryGatewayKey=key;
+   if(key===retryGatewayKey)retryGatewayNonces.push(body.p_nonce);
+   if(syntheticRetryFailures.size<2&&!syntheticRetryFailures.has(key)){
+    syntheticRetryFailures.add(key);
     return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic retry gateway unavailable'})});
    }
-   if(key===retryGatewayKey)retryGatewayNonces.push(body.p_nonce);
    await route.continue();
   }
  });
@@ -77,10 +84,13 @@ test('feed retry really saves the failed subset and removes its warning',async({
  expect(gatewayFailures.get('get_comprehensive_activity_feed_optimized')).toBeGreaterThanOrEqual(3);
  expect(failed.size).toBe(100);fail=false;
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
- await expect(page.getByRole('alert').filter({hasText:/^1 alterações do feed não foram salvas/})).toBeVisible();
+ await expect.poll(()=>syntheticRetryFailures.size).toBe(2);
  await expect(page.getByRole('button',{name:'Tentar salvar novamente',exact:true})).toBeEnabled();
+ expect([...syntheticRetryFailures].every(key=>unconfirmedRetryWrites.has(key))).toBe(true);
+ await expect(page.getByRole('alert').filter({hasText:new RegExp(`^${unconfirmedRetryWrites.size} alterações do feed não foram salvas`)})).toBeVisible();
  await page.getByRole('button',{name:'Tentar salvar novamente',exact:true}).click();
  await expect(page.getByRole('alert').filter({hasText:'alterações do feed não foram salvas'})).toHaveCount(0);
+ expect(unconfirmedRetryWrites.size).toBe(0);
  expect(retryGatewayNonces).toHaveLength(2);
  expect(retryGatewayNonces[0]).toBeTruthy();
  expect(new Set(retryGatewayNonces).size).toBe(1);
