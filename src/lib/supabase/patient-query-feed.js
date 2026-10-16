@@ -10,6 +10,8 @@ import { logSupabaseError } from '@/lib/supabase/query-helpers';
 
 import { retryNetworkRead } from '@/lib/supabase/readRetry';
 import { scopeFeedItems } from './feed-scope';
+import { getPatientsHighRiskLabAlerts } from './patient-query-monitoring';
+import { collectBoundedPages } from './bounded-pages';
 
 import {getActivityCtaRoute} from './patient-query-history';
 export const buildFeedTaskIdentity = ({ nutritionistId, sourceType, sourceId }) => {
@@ -40,10 +42,8 @@ export const sessionChangedDuringWrite = async (error, expectedUserId) => {
 export const getFeedTaskStates = async (nutritionistId) => {
     try {
         if (!await ownsCurrentSession(nutritionistId)) return { data: [], error: null, skipped: true };
-        const { data, error } = await retryNetworkRead(() => supabase.rpc('get_my_feed_task_states'),
-            () => ownsCurrentSession(nutritionistId), { httpStatuses: [502, 503, 504] });
-
-        if (error) throw error;
+        const data = await collectBoundedPages((offset,size)=>supabase.rpc('get_my_feed_task_states')
+            .order('id',{ascending:true}).range(offset,offset+size-1));
         return { data: data || [], error: null };
     } catch (error) {
         logSupabaseError("erro_ao_buscar_estados_do_feed", error);
@@ -54,9 +54,8 @@ export const getFeedTaskStates = async (nutritionistId) => {
 export const getNutritionistPatientsForFeed = async (nutritionistId) => {
     try {
         if (!await ownsCurrentSession(nutritionistId)) return { data: [], error: null, skipped: true };
-        const { data, error } = await retryNetworkRead(() => supabase.rpc('get_active_feed_patients'),
-            () => ownsCurrentSession(nutritionistId));
-        if (error) throw error;
+        const data = await collectBoundedPages((offset,size)=>supabase.rpc('get_active_feed_patients')
+            .order('id',{ascending:true}).range(offset,offset+size-1));
         return { data: data || [], error: null };
     } catch (error) {
         logSupabaseError('erro_ao_buscar_pacientes_do_nutricionista_para_feed', error);
@@ -74,7 +73,16 @@ export const retryFeedTaskSync = async (nutritionistId, failedItems = []) => {
         const error = patients.error || states.error;
         return { data: [], error, failedItems: failedItems.map(item=>({...item, failureCode:error.code || null})) };
     }
-    const eligible = scopeFeedItems(failedItems, patients.data, { preserveEpisode: true });
+    let eligible = scopeFeedItems(failedItems, patients.data, { preserveEpisode: true });
+    if (eligible.some(item=>item.sourceType==='lab_high_risk')) {
+        const current = await getPatientsHighRiskLabAlerts({nutritionistId,
+            patientIds:patients.data.map(patient=>patient.id),
+            careEpisodeIds:patients.data.map(patient=>patient.care_episode_id)});
+        if (current.error) return {data:[],error:current.error,
+            failedItems:failedItems.map(item=>({...item,failureCode:current.error.code || null}))};
+        const active = new Set(current.data.map(alert=>'lab-result:'+alert.result_id));
+        eligible = eligible.filter(item=>item.sourceType!=='lab_high_risk' || active.has(item.sourceId));
+    }
     const result = await syncFeedTasksFromItems(nutritionistId, eligible, states.data);
     return { ...result, discardedKeys: failedItems.filter(item=>!eligible.some(next=>
         next.sourceType===item.sourceType && next.sourceId===item.sourceId)).map(item=>
@@ -312,10 +320,11 @@ export const getComprehensiveActivityFeed = async (nutritionistId, limit = 20, r
 
         // Buscar avatares e slugs dos pacientes (cache-friendly)
         const patientIds = [...new Set(data?.map(a => a.patient_id) || [])];
-        const { data: patientsData } = await readRequest(() => supabase
+        const { data: patientsData, error: patientsError } = await readRequest(() => supabase
             .from('user_profiles')
             .select('id, avatar_url, slug')
             .in('id', patientIds), {signal:readOptions?.signal,policy:readPolicies.clinical});
+        if (patientsError) throw patientsError;
 
         const avatarMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.avatar_url]));
         const slugMap = Object.fromEntries((patientsData || []).map(p => [p.id, p.slug]).filter(([, s]) => s));

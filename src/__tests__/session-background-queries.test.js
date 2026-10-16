@@ -16,7 +16,10 @@ vi.mock('@/infrastructure/supabase/client', () => ({
   supabase: {
     auth: { getSession: mocks.getSession },
     from: mocks.from,
-    rpc: mocks.rpc,
+    rpc: (...args) => {
+      const result=Promise.resolve(mocks.rpc(...args));
+      result.order=()=>result;result.range=()=>result;return result;
+    },
   },
 }));
 vi.mock('@/lib/supabase/query-helpers', async (importOriginal) => ({
@@ -124,8 +127,8 @@ describe('session-safe background queries', () => {
     expect(mocks.logSupabaseError).not.toHaveBeenCalled();
   });
   it('restricts operational laboratory alerts to the current care episodes', async () => {
-    const chain={select:vi.fn(),in:vi.fn(),gte:vi.fn(),order:vi.fn(),limit:vi.fn().mockResolvedValue({data:[],error:null})};
-    for(const method of ['select','in','gte','order'])chain[method].mockReturnValue(chain);
+    const chain={select:vi.fn(),in:vi.fn(),eq:vi.fn(),gte:vi.fn(),order:vi.fn(),range:vi.fn().mockResolvedValue({data:[],error:null})};
+    for(const method of ['select','in','eq','gte','order'])chain[method].mockReturnValue(chain);
     mocks.from.mockReturnValue(chain);
     expect(await getPatientsHighRiskLabAlerts({nutritionistId:'nutritionist-session',patientIds:['patient'],careEpisodeIds:['current']})).toMatchObject({error:null,data:[]});
     expect(chain.in).toHaveBeenCalledWith('care_episode_id',['current']);

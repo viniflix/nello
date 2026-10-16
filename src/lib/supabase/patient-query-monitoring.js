@@ -1,5 +1,6 @@
 import {readRequest} from './readRequest';
 import {readPolicies} from '@/lib/utils/readPolicy';
+import {collectBoundedPages, MAX_DATA_ROWS} from './bounded-pages';
 
 
 import { patientClient as supabase } from '@/infrastructure/supabase/domainClients';
@@ -110,30 +111,41 @@ export const getPatientsHighRiskLabAlerts = async ({
             .toISOString()
             .slice(0, 10);
 
-        const [{ data: rules, error: rulesError }, { data: rows, error: rowsError }] = await Promise.all([
-            getLabRiskRules(nutritionistId),
-            supabase
+        // Pair patient/episode before batching: a separate IN list alone can mix
+        // stale episode evidence with a patient's current operational scope.
+        const episodes = new Map(patientIds.map((id,index)=>[id,careEpisodeIds[index]]));
+        if (scopedPatientIds.some(id=>!episodes.get(id))) throw new Error('FEED_EPISODE_SCOPE_REQUIRED');
+        const {data:rules,error:rulesError}=await getLabRiskRules(nutritionistId);
+        if (rulesError) throw rulesError;
+        const rows=[];
+        for(let offset=0;offset<scopedPatientIds.length;offset+=50){
+            const patients=scopedPatientIds.slice(offset,offset+50);
+            const pageRows=await collectBoundedPages((start,size)=>supabase
                 .from('lab_results')
-                .select('id, patient_id, test_name, test_value, test_unit, reference_min, reference_max, test_date, created_at')
-                .in('patient_id', scopedPatientIds)
-                .in('care_episode_id', careEpisodeIds)
+                .select('id, patient_id, care_episode_id, test_name, test_value, test_unit, reference_min, reference_max, test_date, created_at, is_latest_revision, record_status')
+                .in('patient_id', patients)
+                .in('care_episode_id', patients.map(id=>episodes.get(id)))
+                .eq('is_latest_revision', true)
+                .eq('record_status', 'active')
                 .gte('test_date', cutoff)
                 .order('test_date', { ascending: false })
-                .limit(500)
-        ]);
-
-        if (rulesError) throw rulesError;
-        if (rowsError) throw rowsError;
+                .order('created_at', {ascending:false})
+                .order('id', {ascending:false})
+                .range(start,start+size-1),{maxRows:MAX_DATA_ROWS-rows.length});
+            rows.push(...pageRows.filter(row=>episodes.get(row.patient_id)===row.care_episode_id));
+        }
 
         const classified = classifyLabResultsRiskBatch(rows || [], rules || []);
-        const highRiskRows = (classified.data || []).filter((item) => item.risk_level === 'high');
-
+        // Decide the current evidence BEFORE filtering risk. A later normal or
+        // unassessable result must not resurrect an older high measurement.
         const dedupedMap = new Map();
-        highRiskRows.forEach((row) => {
+        (classified.data || []).forEach((row) => {
             const markerKey = row.marker_key || String(row.test_name || '').toLowerCase();
             const dedupeKey = `${row.patient_id}:${markerKey}`;
             if (!dedupedMap.has(dedupeKey)) {
                 dedupedMap.set(dedupeKey, {
+                    result_id: row.id,
+                    care_episode_id: row.care_episode_id,
                     patient_id: row.patient_id,
                     marker_key: markerKey,
                     test_name: row.test_name,
@@ -148,7 +160,7 @@ export const getPatientsHighRiskLabAlerts = async ({
         });
 
         return {
-            data: Array.from(dedupedMap.values()),
+            data: Array.from(dedupedMap.values()).filter(row=>row.risk_level==='high'),
             error: null
         };
     } catch (error) {

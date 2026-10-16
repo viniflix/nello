@@ -28,7 +28,7 @@ function createPatient(actor,name) {
  return patient;
 }
 
-test('feed retry really saves the failed subset and removes its warning',async({page})=>{
+test('feed retry really saves the failed subset and removes its warning',async({page},testInfo)=>{
  test.setTimeout(90000);
  const client=await owner();
  // At least 104 missing clinical items: exceed the 100 pending-intent bound
@@ -38,10 +38,12 @@ test('feed retry really saves the failed subset and removes its warning',async({
  let fail=true;let failReads=true;const failed=new Set();const retried=new Set();
  let retryGatewayKey=null;const retryGatewayNonces=[];
  const gatewayFailures=new Map();
+ const stateReadPages=new Set();
  // A synthetic failure followed by a real upstream 502 exhausted the bounded
  // read retry in CI. Exercise that complete recovery before testing writes.
  for(const rpc of ['get_my_feed_task_states','get_comprehensive_activity_feed_optimized']) {
-  await page.route(`**/rest/v1/rpc/${rpc}`,async route=>{
+  await page.route(url=>url.pathname===`/rest/v1/rpc/${rpc}`,async route=>{
+   if(rpc==='get_my_feed_task_states')stateReadPages.add(new URL(route.request().url()).searchParams.get('offset')||'0');
    const attempts=(gatewayFailures.get(rpc)||0)+1;gatewayFailures.set(rpc,attempts);
    if((rpc==='get_comprehensive_activity_feed_optimized' && failReads)
     || (rpc==='get_my_feed_task_states' && attempts===1))return route.fulfill({status:502,contentType:'application/json',body:JSON.stringify({message:'Synthetic gateway unavailable'})});
@@ -82,6 +84,13 @@ test('feed retry really saves the failed subset and removes its warning',async({
  expect(retryGatewayNonces).toHaveLength(2);
  expect(retryGatewayNonces[0]).toBeTruthy();
  expect(new Set(retryGatewayNonces).size).toBe(1);
+ // Feed snapshots write tasks; clinical broadcasts must not recursively start
+ // another snapshot/write cycle. Two read retries plus two manual retries fit
+ // this per-page bound with room for a focus refresh, including portfolios
+ // with more than one provider page of existing tasks.
+ const stateReads=gatewayFailures.get('get_my_feed_task_states');
+ expect(stateReads).toBeLessThanOrEqual(8*stateReadPages.size);
+ await testInfo.attach('feed-read-budget',{body:JSON.stringify({stateReadRequests:stateReads,pages:stateReadPages.size,limit:8*stateReadPages.size}),contentType:'application/json'});
  await expect.poll(()=>retried.size).toBeGreaterThan(100);
  await expect.poll(()=>[...failed].every(key=>retried.has(key))).toBe(true);
  const confirmed=await client.rpc('get_my_feed_task_states');expect(confirmed.error).toBeNull();

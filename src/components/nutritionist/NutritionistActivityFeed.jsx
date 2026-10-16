@@ -3,7 +3,7 @@ import { scopeFeedItems, scopeFeedStates, feedItemKey, canRetryFeedFailure } fro
 import { retryFeedTaskSync, clearActivityFeedCache } from '@/lib/supabase/patient-query-feed';
 import { civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
-import { failurePresentation } from '@/lib/utils/failure';
+import { failurePresentation, settleResources } from '@/lib/utils/failure';
 import React, { useMemo, useEffect, useState, useCallback, useRef } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -164,6 +164,7 @@ const NutritionistActivityFeedContent = () => {
     const [feedItems, setFeedItems] = useState([]);
     const [hasSnapshot, setHasSnapshot] = useState(false);
     const [loadError, setLoadError] = useState(false);
+    const [failedSources, setFailedSources] = useState([]);
     const [failedSyncItems, setFailedSyncItems] = useState([]);
     const loadGeneration = useRef(0);
     const feedSnapshot = useRef([]);
@@ -184,32 +185,35 @@ const NutritionistActivityFeedContent = () => {
             const started = performance.now();
             setLoading(true);
             setLoadError(false);
+            setFailedSources([]);
 
             try {
                 const today = new Date();
-                const [activitiesRes, lowAdherenceRes, pendingRes, appointmentsRes, patientsRes, priorityRulesRes, feedStateRes] = await Promise.all([
-                    getComprehensiveActivityFeed(userId, 40),
-                    getPatientsWithLowAdherence(userId),
-                    getPatientsPendingData(userId),
-                    supabase
+                const sources = await settleResources({
+                    'Atividades': () => getComprehensiveActivityFeed(userId, 40),
+                    'Adesão': () => getPatientsWithLowAdherence(userId),
+                    'Pendências': () => getPatientsPendingData(userId),
+                    'Consultas': () => supabase
                         .from('appointments')
                         .select('id, start_time, patient_id, care_episode_id, patient:appointments_patient_id_fkey(id, name, avatar_url)')
                         .eq('nutritionist_id', userId)
                         .gte('start_time', today.toISOString())
                         .order('start_time', { ascending: true })
                         .limit(5),
-                    getNutritionistPatientsForFeed(userId),
-                    getFeedPriorityRules(userId),
-                    getFeedTaskStates(userId)
-                ]);
-
-                if (activitiesRes.error) throw activitiesRes.error;
-                if (lowAdherenceRes.error) throw lowAdherenceRes.error;
-                if (pendingRes.error) throw pendingRes.error;
-                if (appointmentsRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:192', '[Feed] Erro consultas:', appointmentsRes.error?.code || 'unknown');
-                if (patientsRes.error) throw patientsRes.error;
-                if (priorityRulesRes?.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:194', '[Feed] Erro regras:', priorityRulesRes.error?.code || 'unknown');
-                if (feedStateRes?.error) throw feedStateRes.error;
+                    'Pacientes': () => getNutritionistPatientsForFeed(userId),
+                    'Regras de prioridade': () => getFeedPriorityRules(userId),
+                    'Estado das tarefas': () => getFeedTaskStates(userId)
+                });
+                const requireSources = resources => {
+                    const failed = Object.entries(resources).filter(([,result])=>result.error);
+                    if (!failed.length) return;
+                    if (generation === loadGeneration.current) setFailedSources(failed.map(([label])=>label));
+                    // A denied source takes precedence over a concurrent outage:
+                    // never retain a private snapshot after authorization fails.
+                    throw (failed.find(([,result])=>['unauthenticated','forbidden'].includes(failurePresentation(result.error).kind)) || failed[0])[1].error;
+                };
+                requireSources(sources);
+                const [activitiesRes,lowAdherenceRes,pendingRes,appointmentsRes,patientsRes,priorityRulesRes,feedStateRes] = Object.values(sources);
 
                 const patients = patientsRes.data || [];
                 const patientIds = patients.map((p) => p.id).filter(Boolean);
@@ -217,18 +221,19 @@ const NutritionistActivityFeedContent = () => {
                 const patientAvatarMap = new Map(patients.map((p) => [p.id, p.avatar_url]).filter(([, v]) => v));
                 const patientSlugMap = new Map(patients.map((p) => [p.id, p.slug]).filter(([, s]) => s));
 
-                const [highRiskRes, paymentsRes] = await Promise.all([
-                    patientIds.length ? getPatientsHighRiskLabAlerts({
+                const clinicalSources = await settleResources({
+                    'Risco laboratorial': () => patientIds.length ? getPatientsHighRiskLabAlerts({
                         nutritionistId: userId,
                         careEpisodeIds: patients.map(patient=>patient.care_episode_id),
                         patientIds,
                         daysWindow: 120
                     }) : Promise.resolve({ data: [], error: null }),
-                    getPendingPayments(userId).then((data) => ({ data, error: null })).catch((error) => ({ data: [], error })),
-                ]);
-                const labRiskAlerts = highRiskRes.error ? [] : highRiskRes.data || [];
+                    'Pagamentos': () => getPendingPayments(userId),
+                });
+                requireSources(clinicalSources);
+                const [highRiskRes,paymentsRes] = Object.values(clinicalSources);
+                const labRiskAlerts = highRiskRes.data || [];
                 const pendingPayments = paymentsRes.data || [];
-                if (paymentsRes.error) logDiagnostic('warn', 'components/nutritionist/NutritionistActivityFeed.jsx:213', '[Feed] Erro ao carregar pagamentos pendentes:', paymentsRes.error?.code || 'unknown');
 
                 const priorityRules = priorityRulesRes?.data || [];
                 const activityItems = (activitiesRes.data || []).map((activity) => {
@@ -338,7 +343,7 @@ const NutritionistActivityFeedContent = () => {
                 const labRiskItems = (labRiskAlerts || []).map((alert) => {
                     const patientSegment = patientSlugMap.get(alert.patient_id) || alert.patient_id;
                     return {
-                        id: `lab-risk-${alert.patient_id}-${alert.marker_key}`,
+                        id: `lab-risk-${alert.result_id}`,
                         type: 'lab_high_risk',
                         patientId: alert.patient_id,
                         patientName: patientNameMap.get(alert.patient_id) || 'Paciente',
@@ -350,7 +355,7 @@ const NutritionistActivityFeedContent = () => {
                         ctaRoute: `/nutritionist/patients/${patientSegment}/lab-results`,
                     priority: 1,
                     sourceType: 'lab_high_risk',
-                    sourceId: `${alert.patient_id}-${alert.marker_key}`,
+                    sourceId: `lab-result:${alert.result_id}`,
                     riskReason: alert.risk_reason
                 };
                 });
@@ -464,6 +469,11 @@ const NutritionistActivityFeedContent = () => {
             const blocked = failedSyncItems.filter(item=>!canRetryFeedFailure(item.failureCode));
             const result = await retryFeedTaskSync(userId, retryable);
             if (generation !== loadGeneration.current || result.skipped) return;
+            if (['unauthenticated','forbidden'].includes(failurePresentation(result.error).kind)) {
+                setHasSnapshot(false);setFeedItems([]);feedSnapshot.current=[];setSelectedItemIds([]);
+                setAuditTrailByKey({});setExpandedAuditItemId(null);setFailedSyncItems([]);
+                setFailedSources(['Autorização das tarefas']);setLoadError(true);return;
+            }
             setFailedSyncItems([...blocked, ...(result.failedItems || (result.error ? retryable : []))]);
             const discarded = new Set([...(result.discardedKeys || []), ...(result.outcomes || [])
                 .filter(outcome=>outcome.status==='obsolete').map(feedItemKey)]);
@@ -661,13 +671,14 @@ const NutritionistActivityFeedContent = () => {
     }
 
     if (loadError && !hasSnapshot) {
-        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><p role="alert" className="text-sm text-destructive">Não foi possível carregar o feed.</p><Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button></CardContent></Card>;
+        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><div role="alert" className="text-sm text-destructive"><p>Não foi possível carregar o feed.</p><p>Não foi possível conferir: {failedSources.join(', ') || 'fontes do feed'}. Não é possível afirmar que não há alertas.</p></div><Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button></CardContent></Card>;
     }
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden" aria-busy={loading || undefined}>
             {loadError && <div role="alert" className="mx-6 mt-4 text-sm text-destructive">
                 Não foi possível atualizar o feed. A última consulta confirmada continua visível.
+                <p>Não foi possível conferir: {failedSources.join(', ') || 'fontes do feed'}. As ações ficam indisponíveis até atualizar.</p>
                 <Button variant="link" onClick={handleRefresh}>Tentar novamente</Button>
             </div>}
             {failedSyncItems.length > 0 && <div role="alert" className="mx-6 mt-4 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-stone-800">
@@ -809,8 +820,8 @@ const NutritionistActivityFeedContent = () => {
                 {visibleFeedItems.length === 0 ? (
                     <div className="text-center py-12">
                         <CheckCircle2 className="w-12 h-12 text-emerald-500/60 mx-auto mb-3" />
-                        <p className="text-muted-foreground font-medium mb-1">Tudo em dia!</p>
-                        <p className="text-sm text-muted-foreground">Não há alertas ou pendências no momento</p>
+                        <p className="text-muted-foreground font-medium mb-1">{loadError ? 'Verificação incompleta' : 'Tudo em dia!'}</p>
+                        <p className="text-sm text-muted-foreground">{loadError ? 'Atualize o feed para conferir os alertas atuais.' : 'Não há alertas ou pendências no momento'}</p>
                     </div>
                 ) : (
                     <div className="max-h-[620px] overflow-y-auto pr-1 space-y-3">
