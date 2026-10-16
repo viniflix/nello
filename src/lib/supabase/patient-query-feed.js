@@ -12,6 +12,7 @@ import { retryNetworkRead } from '@/lib/supabase/readRetry';
 import { scopeFeedItems } from './feed-scope';
 import { getPatientsHighRiskLabAlerts } from './patient-query-monitoring';
 import { collectBoundedPages } from './bounded-pages';
+import { failurePresentation } from '@/lib/utils/failure';
 
 import {getActivityCtaRoute} from './patient-query-history';
 export const buildFeedTaskIdentity = ({ nutritionistId, sourceType, sourceId }) => {
@@ -70,7 +71,8 @@ export const retryFeedTaskSync = async (nutritionistId, failedItems = []) => {
     ]);
     if (patients.skipped || states.skipped) return { data: [], error: null, skipped: true };
     if (patients.error || states.error) {
-        const error = patients.error || states.error;
+        const error = [patients.error, states.error].find(error=>error
+            && ['unauthenticated','forbidden'].includes(failurePresentation(error).kind)) || patients.error || states.error;
         return { data: [], error, failedItems: failedItems.map(item=>({...item, failureCode:error.code || null})) };
     }
     let eligible = scopeFeedItems(failedItems, patients.data, { preserveEpisode: true });

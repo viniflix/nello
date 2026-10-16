@@ -2,6 +2,7 @@ import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import NutritionistActivityFeed from './NutritionistActivityFeed';
+import {retryFeedTaskSync} from '@/lib/supabase/patient-query-feed';
 const mocks = vi.hoisted(() => ({ user: { id: 'synthetic-a' }, activities: vi.fn(), sync: vi.fn(), patients: vi.fn(), labs:vi.fn(), payments:vi.fn(), appointments:vi.fn(), adherence:vi.fn(), pending:vi.fn(), rules:vi.fn(), states:vi.fn(), listeners: new Map() }));
 vi.mock('@/contexts/AuthContext', () => ({ useAuth: () => ({ user: mocks.user }) }));
 vi.mock('@/components/ui/use-toast', () => ({ useToast: () => ({ toast: vi.fn() }) }));
@@ -95,6 +96,23 @@ describe('Feed session and selection', () => {
   it('removes private snapshot on a denied laboratory source',async()=>{
     render(view());await selectItem();mocks.labs.mockResolvedValueOnce({data:[],error:{status:403}});fireEvent(window,new Event('focus'));
     expect(await screen.findByRole('alert')).toHaveTextContent('Risco laboratorial');expect(screen.queryByText('Synthetic activity')).toBeNull();
+  });
+  it('clears private cards when retry context reports a confirmed denial',async()=>{
+    mocks.sync.mockResolvedValueOnce({data:[],failedItems:[{sourceType:'pending',sourceId:'synthetic-unsaved',failureCode:'NETWORK_FAILURE'}]});
+    vi.mocked(retryFeedTaskSync).mockResolvedValueOnce({data:[],error:{status:403,code:'42501'}});
+    render(view());await screen.findByText('Synthetic activity');
+    fireEvent.click(await screen.findByRole('button',{name:'Tentar salvar novamente',exact:true}));
+    await waitFor(()=>expect(screen.getByRole('alert')).toHaveTextContent('Autorização das tarefas'));expect(screen.queryByText('Synthetic activity')).toBeNull();
+  });
+  it('delegates recovery to the dashboard and refreshes through its explicit retry signal',async()=>{
+    const onLoadFailure=vi.fn();mocks.appointments.mockResolvedValueOnce({data:[],error:{status:503}});
+    const managed=key=><MemoryRouter><NutritionistActivityFeed onLoadFailure={onLoadFailure} retryKey={key}/></MemoryRouter>;
+    const {rerender}=render(managed(0));await waitFor(()=>expect(onLoadFailure).toHaveBeenLastCalledWith(['Consultas']));
+    expect(screen.queryByRole('button',{name:'Tentar novamente',exact:true})).toBeNull();expect(screen.queryByRole('alert')).toBeNull();
+    let finish;mocks.appointments.mockReturnValueOnce(new Promise(resolve=>{finish=resolve;}));rerender(managed(1));
+    await waitFor(()=>expect(finish).toBeTypeOf('function'));expect(onLoadFailure).toHaveBeenLastCalledWith(['Consultas']);
+    await act(async()=>finish({data:[]}));await screen.findByText('Synthetic activity');
+    expect(onLoadFailure).toHaveBeenLastCalledWith(null);
   });
   it('uses a new result identity despite a resolved legacy marker and withdraws it after normalization',async()=>{
     mocks.states.mockResolvedValue({data:[{source_type:'lab_high_risk',source_id:'synthetic-patient-marker',patient_id:'synthetic-patient',status:'resolved',metadata:{care_episode_id:'synthetic-episode'}}]});

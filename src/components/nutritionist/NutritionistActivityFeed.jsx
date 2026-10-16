@@ -150,12 +150,12 @@ const toneByType = {
     default: { border: 'border-l-muted-foreground/40', bg: 'bg-white dark:bg-card', tag: 'bg-muted/60 text-muted-foreground dark:bg-muted/20 dark:text-muted-foreground' }
 };
 
-const NutritionistActivityFeed = () => {
+const NutritionistActivityFeed = ({onLoadFailure, retryKey = 0}) => {
     const { user } = useAuth();
-    return <NutritionistActivityFeedContent key={user?.id || 'signed-out'} />;
+    return <NutritionistActivityFeedContent key={user?.id || 'signed-out'} onLoadFailure={onLoadFailure} retryKey={retryKey} />;
 };
 
-const NutritionistActivityFeedContent = () => {
+const NutritionistActivityFeedContent = ({onLoadFailure, retryKey}) => {
     const { user } = useAuth();
     const userId = user?.id;
     const navigate = useNavigate();
@@ -167,6 +167,8 @@ const NutritionistActivityFeedContent = () => {
     const [failedSources, setFailedSources] = useState([]);
     const [failedSyncItems, setFailedSyncItems] = useState([]);
     const loadGeneration = useRef(0);
+    const previousRetryKey = useRef(retryKey);
+    const externalRecovery = typeof onLoadFailure === 'function';
     const feedSnapshot = useRef([]);
     const [actionLoadingId, setActionLoadingId] = useState(null);
     const [feedFilter, setFeedFilter] = useState('all');
@@ -184,8 +186,6 @@ const NutritionistActivityFeedContent = () => {
             const generation = ++loadGeneration.current;
             const started = performance.now();
             setLoading(true);
-            setLoadError(false);
-            setFailedSources([]);
 
             try {
                 const today = new Date();
@@ -410,6 +410,8 @@ const NutritionistActivityFeedContent = () => {
                 });
 
                 const previousFeed = feedSnapshot.current;
+                setLoadError(false);
+                setFailedSources([]);
                 setFeedItems(sorted);
                 setHasSnapshot(true);
                 setSelectedItemIds(previous => previous.filter(id => sorted.some(item => item.id === id
@@ -433,6 +435,19 @@ const NutritionistActivityFeedContent = () => {
                 setRefreshing(false);
             }
     }, [userId]);
+
+    useEffect(() => {
+        onLoadFailure?.(loadError ? failedSources : null);
+    }, [onLoadFailure, loadError, failedSources]);
+
+    useEffect(() => () => onLoadFailure?.(null), [onLoadFailure]);
+
+    useEffect(() => {
+        if (previousRetryKey.current === retryKey) return;
+        previousRetryKey.current = retryKey;
+        clearActivityFeedCache();
+        fetchFeed();
+    }, [retryKey, fetchFeed]);
 
     useEffect(() => {
         setHasSnapshot(false);setFailedSyncItems([]);setFeedItems([]);setSelectedItemIds([]);setAuditTrailByKey({});
@@ -671,12 +686,12 @@ const NutritionistActivityFeedContent = () => {
     }
 
     if (loadError && !hasSnapshot) {
-        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><div role="alert" className="text-sm text-destructive"><p>Não foi possível carregar o feed.</p><p>Não foi possível conferir: {failedSources.join(', ') || 'fontes do feed'}. Não é possível afirmar que não há alertas.</p></div><Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button></CardContent></Card>;
+        return <Card className="bg-card shadow-card-dark rounded-xl"><CardHeader><CardTitle>Feed de Atividades</CardTitle></CardHeader><CardContent className="space-y-3"><div role={externalRecovery ? undefined : 'alert'} className="text-sm text-destructive"><p>Não foi possível carregar o feed.</p><p>Não foi possível conferir: {failedSources.join(', ') || 'fontes do feed'}. Não é possível afirmar que não há alertas.</p></div>{externalRecovery ? <p className="text-sm text-muted-foreground">Use Tentar novamente no início do painel.</p> : <Button variant="outline" onClick={handleRefresh}>Tentar novamente</Button>}</CardContent></Card>;
     }
 
     return (
         <Card className="bg-card shadow-card-dark rounded-xl overflow-hidden" aria-busy={loading || undefined}>
-            {loadError && <div role="alert" className="mx-6 mt-4 text-sm text-destructive">
+            {loadError && !externalRecovery && <div role="alert" className="mx-6 mt-4 text-sm text-destructive">
                 Não foi possível atualizar o feed. A última consulta confirmada continua visível.
                 <p>Não foi possível conferir: {failedSources.join(', ') || 'fontes do feed'}. As ações ficam indisponíveis até atualizar.</p>
                 <Button variant="link" onClick={handleRefresh}>Tentar novamente</Button>

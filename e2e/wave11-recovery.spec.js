@@ -14,7 +14,7 @@ test('patient list recovers from query failure and remains stable across empty l
  expect(errors.filter(message=>/Maximum update depth|ResizeObserver loop/i.test(message))).toEqual([]);
 });
 test('simultaneous dashboard outage has one recovery surface and does not invalidate navigation',async({page})=>{
- await login(page);await page.goto('/nutritionist/patients');await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();
+ await login(page);await page.goto('/nutritionist/patients');await page.getByPlaceholder(/Procurar paciente/).fill('QA patient-a');await expect(page.getByText('QA patient-a',{exact:false}).first()).toBeVisible();
  await page.route('**/rest/v1/appointments?**',route=>route.abort('failed'));
  await page.locator('a[href="/nutritionist"]:visible').first().click();await expect(page.getByText('Alguns dados não foram atualizados',{exact:true})).toBeVisible();
  await expect(page.locator('header')).toBeVisible();await page.unroute('**/rest/v1/appointments?**');await page.getByRole('button',{name:'Tentar novamente',exact:true}).click();await expect(page.getByText('Alguns dados não foram atualizados',{exact:true})).toBeHidden();

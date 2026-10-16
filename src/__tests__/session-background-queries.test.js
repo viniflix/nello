@@ -156,6 +156,11 @@ describe('session-safe background queries', () => {
     const failedItems=[{sourceType:'pending',sourceId:'failed',patientId:'patient',careEpisodeId:'current'}];
     expect(await retryFeedTaskSync('nutritionist-session',failedItems)).toMatchObject({error:{code:'NETWORK_FAILURE'},failedItems:[{...failedItems[0],failureCode:'NETWORK_FAILURE'}]});
     expect(mocks.rpc.mock.calls.some(([name])=>name==='save_feed_task')).toBe(false);
+    // A simultaneous outage must not hide a confirmed authorization denial.
+    mocks.rpc.mockImplementation(async name=>({data:[],error:name==='get_active_feed_patients'
+      ? {status:503,code:'PGRST003'} : {status:403,code:'42501'}}));
+    expect(await retryFeedTaskSync('nutritionist-session',failedItems)).toMatchObject({error:{status:403,code:'42501'}});
+    expect(mocks.rpc.mock.calls.some(([name])=>name==='save_feed_task')).toBe(false);
   });
 
   it('does not report a no-row write when logout wins the feed persistence race', async () => {
