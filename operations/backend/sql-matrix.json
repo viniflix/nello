@@ -338,6 +338,11 @@
       "file": "agenda_notification_outbox.sql",
       "kind": "assertion-suite",
       "fixtures": []
+    },
+    {
+      "fixtures": [],
+      "file": "checkin_explicit_scoring.sql",
+      "kind": "assertion-suite"
     }
   ]
 }

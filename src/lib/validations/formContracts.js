@@ -1,3 +1,4 @@
+import {calculateExplicitCheckinScore} from '@/domain/clinical/checkins';
 const CHECKIN_FIELD_TYPES = new Set(['scale_1_10', 'yes_no', 'number', 'text', 'multiple_choice']);
 const ANAMNESIS_OPTION_TYPES = new Set(['select', 'radio', 'checkbox']);
 
@@ -12,7 +13,9 @@ export function findMissingRequiredField(fields, responses) {
   return fields.find((field) => field.is_required && !isFormValuePresent(responses[field.id])) || null;
 }
 
-export function calculateCheckinScore(fields, responses) {
+export function calculateCheckinScore(fields, responses, {version=2}={}) {
+  if(version===2){const {total,maximum}=calculateExplicitCheckinScore(fields,responses);return {total,maximum};}
+  if(version!==1)throw new Error('CHECKIN_UNSUPPORTED_SCORE_VERSION');
   return fields.reduce((score, field) => {
     const weight = Number(field.score_weight ?? 1);
     if (!Number.isFinite(weight) || weight < 0) return score;
@@ -42,7 +45,11 @@ export function validateCheckinTemplate({ name, fields, channel = 'in_app' }) {
     if (!CHECKIN_FIELD_TYPES.has(field.field_type)) return `O tipo da pergunta ${position} ainda não está disponível.`;
 
     const weight = Number(field.score_weight);
-    if (!Number.isFinite(weight) || weight < 0) return `Informe um peso válido na pergunta ${position}.`;
+    if (!Number.isFinite(weight) || weight < 0 || weight>100) return `Informe um peso válido na pergunta ${position}.`;
+    const rule=field.scoring_rule;
+    if(rule && (rule.version!==2 || !(rule.mode==='none'
+      || (field.field_type==='yes_no'&&['yes','no'].includes(rule.mode))
+      || (field.field_type==='scale_1_10'&&['higher_better','lower_better'].includes(rule.mode)))))return `Revise o critério de pontuação da pergunta ${position}.`;
 
     if (field.field_type === 'multiple_choice') {
       const options = (field.options || []).map((option) => String(option).trim()).filter(Boolean);

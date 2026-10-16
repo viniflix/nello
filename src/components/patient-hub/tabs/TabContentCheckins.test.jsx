@@ -10,7 +10,7 @@ it('não apresenta ausência de pontuação como zero', () => {
     state.result.data = [{ id: '1', adherence_percentage: null, checkin_templates: { name: 'Retorno' } }];
     render(<TabContentCheckins patientId="patient" />);
     expect(screen.queryByText('0%')).not.toBeInTheDocument();
-    expect(screen.getByText('Sem pontuação')).toBeInTheDocument();
+    expect(screen.getAllByText('Sem pontuação')).toHaveLength(2);
 });
 it('calcula média somente das respostas pontuadas, preservando zeros reais', () => {
     state.result.data = [{ id: '1', adherence_percentage: 0 }, { id: '2', adherence_percentage: 80 }, { id: '3', adherence_percentage: null }];
@@ -21,6 +21,10 @@ it('oferece skeleton durante o carregamento', () => {
     state.result.isLoading = true;
     render(<TabContentCheckins patientId="patient" />);
     expect(screen.getByRole('status', { name: 'Carregando check-ins' })).toBeInTheDocument();
+});
+it('não mistura médias de versões com significados diferentes',()=>{
+ state.result.data=[{id:'old',score_version:1,adherence_percentage:80},{id:'new',score_version:2,adherence_percentage:20}];render(<TabContentCheckins patientId="patient"/>);
+ expect(screen.queryByText('50%')).toBeNull();expect(screen.getByText('Média — regra anterior')).toBeInTheDocument();expect(screen.getByText('Média dos critérios definidos')).toBeInTheDocument();
 });
 it('oferece recuperação no card quando a consulta falha', () => {
     state.result.isError = true;

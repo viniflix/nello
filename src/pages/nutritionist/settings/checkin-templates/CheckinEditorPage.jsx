@@ -39,7 +39,7 @@ export default function CheckinEditorPage() {
     const [channel, setChannelState] = useState('in_app');
 
     const [fields, setFieldsState] = useState([
-        { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true }
+        { label: 'Como você avalia sua adesão à dieta nesta semana?', field_type: 'scale_1_10', options: [], score_weight: 1.0, is_required: true, scoring_rule:{version:2,mode:'none'} }
     ]);
     const touchedRef = useRef(false);
     const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-template:${templateId || 'new'}`, enabled: Boolean(user?.id) });

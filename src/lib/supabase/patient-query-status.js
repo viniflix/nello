@@ -69,7 +69,7 @@ export const getPatientHubOperationalContext = async (patientId, nutritionistId,
                 .maybeSingle(),{signal:readOptions?.signal,policy:readPolicies.clinical}),
             readRequest(() => supabase
                 .from('checkin_sessions')
-                .select('id, status, completed_at, sent_at, adherence_percentage, score_total, score_max')
+                .select('id, status, completed_at, sent_at, adherence_percentage, score_total, score_max, score_version')
                 .eq('patient_id', patientId)
                 .eq('nutritionist_id', nutritionistId)
                 .order('created_at', { ascending: false })

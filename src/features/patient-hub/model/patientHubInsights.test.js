@@ -4,6 +4,10 @@ import { buildPatientHubInsights } from './patientHubInsights';
 const now = new Date('2026-09-04T12:00:00.000Z');
 
 describe('buildPatientHubInsights', () => {
+  it.each([[2,80,'Pontuação dos critérios: 80%'],[1,80,'Pontuação — regra anterior: 80%'],[2,null,'Sem pontuação'],[2,false,'Sem pontuação']])('identifica a versão %s e pontuação %s do check-in sem alegar adesão', (version,value,label)=>{
+    const result=buildPatientHubInsights({operationalContext:{activePlan:{id:1},planStatus:'active',latestCheckin:{status:'completed',completed_at:'2026-09-03T12:00:00Z',score_version:version,adherence_percentage:value}},now});
+    expect(result.signals.find(signal=>signal.id==='review-checkin').reasons).toContain(label);
+  });
   it('does not recommend creating a plan when the plan query failed', () => {
     const result = buildPatientHubInsights({ operationalContext: { planStatus: 'unknown', partialErrors: ['planos alimentares'] }, now });
     expect(result.primary.id).toBe('incomplete-data');

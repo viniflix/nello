@@ -24,7 +24,7 @@ describe('contratos de respostas', () => {
     expect(calculateCheckinScore([
       { id: 'scale', field_type: 'scale_1_10', score_weight: 2 },
       { id: 'boolean', field_type: 'yes_no', score_weight: 1 },
-    ], { scale: [7], boolean: 'yes' })).toEqual({ total: 24, maximum: 30 });
+    ], { scale: [7], boolean: 'yes' }, {version:1})).toEqual({ total: 24, maximum: 30 });
   });
 });
 

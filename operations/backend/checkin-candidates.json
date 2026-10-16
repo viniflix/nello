@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261016211500_checkin_explicit_scoring.sql",
+      "sha256": "a97e0b429555d68fdac436d5307d42dd1c9681aab941154b493870682c65f3d2"
+    }
+  ]
+}

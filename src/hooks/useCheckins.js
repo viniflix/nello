@@ -19,7 +19,7 @@ export function useCheckins() {
     queryFn: queryRead(async ({signal}) => {
       const { data, error } = await readRequest(() => supabase
         .from('checkin_templates')
-        .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n          checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at)\n        ")
+        .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n          checkin_fields(id,template_id,label,field_type,options,score_weight,scoring_rule,unit,is_required,order_index,created_at)\n        ")
         .eq('nutritionist_id', user?.id)
         .order('created_at', { ascending: false }), {signal:signal});
       
@@ -54,7 +54,7 @@ export function useCheckins() {
   const getTemplate = useCallback(async (templateId) => {
     const { data, error } = await supabase
       .from('checkin_templates')
-      .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n        checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at)\n      ")
+      .select("id,nutritionist_id,name,description,frequency,send_time,send_days,is_active,metadata,created_at,updated_at,channel,\n        checkin_fields(id,template_id,label,field_type,options,score_weight,scoring_rule,unit,is_required,order_index,created_at)\n      ")
       .eq('id', templateId)
       .eq('nutritionist_id', user?.id)
       .single();
@@ -146,7 +146,7 @@ export function useCheckins() {
     queryFn: queryRead(async ({signal}) => {
       const { data, error } = await readRequest(() => supabase
         .from('checkin_sessions')
-        .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n          checkin_templates (name, description, checkin_fields(id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at))\n        ")
+        .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,score_version,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n          checkin_templates (name, description, checkin_fields(id,template_id,label,field_type,options,score_weight,scoring_rule,unit,is_required,order_index,created_at))\n        ")
         .eq('patient_id', user?.id)
         .eq('status', 'pending')
         .gt('expires_at', new Date().toISOString())
@@ -175,7 +175,9 @@ export function useCheckins() {
     },
     onError: (error) => {
       logSupabaseError('Submeter check-in', error);
-      toast({ title: "Não foi possível concluir", description: "Atualize a página e tente novamente.", variant: "destructive" });
+      const expired=String(error?.message).includes('CHECKIN_EXPIRED');
+      const completed=String(error?.message).includes('CHECKIN_ALREADY_COMPLETED');
+      toast({ title: expired?'Check-in expirado':completed?'Check-in já respondido':'Envio não confirmado', description: expired?'Solicite um novo envio ao nutricionista.':completed?'Conferindo o estado registrado no servidor.':'Suas respostas foram mantidas nesta tela. Tente enviar novamente.', variant: "destructive" });
     }
   });
   
@@ -186,7 +188,7 @@ export function useCheckins() {
       const { data, error } = await readRequest(() => supabase
         .from('checkin_sessions')
         .select(`
-          id, completed_at, score_total, score_max, adherence_percentage, sent_at,
+          id, completed_at, score_total, score_max, adherence_percentage, score_version, sent_at,
           checkin_templates (name)
         `)
         .eq('patient_id', patientId)

@@ -16,11 +16,20 @@ import { useToast } from '@/components/ui/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useShadowDraft } from '@/hooks/useShadowDraft';
 import { ShadowRecovery, ShadowSaveStatus } from '@/components/ui/shadow-save-status';
+import { checkinState } from '@/domain/clinical/checkins';
+import { failurePresentation } from '@/lib/utils/failure';
 
 const CHECKIN_NOT_FOUND_MESSAGE = 'Check-in não encontrado.';
 const CHECKIN_LOAD_ERROR_MESSAGE = 'Não foi possível carregar este check-in.';
+const CHECKIN_EXPIRED_MESSAGE = 'Este check-in expirou. Solicite um novo envio ao seu nutricionista.';
 
 const CheckinResponsePage = () => {
+  const {sessionId} = useParams();
+  const {user} = useAuth();
+  return <CheckinResponseContent key={`${user?.id || 'signed-out'}:${sessionId}`} />;
+};
+
+const CheckinResponseContent = () => {
   const { sessionId } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -28,6 +37,7 @@ const CheckinResponsePage = () => {
   const { submitCheckin } = useCheckins();
   const shadow = useShadowDraft({ ownerId: user?.id, draftKey: `checkin-response:${sessionId}`, enabled: Boolean(user?.id && isUuid(sessionId)) });
   const touchedRef = useRef(false);
+  const submittingRef = useRef(false);
 
   const [session, setSession] = useState(null);
   const [fields, setFields] = useState([]);
@@ -37,25 +47,30 @@ const CheckinResponsePage = () => {
   const [responses, setResponses] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isCompleted, setIsCompleted] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
 
   const restoreShadow = () => {
     const candidate = shadow.recovery?.payload;
-    if (!candidate?.responses || !session || candidate.expiresAt !== session.expires_at) {
+    if (!candidate?.responses || !session || checkinState(session) !== 'pending' || candidate.expiresAt !== session.expires_at) {
       void shadow.discardRecovery();
       return;
     }
     const saved = shadow.restore();
     if (!saved?.responses) return;
-    const allowed = new Set(fields.map((field) => field.id));
+    const allowed = new Set(fields.filter(field=>saved.responseVersion === 2 || field.field_type !== 'scale_1_10').map(field=>field.id));
     setResponses((current) => ({ ...current, ...Object.fromEntries(Object.entries(saved.responses).filter(([id]) => allowed.has(id))) }));
+    if (saved.responseVersion !== 2 && fields.some(field=>field.field_type==='scale_1_10')) toast({title:'Confira as escalas',description:'Confirme novamente os valores das escalas deste rascunho anterior.'});
     touchedRef.current = true;
   };
 
   useEffect(() => {
+    let cancelled = false;
     const fetchSessionData = async () => {
       setLoading(true);
+      setError(null);
+      setIsCompleted(false);
 
-      if (!isUuid(sessionId)) {
+      if (!isUuid(sessionId) || !user?.id) {
         setError(CHECKIN_NOT_FOUND_MESSAGE);
         setLoading(false);
         return;
@@ -64,33 +79,37 @@ const CheckinResponsePage = () => {
       try {
         const { data: sessionData, error: sessionError } = await supabase
           .from('checkin_sessions')
-          .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n            checkin_templates (\n              name,\n              description\n            )\n          ")
+          .select("id,schedule_id,patient_id,nutritionist_id,template_id,token,responses,score_total,score_max,adherence_percentage,score_version,status,sent_at,completed_at,expires_at,created_at,care_episode_id,scheduled_for,fields_snapshot,\n            checkin_templates (\n              name,\n              description\n            )\n          ")
           .eq('id', sessionId)
           .single();
 
+        if (cancelled) return;
         if (sessionError) throw sessionError;
         if (!sessionData) throw new Error('Check-in não encontrado.');
 
-        if (sessionData.status !== 'pending') {
-          // Já completado
+        setSession(sessionData);
+        const state = checkinState(sessionData);
+        if (state === 'completed') {
           setIsCompleted(true);
           setLoading(false);
           return;
         }
 
-        if (sessionData.expires_at && new Date(sessionData.expires_at).getTime() <= Date.now()) {
-          setError('Este check-in expirou. Solicite um novo envio ao seu nutricionista.');
+        if (state === 'expired') {
+          setError(CHECKIN_EXPIRED_MESSAGE);
           return;
         }
+        if (state !== 'pending') throw new Error('CHECKIN_UNAVAILABLE');
 
         let fieldsData = Array.isArray(sessionData.fields_snapshot) ? sessionData.fields_snapshot : [];
         if (!fieldsData.length) {
           const { data, error: fieldsError } = await supabase
             .from('checkin_fields')
-            .select("id,template_id,label,field_type,options,score_weight,unit,is_required,order_index,created_at")
+            .select("id,template_id,label,field_type,options,score_weight,scoring_rule,unit,is_required,order_index,created_at")
             .eq('template_id', sessionData.template_id)
             .order('order_index', { ascending: true });
           if (fieldsError) throw fieldsError;
+          if (cancelled) return;
           fieldsData = data || [];
         }
 
@@ -100,26 +119,40 @@ const CheckinResponsePage = () => {
         }
 
         setSession(sessionData);
-        setFields(fieldsData || []);
+        setFields((fieldsData || []).map(field=>({...field,is_required:field.is_required!==false})));
 
         const initialResp = {};
         fieldsData?.forEach(f => {
-           initialResp[f.id] = f.field_type === 'scale_1_10' ? [5] : '';
+           initialResp[f.id] = '';
         });
         setResponses(initialResp);
 
       } catch (err) {
+        if (cancelled) return;
         if (import.meta.env.DEV) {
           logDiagnostic('error', 'pages/patient/CheckinResponsePage.jsx:117', 'Falha ao carregar check-in:', err?.code || err?.name || 'unknown');
         }
         setError(CHECKIN_LOAD_ERROR_MESSAGE);
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     fetchSessionData();
-  }, [sessionId]);
+    return () => {cancelled = true;};
+  }, [sessionId, user?.id, loadAttempt]);
+
+  useEffect(() => {
+    if (!session || isCompleted || checkinState(session) !== 'pending' || !session.expires_at) return;
+    let timer;
+    const verifyDeadline = () => {
+      if (checkinState(session) === 'expired') {setError(CHECKIN_EXPIRED_MESSAGE);return;}
+      timer = setTimeout(verifyDeadline, Math.min(2147483647, Math.max(1, new Date(session.expires_at).getTime()-Date.now())));
+    };
+    const onFocus = () => {clearTimeout(timer);verifyDeadline();};
+    verifyDeadline();window.addEventListener('focus', onFocus);
+    return () => {clearTimeout(timer);window.removeEventListener('focus', onFocus);};
+  }, [session, isCompleted]);
 
   useEffect(() => {
     if (shadow.ready && (isCompleted || error?.includes('expirou'))) {
@@ -128,6 +161,7 @@ const CheckinResponsePage = () => {
   }, [shadow.ready, shadow.discard, isCompleted, error]);
 
   const handleNext = () => {
+    if (checkinState(session) !== 'pending') {setError(CHECKIN_EXPIRED_MESSAGE);return;}
     const field = fields[currentStep];
     if (field?.is_required && !isFormValuePresent(responses[field.id])) {
       toast({ title: 'Resposta obrigatória', description: `Responda “${field.label}” para continuar.`, variant: 'destructive' });
@@ -144,10 +178,12 @@ const CheckinResponsePage = () => {
     touchedRef.current = true;
     const next = { ...responses, [fieldId]: value };
     setResponses(next);
-    if (session) shadow.queue({ responses: next, expiresAt: session.expires_at });
+    if (session) shadow.queue({ responses: next, expiresAt: session.expires_at, responseVersion: 2 });
   };
 
   const handleSubmit = async () => {
+    if (submittingRef.current) return;
+    if (checkinState(session) !== 'pending') {setError(CHECKIN_EXPIRED_MESSAGE);return;}
     const missing = findMissingRequiredField(fields, responses);
     if (missing) {
       const missingIndex = fields.findIndex((field) => field.id === missing.id);
@@ -155,17 +191,26 @@ const CheckinResponsePage = () => {
       toast({ title: 'Resposta obrigatória', description: `Responda “${missing.label}” antes de concluir.`, variant: 'destructive' });
       return;
     }
+    submittingRef.current = true;
     setIsSubmitting(true);
     try {
       await submitCheckin.mutateAsync({
         sessionId,
         responses
       });
-      await shadow.discard();
+      setError(null);
+      setSession(current=>({...current,status:'completed'}));
       setIsCompleted(true);
-    } catch {
-      // A mutação exibe uma mensagem neutra e mantém o formulário disponível para nova tentativa.
+      await shadow.discard();
+    } catch (caught) {
+      if (String(caught?.message).includes('CHECKIN_EXPIRED')) setError(CHECKIN_EXPIRED_MESSAGE);
+      else if (String(caught?.message).includes('CHECKIN_ALREADY_COMPLETED')) setLoadAttempt(value=>value+1);
+      else if (['unauthenticated','forbidden'].includes(failurePresentation(caught).kind)) {
+        setSession(null);setResponses({});setFields([]);setError('Este check-in não está disponível para esta conta.');
+      }
+      // Unconfirmed sends retain the answers and draft for a manual retry.
     } finally {
+      submittingRef.current = false;
       setIsSubmitting(false);
     }
   };
@@ -180,8 +225,9 @@ const CheckinResponsePage = () => {
         <div className="w-16 h-16 bg-destructive/10 text-destructive rounded-full flex items-center justify-center mb-4">
           <AlertCircle className="w-8 h-8" />
         </div>
-        <h2 className="text-xl font-bold mb-2">Ops! Algum problema ocorreu.</h2>
+        <h2 className="text-xl font-bold mb-2">{error === CHECKIN_EXPIRED_MESSAGE ? 'Check-in expirado' : 'Não foi possível abrir o check-in'}</h2>
         <p className="text-muted-foreground mb-6 max-w-sm">{error}</p>
+        {error === CHECKIN_LOAD_ERROR_MESSAGE && <Button variant="outline" className="mb-3" onClick={()=>setLoadAttempt(value=>value+1)}>Tentar novamente</Button>}
         <Button onClick={() => navigate('/patient')}>Voltar ao início</Button>
       </div>
     );
@@ -270,16 +316,19 @@ const CheckinResponsePage = () => {
                   {scaleVal}
                 </p>
                 <Slider
-                  defaultValue={[5]}
+                  key={currentField.id}
+                  min={1}
                   max={10}
+                  aria-label={currentField.label}
                   step={1}
                   value={[scaleVal]}
                   onValueChange={(val) => handleResponseChange(currentField.id, val)}
                   className="py-4 cursor-pointer"
                 />
+                {!isFormValuePresent(currentVal) && <div className="space-y-2 text-center"><p className="text-sm text-muted-foreground">Mova a escala ou confirme o valor para responder.</p><Button variant="outline" onClick={()=>handleResponseChange(currentField.id,[scaleVal])}>Confirmar valor {scaleVal}</Button></div>}
                 <div className="flex justify-between text-xs sm:text-sm font-bold text-muted-foreground uppercase px-2 tracking-wider">
-                  <span>Péssimo (1)</span>
-                  <span>Excelente (10)</span>
+                  <span>1</span>
+                  <span>10</span>
                 </div>
               </div>
             )}
@@ -297,8 +346,8 @@ const CheckinResponsePage = () => {
                 </Button>
                 <Button
                   type="button"
-                  variant={currentVal === 'no' ? 'destructive' : 'outline'}
-                  className={`h-20 text-xl font-bold rounded-xl transition-all ${currentVal === 'no' ? 'ring-2 ring-offset-2 ring-destructive' : ''}`}
+                  variant={currentVal === 'no' ? 'default' : 'outline'}
+                  className={`h-20 text-xl font-bold rounded-xl transition-all ${currentVal === 'no' ? 'ring-2 ring-offset-2 ring-primary' : ''}`}
                   onClick={() => handleResponseChange(currentField.id, 'no')}
                 >
                   Não
@@ -337,7 +386,7 @@ const CheckinResponsePage = () => {
               <div className="relative max-w-xs mx-auto">
                 <Input
                   type="number"
-                  value={currentVal || ''}
+                  value={currentVal ?? ''}
                   onChange={(e) => handleResponseChange(currentField.id, e.target.value)}
                   className="h-20 text-3xl text-center font-bold pr-16 rounded-xl border-2 shadow-inner"
                   style={{ '--tw-ring-color': brandColor }}
@@ -382,7 +431,7 @@ const CheckinResponsePage = () => {
           ) : (
             <Button
               onClick={handleSubmit}
-              disabled={isSubmitting || (currentField?.is_required && (!responses[currentField.id] || responses[currentField.id].length === 0))}
+              disabled={isSubmitting || (currentField?.is_required && !isFormValuePresent(responses[currentField.id]))}
               className="h-12 rounded-xl px-8 text-base font-bold text-white shadow-md transition-all active:scale-95"
               style={{ backgroundColor: brandColor }}
             >

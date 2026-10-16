@@ -3,6 +3,7 @@ import { useCheckins } from '@/hooks/useCheckins';
 import { Card, CardContent } from '@/components/ui/card';
 import { CheckSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { normalizeCheckinScore } from '@/domain/clinical/checkins';
 
 const PatientCheckinHistoryWidget = ({ patientId }) => {
   const { useCheckinHistory } = useCheckins();
@@ -40,12 +41,12 @@ const PatientCheckinHistoryWidget = ({ patientId }) => {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {history.map((session) => (
+        {history.map((session) => {const score=normalizeCheckinScore(session.adherence_percentage);return (
           <Card key={session.id} className="hover:shadow-md transition-shadow relative overflow-hidden group">
             <div
               className={`absolute top-0 left-0 w-1.5 h-full transition-all ${
-                session.adherence_percentage >= 80 ? 'bg-green-500' :
-                session.adherence_percentage >= 50 ? 'bg-amber-400' : 'bg-red-500'
+                score == null ? 'bg-muted-foreground/30' : score >= 80 ? 'bg-green-500' :
+                score >= 50 ? 'bg-amber-400' : 'bg-red-500'
               }`}
             />
             <CardContent className="p-5 flex flex-col justify-between h-full">
@@ -60,18 +61,18 @@ const PatientCheckinHistoryWidget = ({ patientId }) => {
 
               <div className="flex items-end justify-between mt-auto">
                 <div>
-                  <div className="text-xs text-muted-foreground mb-0.5 font-medium">Score de Adesão</div>
+                  <div className="text-xs text-muted-foreground mb-0.5 font-medium">{session.score_version===2?'Pontuação dos critérios':'Pontuação — regra anterior'}</div>
                   <div className={`text-2xl font-black ${
-                    session.adherence_percentage >= 80 ? 'text-green-600' :
-                    session.adherence_percentage >= 50 ? 'text-amber-500' : 'text-red-500'
+                    score == null ? 'text-muted-foreground' : score >= 80 ? 'text-green-600' :
+                    score >= 50 ? 'text-amber-500' : 'text-red-500'
                   }`}>
-                    {Math.round(session.adherence_percentage)}%
+                    {score == null ? 'Sem pontuação' : `${Math.round(score)}%`}
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
-        ))}
+        );})}
       </div>
     </div>
   );

@@ -20,6 +20,7 @@ export default function CheckinTemplateBuilder({ fields, setFields }) {
       field_type: 'scale_1_10', 
       options: [], 
       score_weight: 1.0,
+      scoring_rule: {version:2,mode:'none'},
       is_required: true 
     }]);
   };
@@ -67,7 +68,7 @@ export default function CheckinTemplateBuilder({ fields, setFields }) {
                   <Label>Tipo de Resposta</Label>
                   <Select 
                     value={field.field_type} 
-                    onValueChange={(val) => updateField(index, 'field_type', val)}
+                    onValueChange={(val) => {setFields(fields.map((item,i)=>i===index?{...item,field_type:val,scoring_rule:{version:2,mode:'none'}}:item));}}
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -81,14 +82,29 @@ export default function CheckinTemplateBuilder({ fields, setFields }) {
                 </div>
 
                 <div className="md:col-span-2 space-y-1">
-                  <Label>Peso (Score)</Label>
+                  <Label>Peso da pontuação</Label>
                   <Input 
                     type="number" 
                     step="0.1" 
                     min="0"
+                    max="100"
+                    disabled={!field.scoring_rule || field.scoring_rule.mode==='none'}
                     value={field.score_weight} 
                     onChange={(e) => updateField(index, 'score_weight', parseFloat(e.target.value))} 
                   />
+                </div>
+
+                <div className="md:col-span-12 space-y-1">
+                  <Label>Critério de pontuação</Label>
+                  <Select value={field.scoring_rule?.mode || 'none'} onValueChange={mode=>updateField(index,'scoring_rule',{version:2,mode})}>
+                    <SelectTrigger aria-label={`Critério da pergunta ${index+1}`}><SelectValue/></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Descritiva — sem pontuação</SelectItem>
+                      {field.field_type==='yes_no'&&<><SelectItem value="yes">Resposta “Sim” atende ao critério</SelectItem><SelectItem value="no">Resposta “Não” atende ao critério</SelectItem></>}
+                      {field.field_type==='scale_1_10'&&<><SelectItem value="higher_better">Maior valor corresponde mais ao critério (1 = 0%, 10 = 100%)</SelectItem><SelectItem value="lower_better">Menor valor corresponde mais ao critério (1 = 100%, 10 = 0%)</SelectItem></>}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">Só critérios definidos entram na nota. Texto, números, opções descritivas, peso zero e opcionais sem resposta ficam fora do cálculo. A pontuação não avalia eficácia clínica.</p>
                 </div>
 
                 {field.field_type === 'multiple_choice' && (

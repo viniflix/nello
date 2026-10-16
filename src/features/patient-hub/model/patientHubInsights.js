@@ -1,3 +1,4 @@
+import {normalizeCheckinScore} from '@/domain/clinical/checkins';
 const DAY_MS = 24 * 60 * 60 * 1000;
 
 const toDate = (value) => {
@@ -148,6 +149,7 @@ export const buildPatientHubInsights = ({
   }
 
   if (latestCheckin?.status === 'completed') {
+    const checkinScore=normalizeCheckinScore(latestCheckin.adherence_percentage);
     const checkinAge = daysBetween(latestCheckin.completed_at, now);
     if (checkinAge !== null && checkinAge >= 0 && checkinAge <= 7) {
       candidates.push(createInsight({
@@ -160,7 +162,7 @@ export const buildPatientHubInsights = ({
         action: { type: 'tab', tab: 'checkins' },
         reasons: [
           `Respondido há ${checkinAge} dia${checkinAge === 1 ? '' : 's'}`,
-          latestCheckin.adherence_percentage != null ? `Adesão informada: ${Math.round(Number(latestCheckin.adherence_percentage))}%` : null,
+          checkinScore == null ? 'Sem pontuação' : `${latestCheckin.score_version===2?'Pontuação dos critérios':'Pontuação — regra anterior'}: ${Math.round(checkinScore)}%`,
         ],
       }));
     }
