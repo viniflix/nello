@@ -36,14 +36,18 @@ describe('laboratory page consumer contract', () => {
     expect(screen.getByText(/Mostrando 1 de 1 resultados encontrados/)).toBeInTheDocument();
   });
   it('progressively displays results without silently dropping the final record', async () => {
-    draw(); await screen.findByText(/Histórico carregado: 51 exames/);
-    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais resultados' }));
-    fireEvent.click(screen.getByRole('button', { name: 'Carregar mais resultados' }));
-    expect(screen.getByText('Marcador 51', { selector: 'h3' })).toBeInTheDocument();
-    expect(screen.queryByRole('button', { name: 'Carregar mais resultados' })).not.toBeInTheDocument();
+    // The display boundary is 25; the separate search contract exercises >50.
+    mocks.rows = mocks.rows.slice(0, 26);
+    draw(); await screen.findByText(/Histórico carregado: 26 exames/);
+    expect(screen.queryByText('Marcador 26', { selector: 'h3' })).not.toBeInTheDocument();
+    fireEvent.click(screen.getByText('Carregar mais resultados', { selector: 'button' }));
+    expect(screen.getByText('Marcador 26', { selector: 'h3' })).toBeInTheDocument();
+    expect(screen.queryByText('Carregar mais resultados', { selector: 'button' })).not.toBeInTheDocument();
   });
   it('previews and saves the same decimal value', async () => {
-    draw(); await screen.findByText(/Histórico carregado: 51 exames/);
+    // Unrelated history cards need not rerender on every form field change.
+    mocks.rows = mocks.rows.slice(0, 1);
+    draw(); await screen.findByText(/Histórico carregado: 1 exames/);
     fireEvent.click(screen.getByRole('button', { name: 'Adicionar Exame' }));
     const dialog = screen.getByRole('dialog');
     fireEvent.change(within(dialog).getByLabelText(/Nome do Exame/), { target: { value: 'Novo marcador' } });
