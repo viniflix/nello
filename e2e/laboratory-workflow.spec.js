@@ -3,6 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 import { readFileSync } from 'node:fs';
 import { randomUUID } from 'node:crypto';
 
+test.use({ timezoneId: 'America/Fortaleza' });
+
 const fixture = JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
 if (!['http://localhost:54321', 'http://localhost:4180'].includes(fixture.url)) throw Error('Disposable loopback laboratory fixture required');
 const owner = createClient(fixture.url, fixture.anonKey, { auth: { persistSession: false, autoRefreshToken: false } });
@@ -57,6 +59,8 @@ test('searches a real synthetic history beyond 50 results', async ({ page }, tes
   await open(page);
   await page.getByLabel('Buscar exame').fill(`${prefix} 0`);
   await expect(page.getByRole('heading', { name: `${prefix} 0`, exact: true })).toBeVisible();
+  const card = page.locator('.hover\\:shadow-md').filter({ has: page.getByRole('heading', { name: `${prefix} 0`, exact: true }) });
+  await expect(card.getByText('01/10/2026', { exact: true })).toBeVisible();
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth + 1)).toBe(true);
   await page.screenshot({ path: testInfo.outputPath('laboratory-mobile.png'), fullPage: true });
 });

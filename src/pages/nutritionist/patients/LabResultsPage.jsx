@@ -19,7 +19,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/infrastructure/supabase/client';
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { cn } from '@/lib/utils';
-import { getTodayIsoDate } from '@/lib/utils/date';
+import { civilDateToDate, getTodayIsoDate } from '@/lib/utils/date';
 import {
     getPatientLabResults,
     getLabRiskRules,
@@ -191,7 +191,7 @@ if (resolveLoading || !patientId) {
                                                                 {selectedTrend.latest?.test_value ?? '--'} {selectedTrend.latest?.test_unit || ''}
                                                             </p>
                                                             <p className="text-xs text-muted-foreground">
-                                                                {selectedTrend.latest?.test_date ? new Date(selectedTrend.latest.test_date).toLocaleDateString('pt-BR') : 'sem data'}
+                                                                {selectedTrend.latest?.test_date ? civilDateToDate(selectedTrend.latest.test_date).toLocaleDateString('pt-BR') : 'sem data'}
                                                             </p>
                                                         </div>
                                                         <div className={cn('flex items-center gap-1 text-sm font-medium', trendMeta.className)}>
@@ -220,7 +220,7 @@ if (resolveLoading || !patientId) {
                                                         {item.test_value ?? '--'} {item.test_unit || ''}
                                                     </p>
                                                     <p className="text-xs text-muted-foreground">
-                                                        {item.test_date ? new Date(item.test_date).toLocaleDateString('pt-BR') : 'sem data'}
+                                                        {item.test_date ? civilDateToDate(item.test_date).toLocaleDateString('pt-BR') : 'sem data'}
                                                     </p>
                                                 </div>
                                                 <div className="flex flex-col items-end gap-1">
@@ -324,7 +324,7 @@ if (resolveLoading || !patientId) {
                                                 <div className="flex items-center gap-1">
                                                     <Calendar className="w-3 h-3 text-muted-foreground" />
                                                     <span className="text-muted-foreground">
-                                                        {new Date(lab.test_date).toLocaleDateString('pt-BR')}
+                                                        {civilDateToDate(lab.test_date).toLocaleDateString('pt-BR')}
                                                     </span>
                                                 </div>
                                             </div>

@@ -1,7 +1,7 @@
 import React from 'react';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import LabResultsPage from './LabResultsPage';
 
 const mocks = vi.hoisted(() => ({ rows: [], create: vi.fn(), toast: vi.fn() }));
@@ -20,14 +20,18 @@ vi.mock('@/lib/supabase/lab-results-queries', async importOriginal => ({
 vi.mock('@/components/lab-results/ConductSuggestionsCard', () => ({ default: () => null }));
 const draw = () => render(<MemoryRouter><LabResultsPage /></MemoryRouter>);
 beforeEach(() => {
+  vi.stubEnv('TZ', 'America/Fortaleza');
   vi.clearAllMocks(); mocks.create.mockResolvedValue({ data: { id: 100 }, error: null });
   mocks.rows = Array.from({ length: 51 }, (_, i) => ({ id: i + 1, test_name: `Marcador ${i + 1}`, test_value: i === 0 ? null : '5.5', test_unit: 'mg/dL', reference_min: 5.2, reference_max: 6, status: 'pending', test_date: '2026-10-01', interpretation_status: 'confirmed' }));
 });
+afterEach(() => vi.unstubAllEnvs());
 
 describe('laboratory page consumer contract', () => {
   it('distinguishes unavailable evaluation and searches the entire loaded history beyond page 50', async () => {
     draw();
     await screen.findByText(/Histórico carregado: 51 exames/);
+    expect(screen.getAllByText('01/10/2026').length).toBeGreaterThan(0);
+    expect(screen.queryByText('30/09/2026')).not.toBeInTheDocument();
     expect(screen.getAllByText('Avaliação indisponível').length).toBeGreaterThan(0);
     expect(screen.queryByText('Risco baixo')).not.toBeInTheDocument();
     expect(screen.queryByText('Marcador 51', { selector: 'h3' })).not.toBeInTheDocument();
