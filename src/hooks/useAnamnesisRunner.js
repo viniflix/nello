@@ -7,7 +7,8 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { STANDARD_ANAMNESIS_FIELDS } from '@/lib/constants/standard-anamnesis-fields';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
-import { publicOrigin } from '@/lib/utils/publicOrigin';
+import {readPatientAnamnesisRecords,readPendingPatientAnamnesis} from '@/lib/supabase/anamnesis-history-queries';
+import {anamnesisGraphMessage} from '@/domain/clinical/anamnesis';
 
 function getFallbackSections() {
     const categoriesMap = {
@@ -44,17 +45,16 @@ export function useAnamnesisRunner(patientId) {
             queryKey: ['anamnesis_records', patientId],
             queryFn: queryRead(async ({signal}) => {
                 if (!patientId) return [];
-                const { data, error } = await readRequest(() => supabase
-                    .from('anamnesis_records')
-                    .select("id,patient_id,template_id,nutritionist_id,version,date,content,notes,status,created_at,updated_at,template_snapshot,public_access_token,token_expires_at,lgpd_consented,lgpd_consented_at,lgpd_ip_address,history_log,attachments,filled_by,appointment_id,care_episode_id, template:template_id(title)")
-                    .eq('patient_id', patientId)
-                    .order('created_at', { ascending: false })
-                    .limit(50), {signal:signal});
-                if (error) throw error;
-                return data || [];
+                return readPatientAnamnesisRecords(supabase,patientId,signal);
             }),
             enabled: !!patientId,
         });
+
+    const usePatientPendingRecord = () => useQuery({
+        queryKey:['anamnesis_records',patientId,'pending_patient'],
+        queryFn:queryRead(({signal})=>readPendingPatientAnamnesis(supabase,patientId,signal)),
+        enabled:!!patientId,
+    });
 
     // ── 2. Record específico (com template completo ou snapshot) ─
     const useRecord = (recordId) =>
@@ -155,6 +155,8 @@ export function useAnamnesisRunner(patientId) {
                 throw new Error('O modelo selecionado está vazio. Escolha um formulário com perguntas.');
             }
 
+            const graphError=anamnesisGraphMessage(templateData.sections);
+            if(graphError)throw new Error(graphError);
             const { data, error } = await insertIdempotently('anamnesis_records', {
                     patient_id: patientId,
                     care_episode_id: episodeId || null,
@@ -277,21 +279,15 @@ export function useAnamnesisRunner(patientId) {
             if (error) throw error;
             return data;
         },
-        onSuccess: (data) => {
+        onSuccess: () => {
             queryClient.invalidateQueries({ queryKey: ['anamnesis_records', patientId] });
-            const url = `${publicOrigin()}/f/${data.token}`;
-            navigator.clipboard?.writeText(url).catch(() => {});
-            toast({
-                title: 'Link copiado!',
-                description: `Link ativo por ${7} dias. Cole e envie ao paciente.`,
-            });
-            return data;
         },
         onError: (err) => toast({ title: 'Erro ao gerar link', description: err.message, variant: 'destructive' }),
     });
 
     return {
         usePatientRecords,
+        usePatientPendingRecord,
         useRecord,
         usePreviousProfile,
         usePendingRecords,

@@ -1,3 +1,4 @@
+import {anamnesisGraphMessage} from '@/domain/clinical/anamnesis';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams } from 'react-router-dom';
@@ -192,9 +193,10 @@ export default function PatientFacingUi() {
     const validateFields = () => {
         const template = record?.template;
         if (!template) return true;
+        if(anamnesisGraphMessage(template.sections)){toast({title:'Formulário precisa de revisão',description:'Solicite um novo envio ao nutricionista. Suas respostas anteriores foram preservadas.',variant:'destructive'});return false;}
         for (const section of template.sections || []) {
             for (const field of section.fields || []) {
-                if (field.required && isFieldVisible(field, content)) {
+                if (field.required && isFieldVisible(field, content,template.sections)) {
                     const val = content[field.id];
                     if (
                         val === undefined ||

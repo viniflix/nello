@@ -1,0 +1,8 @@
+import {it,expect,vi} from 'vitest';
+import {readPatientAnamnesisRecords,readPendingPatientAnamnesis} from './anamnesis-history-queries';
+vi.mock('./readRequest',()=>({readRequest:fn=>fn()}));
+function fake(rows){const calls=[];return {calls,from:()=>{const q={select:vi.fn(()=>q),eq:vi.fn((...a)=>{calls.push(a);return q;}),order:vi.fn(()=>q),range:vi.fn((a,b)=>Promise.resolve({data:rows.slice(a,b+1),error:null})),limit:vi.fn(()=>Promise.resolve({data:rows.filter(r=>r.status==='pending_patient').slice(0,1),error:null}))};return q;}};}
+it('returns history beyond the first fifty and first page in stable pages',async()=>{const rows=Array.from({length:251},(_,i)=>({id:String(i)})),client=fake(rows);expect(await readPatientAnamnesisRecords(client,'patient')).toEqual(rows);});
+it('finds old pending records independently from a recent completed history',async()=>{const client=fake([...Array.from({length:60},(_,i)=>({id:String(i),status:'validated'})),{id:'old',status:'pending_patient'}]);expect((await readPendingPatientAnamnesis(client,'patient')).id).toBe('old');expect(client.calls).toContainEqual(['status','pending_patient']);expect(client.calls).toContainEqual(['episode.status','active']);});
+it('fails explicitly rather than returning an incomplete history at the ceiling',async()=>{await expect(readPatientAnamnesisRecords(fake(Array.from({length:10001},(_,i)=>({id:String(i)}))),'patient')).rejects.toThrow('ANAMNESIS_HISTORY_LIMIT');});
+it('propagates permission and source failures',async()=>{const error={code:'42501'},q={select:()=>q,eq:()=>q,order:()=>q,range:()=>Promise.resolve({data:null,error})};await expect(readPatientAnamnesisRecords({from:()=>q},'patient')).rejects.toBe(error);});

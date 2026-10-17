@@ -1,4 +1,16 @@
-export function isFieldVisible(field, content) {
+export function isFieldVisible(field, content, sections) {
+    if(sections){
+        const byId=new Map(sections.flatMap(section=>section.fields||[]).map(item=>[item.id,item]));
+        const visited=new Set();let current=field;
+        while(current?.conditional_logic?.field_id){
+            if(visited.has(current.id))return false;
+            visited.add(current.id);
+            if(!isFieldVisible(current,content))return false;
+            current=byId.get(current.conditional_logic.field_id);
+            if(!current)return false;
+        }
+        return true;
+    }
     if (!field.conditional_logic || !field.conditional_logic.field_id) return true;
 
     const { field_id, operator, value } = field.conditional_logic;

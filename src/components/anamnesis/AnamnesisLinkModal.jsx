@@ -1,265 +1,63 @@
-import React, { useState } from 'react';
-import { ClipboardList, Link2, Loader2, Send, RefreshCw, Check, Clock, ExternalLink } from 'lucide-react';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogHeader,
-    DialogTitle,
-    DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { useAnamnesisRunner } from '@/hooks/useAnamnesisRunner';
-import { useAnamnesisTemplates } from '@/hooks/useAnamnesisTemplates';
-import { useToast } from '@/components/ui/use-toast';
-import { publicOrigin } from '@/lib/utils/publicOrigin';
-import { supabase } from '@/infrastructure/supabase/client';
+import {useAuth} from '@/contexts/AuthContext';
+import React,{useState,useEffect,useRef} from 'react';
+import {Dialog,DialogContent,DialogDescription,DialogHeader,DialogTitle,DialogFooter} from '@/components/ui/dialog';
+import {Button} from '@/components/ui/button';
+import {Select,SelectContent,SelectItem,SelectTrigger,SelectValue} from '@/components/ui/select';
+import {Input} from '@/components/ui/input';
+import {useAnamnesisRunner} from '@/hooks/useAnamnesisRunner';
+import {useAnamnesisTemplates} from '@/hooks/useAnamnesisTemplates';
+import {publicOrigin} from '@/lib/utils/publicOrigin';
 
-/**
- * Sprint F: Modal para enviar um link de anamnese para o paciente,
- * diretamente a partir da Agenda (card de consulta).
- *
- * Props:
- *   open, onOpenChange — controle de visibilidade
- *   patientId — UUID do paciente
- *   patientName — nome para exibição
- */
-export function AnamnesisLinkModal({ open, onOpenChange, patientId, patientName }) {
-    const { toast } = useToast();
-    const { createRecord, generateLink, usePatientRecords } = useAnamnesisRunner(patientId);
-    const { useTemplates } = useAnamnesisTemplates();
-    const { data: templates = [], isLoading: loadingTemplates } = useTemplates();
-
-    const [step, setStep] = useState('select'); // 'select' | 'link_ready'
-    const [selectedTemplateId, setSelectedTemplateId] = useState('');
-    const [expiresDays, setExpiresDays] = useState('7');
-    const [generatedLink, setGeneratedLink] = useState('');
-    const [generating, setGenerating] = useState(false);
-    const [copied, setCopied] = useState(false);
-
-    const { data: patientRecords = [] } = usePatientRecords();
-    // Verificar se já existe record pendente
-    const pendingRecord = patientRecords.find(r => r.status === 'pending_patient');
-
-    const handleGenerate = async () => {
-        if (!selectedTemplateId) {
-            toast({ title: 'Selecione um modelo', variant: 'destructive' });
-            return;
-        }
-        setGenerating(true);
-        try {
-            // 1. Criar record
-            const record = await createRecord.mutateAsync({
-                templateId: selectedTemplateId,
-                content: {},
-            });
-
-            // 2. Gerar link externo via RPC
-            const linkData = await generateLink.mutateAsync({
-                recordId: record.id,
-                expiresDays: parseInt(expiresDays, 10) || 7,
-            });
-
-            const url = `${publicOrigin()}/f/${linkData.token}`;
-            setGeneratedLink(url);
-            setStep('link_ready');
-        } catch (err) {
-            toast({ title: 'Erro ao gerar link', description: err.message, variant: 'destructive' });
-        } finally {
-            setGenerating(false);
-        }
-    };
-
-    const handleResend = async () => {
-        if (!pendingRecord) return;
-        setGenerating(true);
-        try {
-            const linkData = await generateLink.mutateAsync({
-                recordId: pendingRecord.id,
-                expiresDays: parseInt(expiresDays, 10) || 7,
-            });
-            const url = `${publicOrigin()}/f/${linkData.token}`;
-            setGeneratedLink(url);
-            setStep('link_ready');
-        } catch (err) {
-            toast({ title: 'Erro ao gerar link', description: err.message, variant: 'destructive' });
-        } finally {
-            setGenerating(false);
-        }
-    };
-
-    const handleCopy = async () => {
-        try {
-            await navigator.clipboard.writeText(generatedLink);
-            setCopied(true);
-            setTimeout(() => setCopied(false), 3000);
-            toast({ title: 'Link copiado!', description: 'Cole e envie ao paciente.' });
-        } catch {
-            toast({ title: 'Erro ao copiar', variant: 'destructive' });
-        }
-    };
-
-    const handleClose = () => {
-        setStep('select');
-        setSelectedTemplateId('');
-        setGeneratedLink('');
-        setCopied(false);
-        onOpenChange(false);
-    };
-
-    return (
-        <Dialog open={open} onOpenChange={handleClose}>
-            <DialogContent className="max-w-md">
-                <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                        <ClipboardList className="w-5 h-5 text-blue-600" />
-                        Enviar Anamnese para {patientName || 'Paciente'}
-                    </DialogTitle>
-                    <DialogDescription>
-                        Gere um link seguro para o paciente preencher antes da consulta.
-                    </DialogDescription>
-                </DialogHeader>
-
-                {step === 'select' ? (
-                    <div className="space-y-5 py-2">
-                        {/* Aviso se já há anamnese pendente */}
-                        {pendingRecord && (
-                            <div className="flex items-start gap-3 p-3 rounded-xl bg-amber-50 border border-amber-200">
-                                <Clock className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                                <div className="space-y-2">
-                                    <p className="text-sm font-semibold text-amber-800">
-                                        Já existe uma anamnese aguardando resposta
-                                    </p>
-                                    <p className="text-xs text-amber-600">
-                                        Template: <span className="font-medium">{pendingRecord.template?.title}</span>
-                                    </p>
-                                    <Button
-                                        size="sm"
-                                        variant="outline"
-                                        className="border-amber-300 text-amber-700 hover:bg-amber-100"
-                                        onClick={handleResend}
-                                        disabled={generating}
-                                    >
-                                        {generating
-                                            ? <Loader2 className="w-3.5 h-3.5 mr-2 animate-spin" />
-                                            : <RefreshCw className="w-3.5 h-3.5 mr-2" />
-                                        }
-                                        Reenviar novo link
-                                    </Button>
-                                </div>
-                            </div>
-                        )}
-
-                        <div className="space-y-2">
-                            <Label>Modelo de Anamnese</Label>
-                            {loadingTemplates ? (
-                                <div className="flex items-center gap-2 text-sm text-slate-400">
-                                    <Loader2 className="w-4 h-4 animate-spin" /> Carregando modelos...
-                                </div>
-                            ) : (
-                                <Select value={selectedTemplateId} onValueChange={setSelectedTemplateId}>
-                                    <SelectTrigger>
-                                        <SelectValue placeholder="Selecione um modelo..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {(Array.isArray(templates) ? templates : []).map(t => (
-                                            <SelectItem key={t.id} value={t.id}>
-                                                {t.title}
-                                                {t.is_system_default && (
-                                                    <Badge variant="outline" className="ml-2 text-xs">Padrão</Badge>
-                                                )}
-                                            </SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            )}
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Validade do Link</Label>
-                            <Select value={expiresDays} onValueChange={setExpiresDays}>
-                                <SelectTrigger>
-                                    <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                    <SelectItem value="3">3 dias</SelectItem>
-                                    <SelectItem value="7">7 dias (padrão)</SelectItem>
-                                    <SelectItem value="14">14 dias</SelectItem>
-                                    <SelectItem value="30">30 dias</SelectItem>
-                                </SelectContent>
-                            </Select>
-                        </div>
-                    </div>
-                ) : (
-                    <div className="space-y-4 py-2">
-                        <div className="p-4 rounded-xl bg-green-50 border border-green-200 flex items-start gap-3">
-                            <div className="w-8 h-8 rounded-full bg-green-100 flex items-center justify-center shrink-0">
-                                <Check className="w-4 h-4 text-green-600" />
-                            </div>
-                            <div>
-                                <p className="text-sm font-semibold text-green-800">Link gerado com sucesso!</p>
-                                <p className="text-xs text-green-600 mt-0.5">
-                                    Válido por {expiresDays} dias · Expira em{' '}
-                                    {new Date(Date.now() + parseInt(expiresDays) * 86400000).toLocaleDateString('pt-BR')}
-                                </p>
-                            </div>
-                        </div>
-
-                        <div className="space-y-2">
-                            <Label>Link do formulário</Label>
-                            <div className="flex gap-2">
-                                <Input
-                                    value={generatedLink}
-                                    readOnly
-                                    className="text-xs font-mono bg-slate-50"
-                                    onClick={(e) => e.target.select()}
-                                />
-                                <Button
-                                    variant={copied ? 'default' : 'outline'}
-                                    size="sm"
-                                    className="shrink-0"
-                                    onClick={handleCopy}
-                                >
-                                    {copied ? <Check className="w-4 h-4" /> : <Link2 className="w-4 h-4" />}
-                                </Button>
-                            </div>
-                        </div>
-
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            className="w-full text-xs"
-                            onClick={() => window.open(generatedLink, '_blank')}
-                        >
-                            <ExternalLink className="w-3.5 h-3.5 mr-2" />
-                            Pré-visualizar formulário
-                        </Button>
-                    </div>
-                )}
-
-                <DialogFooter className="gap-2">
-                    <Button variant="ghost" onClick={handleClose}>Fechar</Button>
-                    {step === 'select' && !pendingRecord && (
-                        <Button onClick={handleGenerate} disabled={generating || !selectedTemplateId}>
-                            {generating
-                                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                : <Send className="w-4 h-4 mr-2" />
-                            }
-                            Gerar e Copiar Link
-                        </Button>
-                    )}
-                    {step === 'link_ready' && (
-                        <Button onClick={handleCopy} variant="default">
-                            {copied ? <Check className="w-4 h-4 mr-2" /> : <Link2 className="w-4 h-4 mr-2" />}
-                            {copied ? 'Copiado!' : 'Copiar Link'}
-                        </Button>
-                    )}
-                </DialogFooter>
-            </DialogContent>
-        </Dialog>
-    );
+export function AnamnesisLinkModal(props){
+ const {user}=useAuth();
+ return <LinkContent key={[user?.id,props.patientId,props.recordId||'',props.open].join(':')} {...props}/>;
+}
+function LinkContent({open,onOpenChange,patientId,patientName,recordId}){
+ const {createRecord,generateLink,usePatientPendingRecord}=useAnamnesisRunner(patientId);
+ const {useTemplates}=useAnamnesisTemplates();
+ const templatesQuery=useTemplates(),pendingQuery=usePatientPendingRecord();
+ const [selected,setSelected]=useState(''),[days,setDays]=useState('7'),[link,setLink]=useState(null);
+ const [busy,setBusy]=useState(false),[copied,setCopied]=useState(false),[copyError,setCopyError]=useState(false),[error,setError]=useState(null);
+ const active=useRef(true),busyRef=useRef(false),created=useRef(null);
+ useEffect(()=>{active.current=true;return()=>{active.current=false;};},[]);
+ const copy=async url=>{
+  setCopied(false);setCopyError(false);
+  try{if(!navigator.clipboard?.writeText)throw new Error('clipboard_unavailable');await navigator.clipboard.writeText(url);if(active.current)setCopied(true);}
+  catch{if(active.current)setCopyError(true);}
+ };
+ const generate=async()=>{
+  if(busyRef.current)return;
+  busyRef.current=true;setBusy(true);setError(null);
+  try{
+   let id=recordId||pendingQuery.data?.id||created.current;
+   if(!id){const record=await createRecord.mutateAsync({templateId:selected,content:{}});id=record.id;created.current=id;}
+   if(!active.current)return;
+   const data=await generateLink.mutateAsync({recordId:id,expiresDays:Number(days)});
+   if(!active.current)return;
+   if(!data?.token||!data.expires_at||!Number.isFinite(new Date(data.expires_at).getTime()))throw new Error('O servidor não confirmou o link e seu prazo. Tente novamente.');
+   const result={url:publicOrigin()+'/f/'+data.token,expiresAt:data.expires_at};setLink(result);await copy(result.url);
+  }catch{if(active.current)setError('Não foi possível gerar o link. O formulário foi preservado; tente novamente.');}
+  finally{busyRef.current=false;if(active.current)setBusy(false);}
+ };
+ const close=()=>{active.current=false;onOpenChange(false);};
+ const checking=pendingQuery.isLoading||templatesQuery.isLoading;
+ const failed=pendingQuery.isError||templatesQuery.isError;
+ const existing=recordId||pendingQuery.data?.id;
+ return <Dialog open={open} onOpenChange={next=>{if(!next)close();}}><DialogContent className="max-w-md">
+  <DialogHeader><DialogTitle>Enviar anamnese para {patientName||'paciente'}</DialogTitle><DialogDescription>Gere um link seguro para preenchimento antes da consulta.</DialogDescription></DialogHeader>
+  {link?<div className="space-y-4">
+   <p role="status">Link gerado. Expira em {new Date(link.expiresAt).toLocaleString('pt-BR')}.</p>
+   {copied&&<p role="status">Link copiado!</p>}
+   {copyError&&<p role="alert">Não foi possível copiar automaticamente. Selecione o link abaixo e copie manualmente, ou tente copiar novamente.</p>}
+   <Input aria-label="Link do formulário" value={link.url} readOnly onClick={event=>event.target.select()}/>
+   <Button variant="outline" onClick={()=>window.open(link.url,'_blank','noopener,noreferrer')}>Pré-visualizar formulário</Button>
+  </div>:<div className="space-y-4">
+   {checking&&<p role="status">Conferindo modelos e formulário pendente...</p>}
+   {failed&&<div role="alert"><p>Não foi possível conferir os formulários. Tente novamente antes de gerar um link.</p><Button variant="outline" onClick={()=>{pendingQuery.refetch();templatesQuery.refetch();}}>Tentar novamente</Button></div>}
+   {existing?<p>Já existe um formulário selecionado ou aguardando resposta. O novo link substitui o anterior, preservando o formulário.</p>:<Select value={selected} onValueChange={setSelected}><SelectTrigger aria-label="Modelo de anamnese"><SelectValue placeholder="Selecione um modelo..."/></SelectTrigger><SelectContent>{(templatesQuery.data||[]).map(t=><SelectItem key={t.id} value={t.id}>{t.title}</SelectItem>)}</SelectContent></Select>}
+   <Select value={days} onValueChange={setDays}><SelectTrigger aria-label="Validade do link"><SelectValue/></SelectTrigger><SelectContent>{[3,7,14,30].map(d=><SelectItem key={d} value={String(d)}>{d} dias</SelectItem>)}</SelectContent></Select>
+   {error&&<p role="alert">{error}</p>}
+  </div>}
+  <DialogFooter><Button variant="ghost" onClick={close}>Fechar</Button>{link?<Button onClick={()=>copy(link.url)}>Copiar link</Button>:<Button disabled={busy||checking||failed||(!existing&&!selected)} onClick={generate}>{busy?'Gerando...':existing?'Reenviar novo link':'Gerar link'}</Button>}</DialogFooter>
+ </DialogContent></Dialog>;
 }

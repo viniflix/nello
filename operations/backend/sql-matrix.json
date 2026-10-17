@@ -343,6 +343,11 @@
       "fixtures": [],
       "file": "checkin_explicit_scoring.sql",
       "kind": "assertion-suite"
+    },
+    {
+      "file": "anamnesis_condition_graph.sql",
+      "kind": "assertion-suite",
+      "fixtures": []
     }
   ]
 }

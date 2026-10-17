@@ -1,4 +1,5 @@
 import {calculateExplicitCheckinScore} from '@/domain/clinical/checkins';
+import {anamnesisGraphMessage} from '@/domain/clinical/anamnesis';
 const CHECKIN_FIELD_TYPES = new Set(['scale_1_10', 'yes_no', 'number', 'text', 'multiple_choice']);
 const ANAMNESIS_OPTION_TYPES = new Set(['select', 'radio', 'checkbox']);
 
@@ -98,7 +99,7 @@ export function validateAnamnesisTemplate({ title, sections }) {
     }
   }
 
-  return null;
+  return anamnesisGraphMessage(sections);
 }
 
 export function cloneAnamnesisSections(sections, createId = () => crypto.randomUUID()) {

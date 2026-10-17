@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 1,
+  "migrations": [
+    {
+      "file": "supabase/migrations/releases/20261017011000_anamnesis_condition_graph.sql",
+      "sha256": "ec40f181a760aff27dafb785ccd27816eeeec85cf82b473bc1cf5f95435db412"
+    }
+  ]
+}

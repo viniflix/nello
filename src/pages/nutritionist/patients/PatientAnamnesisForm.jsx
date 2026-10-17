@@ -1,3 +1,5 @@
+import {AnamnesisLinkModal} from '@/components/anamnesis/AnamnesisLinkModal';
+import {anamnesisGraphMessage} from '@/domain/clinical/anamnesis';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback } from 'react';
 import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
@@ -45,7 +47,8 @@ export default function PatientAnamnesisForm() {
     const [searchParams] = useSearchParams();
     const templateId = searchParams.get('templateId');
 
-    const { useRecord, updateRecord, createRecord, usePreviousProfile, generateLink, deleteRecord } = useAnamnesisRunner(patientId);
+    const [linkOpen,setLinkOpen]=useState(false);
+    const { useRecord, updateRecord, createRecord, usePreviousProfile, deleteRecord } = useAnamnesisRunner(patientId);
     const { data: record, isLoading: loadingRecord } = useRecord(anamnesisId);
     const { data: previousProfile, isLoading: loadingPrev } = usePreviousProfile();
     const { uploadAttachment, deleteAttachment, getSignedUrl } = useAnamnesisAttachments(record?.id, patientId);
@@ -117,11 +120,12 @@ export default function PatientAnamnesisForm() {
     };
 
     const validateFields = () => {
+        if(anamnesisGraphMessage(record?.template?.sections)){toast({title:'Revise as condições do formulário',description:'Use um novo formulário com o modelo corrigido. O histórico foi preservado.',variant:'destructive'});return false;}
         const template = record?.template;
         if (!template) return true;
         for (const section of template.sections || []) {
             for (const field of section.fields || []) {
-                if (field.required && isFieldVisible(field, content)) {
+                if (field.required && isFieldVisible(field, content,record?.template?.sections)) {
                     const val = content[field.id];
                     if (val === undefined || val === null || val === '' || (Array.isArray(val) && val.length === 0)) {
                         toast({ title: 'Atenção', description: `O campo "${field.label}" é obrigatório.`, variant: 'destructive' });
@@ -311,6 +315,8 @@ export default function PatientAnamnesisForm() {
 
     return (
         <div className="max-w-4xl mx-auto p-4 md:p-6 space-y-5">
+            <AnamnesisLinkModal open={linkOpen} onOpenChange={setLinkOpen} patientId={patientId} recordId={record.id}/>
+            {anamnesisGraphMessage(template?.sections)&&<p role="alert">Este formulário tem condições inválidas. Preserve o rascunho e crie um novo envio a partir de um modelo corrigido.</p>}
             {/* Header */}
             <div className="flex items-center justify-between flex-wrap gap-3">
                 <Button variant="ghost" onClick={() => navigate(patientAnamnesisListRoute({ id: patientId, slug: paramValue }))}>
@@ -334,14 +340,11 @@ export default function PatientAnamnesisForm() {
                     {(record.status === 'draft' || record.status === 'pending_patient') && (
                         <Button
                             variant="outline"
-                            onClick={() => generateLink.mutate({ recordId: record.id })}
-                            disabled={generateLink.isPending}
+                            onClick={() => setLinkOpen(true)}
+                            disabled={false}
                             className="text-blue-700 border-blue-200 hover:bg-blue-50"
                         >
-                            {generateLink.isPending
-                                ? <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                                : <Link2 className="w-4 h-4 mr-2" />
-                            }
+                            <Link2 className="w-4 h-4 mr-2" />
                             {record.status === 'pending_patient' ? 'Reenviar Link' : 'Gerar Link para Paciente'}
                         </Button>
                     )}
@@ -410,7 +413,7 @@ export default function PatientAnamnesisForm() {
                 <div className={`p-6 space-y-10 ${isReadOnly ? 'opacity-70 pointer-events-none select-none' : ''}`}>
                 {/* Seções e campos */}
                 {template.sections?.map((section) => {
-                    const visibleFields = section.fields?.filter(f => isFieldVisible(f, content)) || [];
+                    const visibleFields = section.fields?.filter(f => isFieldVisible(f, content,template.sections)) || [];
                     if (visibleFields.length === 0) return null;
 
                     return (

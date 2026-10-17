@@ -1,3 +1,4 @@
+import {anamnesisGraphMessage} from '@/domain/clinical/anamnesis';
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { useToast } from '@/components/ui/use-toast';
@@ -32,7 +33,7 @@ export function AnamnesisWizard({
 
         const currentSection = sections[currentStep];
         for (const field of currentSection.fields || []) {
-            if (field.required && isFieldVisible(field, content)) {
+            if (field.required && isFieldVisible(field, content,sections)) {
                 const val = content[field.id];
                 if (
                     val === undefined ||
@@ -76,6 +77,9 @@ export function AnamnesisWizard({
         onSubmit();
     };
 
+    const graphError=anamnesisGraphMessage(sections);
+    if(graphError)return <div role="alert"><p>Este formulário precisa ser revisado pelo nutricionista. Suas respostas anteriores foram preservadas. Solicite um novo envio.</p></div>;
+
     const progressPercentage = ((currentStep + 1) / totalSteps) * 100;
 
     return (
@@ -103,7 +107,7 @@ export function AnamnesisWizard({
                         </h2>
                         <div className="grid gap-5">
                             {sections[currentStep].fields?.map((field) => 
-                                isFieldVisible(field, content) ? renderField(field) : null
+                                isFieldVisible(field, content, sections) ? renderField(field) : null
                             )}
                         </div>
                     </div>
