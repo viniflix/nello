@@ -70,7 +70,11 @@ for (const [index, mode] of ['baseline', 'candidate', 'write-first', 'end-first'
     sql('postgres', `create database ${database} template ${restoration.database} owner supabase_admin;`);
     created = true;
     for (const migration of candidateMigrations()) {
-      if (mode === 'baseline' && migration.file.includes('security_anamnesis_revocation')) continue;
+      // The historical reproduction must precede both revocation and RC04's
+      // completed-form reissue guard. Every current candidate remains installed
+      // in the candidate and both real transaction-order scenarios below.
+      if (mode === 'baseline' && (migration.file.includes('security_anamnesis_revocation')
+        || migration.file.includes('anamnesis_condition_graph'))) continue;
       sql(database, migration.content);
     }
     const log = index < 2
