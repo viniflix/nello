@@ -10,7 +10,7 @@ describe('explicit temporary maintenance review', () => {
   });
   it('rejects invalid deadlines, version changes and incomplete justifications', () => {
     expect(() => checkToolingMaintenance(pkg, { ...policy, reviewBy: 'invalid' })).toThrow('expired');
-    expect(() => checkToolingMaintenance({ devDependencies: { eslint: '10.12.0' } }, policy)).toThrow('changed');
-    expect(() => checkToolingMaintenance(pkg, { ...policy, packages: { eslint: { version: '9.39.5' } } })).toThrow('changed');
+    expect(() => checkToolingMaintenance({ devDependencies: { eslint: '10.12.0' } }, policy, new Date('2026-10-10'))).toThrow('changed');
+    expect(() => checkToolingMaintenance(pkg, { ...policy, packages: { eslint: { version: '9.39.5' } } }, new Date('2026-10-10'))).toThrow('changed');
   });
 });

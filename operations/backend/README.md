@@ -48,7 +48,7 @@ backup/compatibility checks. Capture revisions and commit SHA together in releas
 evidence. Product version starts at 0.1.0; Sentry/PostHog release remains the deployment
 commit SHA, maintaining existing observability correlation.
 
-CI/local verification uses exact Node 22.23.3 and npm 11.21.0. Vercel supports pinning
+CI/local verification uses exact Node 22.23.4 and npm 11.21.0. Vercel supports pinning
 the [Node major](https://vercel.com/docs/functions/runtimes/node-js/node-js-versions)
 and applies minor/patch updates itself, so `engines.node` is `22.x`, consistent with
 the existing hosted project. Vercel installs the exact packageManager version (npm 11.21.0) globally before `npm ci`,

@@ -89,7 +89,7 @@
     "socket.io-client": "4.8.3",
     "svix": "2.7.0",
     "tailwind-merge": "1.14.0",
-    "zod": "4.1.12",
+    "zod": "4.6.7",
     "zustand": "5.0.8"
   },
   "devDependencies": {
@@ -103,7 +103,7 @@
     "@types/react": "18.3.23",
     "@types/react-dom": "18.3.7",
     "@vitejs/plugin-react": "4.7.0",
-    "@vitest/coverage-v8": "4.1.11",
+    "@vitest/coverage-v8": "4.1.12",
     "autoprefixer": "10.4.21",
     "eslint": "9.39.5",
     "jsdom": "29.0.1",
@@ -114,8 +114,8 @@
     "tailwindcss": "3.4.17",
     "tailwindcss-animate": "1.0.7",
     "typescript": "6.0.2",
-    "vite": "7.3.6",
-    "vitest": "4.1.11",
+    "vite": "7.3.7",
+    "vitest": "4.1.12",
     "eslint-plugin-react": "7.37.5",
     "eslint-plugin-react-hooks": "7.1.1",
     "eslint-plugin-jsx-a11y": "6.10.2",

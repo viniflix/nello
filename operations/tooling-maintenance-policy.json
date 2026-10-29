@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-10",
-  "reviewBy": "2026-10-23T00:00:00Z",
+  "reviewedAt": "2026-10-29",
+  "reviewBy": "2026-11-06T00:00:00Z",
   "responsible": "Vinicius Costa",
   "packages": {
     "eslint": {
@@ -16,5 +16,6 @@
       "reason": "Patient creation mask requires a separately validated replacement preserving DDMMAA and editing/paste behavior. No npm runtime advisory was found; maintenance remains open.",
       "source": "https://github.com/sanniassin/react-input-mask"
     }
-  }
+  },
+  "authorization": "Explicit owner approval on 2026-10-29: temporarily retain ESLint 9.39.5 and react-input-mask 2.0.4 through 2026-11-05 (21:00 America/Fortaleza); migrations remain open. No automatic renewal."
 }

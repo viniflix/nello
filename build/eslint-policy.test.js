@@ -11,7 +11,7 @@ describe('production JSX security and correctness lint coverage', () => {
     expect(rules).toContain('no-undef');
     expect(rules).toContain('no-console');
     expect(rules).toContain('jsx-a11y/alt-text');
-  });
+  }, 60_000); // Cold ESLint plugin loading on Windows can exceed the default 5s.
   it('reserves test globals for tests and explicit logging for the safe logger', async () => {
     const eslint = new ESLint();
     const [source] = await eslint.lintText('vi.fn();', { filePath: 'src/components/Example.jsx' });
