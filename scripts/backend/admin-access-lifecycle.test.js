@@ -49,4 +49,4 @@ it('enforces the actual operator/AAL2/active-actor helpers for status and direct
     await expect(db.exec('select public.admin_access_status()')).rejects.toMatchObject({code:'42501'});
     await db.exec("set role anon;select set_config('request.jwt.claim.sub','',false)");expect((await db.query('select * from qa_admin_rows')).rows).toHaveLength(0);
   } finally { await db.close(); }
-});
+}, 30_000); // Cold PostgreSQL WASM startup can exceed 5s on a shared CI runner.

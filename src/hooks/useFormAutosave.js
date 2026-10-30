@@ -1,7 +1,7 @@
 import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
 import { readMemoryDraft, writeMemoryDraft, removeMemoryDraft } from '@/lib/utils/memoryDrafts';
 import { useDraftGuard } from './useDraftGuard';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 
 /** Autosave for an existing draft record with a same-tab recovery copy. */
 export function useFormAutosave({ storageKey, enabled, serverValue, serverRevision, save, delay = 800, sessionIndependent = false }) {
@@ -24,7 +24,8 @@ export function useFormAutosave({ storageKey, enabled, serverValue, serverRevisi
   saveRef.current = save;
   activeKeyRef.current = storageKey;
 
-  useEffect(() => {
+  // Initialize the new record before an immediate input can queue its first edit.
+  useLayoutEffect(() => {
     clearTimeout(timerRef.current);
     generationRef.current += 1;
     inFlightRef.current = null;
