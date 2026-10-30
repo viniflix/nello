@@ -1,7 +1,6 @@
 /* src/index.css */
 
-/* 1. Importar a fonte Inter (corpo) */
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+/* Inter is served by the local stylesheet in index.html. */
 @import './pages/public/public-site.css';
 @import './pages/public/landing-experience.css';
 @import './pages/public/public-refinement.css';

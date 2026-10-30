@@ -6,6 +6,8 @@ O pacote Nello é privado (`UNLICENSED`). Essa declaração não altera as licen
 
 Seleções registradas para licenças alternativas: MIT para componentes `MIT OR GPL`; Apache-2.0 para `MPL-2.0 OR Apache-2.0`; MIT para rgbcolor. Licenças cumulativas (`AND`) mantêm todas as obrigações. O Sentry CLI utiliza FSL-1.1-MIT e executa somente na construção; seu texto é preservado no artefato, sem incorporá-lo ao cliente web.
 
+Inter v20: Copyright 2020 The Inter Project Authors (https://github.com/rsms/inter), SIL Open Font License 1.1. Os sete subconjuntos são distribuídos sem alteração em `/fonts/inter/`, com o texto completo da licença em `/fonts/inter/OFL.txt`. Procedência: Google Fonts, https://github.com/google/fonts/tree/main/ofl/inter.
+
 Clash Display: Indian Type Foundry, distribuída pelo Fontshare sob ITF Free Font License. Fonte oficial e termos: https://www.fontshare.com/fonts/clash-display e https://www.fontshare.com/licenses. Os arquivos são usados sem alteração como webfonts do Nello; não são oferecidos como produto de fontes independente.
 
 Este inventário formaliza procedência e atribuição técnica; não substitui avaliação jurídica de usos futuros ou alteração das licenças dos autores.
