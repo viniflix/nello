@@ -4,7 +4,7 @@ import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useRef } from 'react';
 import { usePatientFormStore } from '@/stores/usePatientFormStore';
 import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
-import InputMask from 'react-input-mask';
+import { PatternFormat } from 'react-number-format';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/infrastructure/supabase/client';
 import { useToast } from '@/components/ui/use-toast';
@@ -31,6 +31,13 @@ import { ptBR } from 'date-fns/locale';
 import { cn } from "@/lib/utils";
 import { toPortugueseError } from '@/lib/utils/errorMessages';
 import { motion, AnimatePresence } from 'framer-motion';
+
+const patientInputFormats = {
+    birth_date: '##/##/####',
+    phone: '(##) #####-####',
+    cpf: '###.###.###-##',
+    cep: '#####-###',
+};
 
 const IconInputWrapper = ({ icon: Icon, children }) => (
     <div className="relative">
@@ -59,8 +66,7 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
         }
     }, [value]);
 
-    const handleDateInputChange = (e) => {
-        const dateStr = e.target.value;
+    const handleDateInputChange = (dateStr) => {
         setLocalDateString(dateStr);
 
         if (dateStr.replace(/[_/]/g, '').length === 8) {
@@ -89,21 +95,17 @@ const DateInputWithCalendar = ({ value, onChange, required }) => {
         <div className="flex gap-2">
             <div className="relative flex-grow">
                 <CalendarIcon className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-                <InputMask
-                    mask="99/99/9999"
+                <PatternFormat
+                    customInput={Input}
+                    format={patientInputFormats.birth_date}
+                    mask="_"
                     placeholder="dd/mm/aaaa"
                     value={localDateString}
-                    onChange={handleDateInputChange}
-                >
-                    {(inputProps) => (
-                        <Input
-                            {...inputProps}
-                            id="birth_date"
-                            className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all border-muted-foreground/20"
-                            required={required}
-                        />
-                    )}
-                </InputMask>
+                    onValueChange={({ formattedValue }, { source }) => { if (source === 'event') handleDateInputChange(formattedValue); }}
+                    id="birth_date"
+                    className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 transition-all border-muted-foreground/20"
+                    required={required}
+                />
             </div>
 
             <Popover open={calendarOpen} onOpenChange={setCalendarOpen}>
@@ -424,13 +426,15 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
                             <div className="space-y-2.5">
                                 <Label htmlFor="phone" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Telefone</Label>
                                 <IconInputWrapper icon={Phone}>
-                                    <InputMask
-                                        mask="(99) 99999-9999"
+                                    <PatternFormat
+                                        customInput={Input}
+                                        format={patientInputFormats.phone}
+                                        mask="_"
                                         value={formData.phone}
-                                        onChange={(e) => updateField('phone', e.target.value)}
-                                    >
-                                        {(inputProps) => <Input {...inputProps} id="phone" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
-                                    </InputMask>
+                                        onValueChange={({ formattedValue }, { source }) => { if (source === 'event') updateField('phone', formattedValue); }}
+                                        id="phone"
+                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20"
+                                    />
                                 </IconInputWrapper>
                             </div>
 
@@ -452,13 +456,15 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
                             <div className="space-y-2.5">
                                 <Label htmlFor="cpf" className="text-xs font-black uppercase tracking-widest text-muted-foreground">CPF</Label>
                                 <IconInputWrapper icon={FileText}>
-                                    <InputMask
-                                        mask="999.999.999-99"
+                                    <PatternFormat
+                                        customInput={Input}
+                                        format={patientInputFormats.cpf}
+                                        mask="_"
                                         value={formData.cpf}
-                                        onChange={(e) => updateField('cpf', e.target.value)}
-                                    >
-                                        {(inputProps) => <Input {...inputProps} id="cpf" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
-                                    </InputMask>
+                                        onValueChange={({ formattedValue }, { source }) => { if (source === 'event') updateField('cpf', formattedValue); }}
+                                        id="cpf"
+                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20"
+                                    />
                                 </IconInputWrapper>
                             </div>
 
@@ -499,14 +505,16 @@ const AddPatientModal = ({ isOpen, setIsOpen, onPatientAdded, initialName, prese
                             <div className="md:col-span-1 space-y-2.5">
                                 <Label htmlFor="cep" className="text-xs font-black uppercase tracking-widest text-muted-foreground">CEP</Label>
                                 <IconInputWrapper icon={MapPin}>
-                                    <InputMask
-                                        mask="99999-999"
+                                    <PatternFormat
+                                        customInput={Input}
+                                        format={patientInputFormats.cep}
+                                        mask="_"
                                         value={formData.cep}
-                                        onChange={(e) => updateField('cep', e.target.value)}
+                                        onValueChange={({ formattedValue }, { source }) => { if (source === 'event') updateField('cep', formattedValue); }}
                                         onBlur={(e) => handleCepBlur(e.target.value)}
-                                    >
-                                        {(inputProps) => <Input {...inputProps} id="cep" className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20" />}
-                                    </InputMask>
+                                        id="cep"
+                                        className="bg-muted/50 focus:bg-background shadow-sm pl-10 h-10 border-muted-foreground/20"
+                                    />
                                 </IconInputWrapper>
                             </div>
                             <div className="md:col-span-2 space-y-2.5">
