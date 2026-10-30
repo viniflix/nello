@@ -35,12 +35,17 @@ test('modal focus and toast dismissal recover the dialog trigger',async({page})=
   await page.keyboard.press('Escape');await expect(dialog).not.toBeVisible();await expect(trigger).toBeFocused();
 });
 test('temporary toast pauses while focused and dismisses after focus leaves',async({page})=>{
+  await page.evaluate(()=>document.fonts.ready);
+  await page.clock.install({time:new Date('2026-10-02T12:00:00Z')});
+  await page.clock.pauseAt(new Date('2026-10-02T12:00:01Z'));
   await page.getByRole('button',{name:'Aviso temporário',exact:true}).click();
   await expect(page.getByText('Orientação sintética para continuar.',{exact:true})).toBeVisible();
   await page.keyboard.press('F8');await expect(page.getByRole('region',{name:'Notifications (F8)'}).locator('ol')).toBeFocused();
-  await page.waitForTimeout(1100);
+  await page.clock.runFor(1100);
+  await expect(page.getByRole('region',{name:'Notifications (F8)'}).locator('ol')).toBeFocused();
   await expect(page.getByText('Orientação sintética para continuar.',{exact:true})).toBeVisible();
   await page.getByRole('button',{name:'Mostrar aviso',exact:true}).focus();
   await page.mouse.move(10,10);
+  await page.clock.runFor(1100);
   await expect(page.getByText('Orientação sintética para continuar.',{exact:true})).not.toBeVisible();
 });

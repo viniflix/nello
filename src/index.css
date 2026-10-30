@@ -1,6 +1,7 @@
 /* src/index.css */
 
-/* Inter is served by the local stylesheet in index.html. */
+/* Pinned fonts also apply to embedded views that load only the application CSS. */
+@import './styles/inter-v20.css';
 @import './pages/public/public-site.css';
 @import './pages/public/landing-experience.css';
 @import './pages/public/public-refinement.css';

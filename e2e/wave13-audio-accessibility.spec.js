@@ -60,6 +60,8 @@ for (const width of [320, 390, 768, 1440]) test(`chat audio keyboard, axe and la
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true);
   const buttonBounds = await page.getByRole('button', { name: 'Reproduzir áudio' }).boundingBox();
   expect(buttonBounds.width).toBeGreaterThanOrEqual(44); expect(buttonBounds.height).toBeGreaterThanOrEqual(44);
+  await page.evaluate(()=>document.fonts.ready);
+  expect(await page.evaluate(()=>[...document.fonts].some(face=>face.family==='Inter' && face.weight==='400' && face.status==='loaded'))).toBe(true);
   await expect(page.getByRole('main')).toHaveScreenshot(`wave13-audio-${width}.png`);
   expect(errors).toEqual([]);
 });
