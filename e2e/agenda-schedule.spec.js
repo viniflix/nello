@@ -29,6 +29,8 @@ test('temporal grid proposes a reviewed move, preserves billing, and has respons
     await page.locator(`[data-schedule-appointment="${id}"]`).dragTo(page.getByRole('button', { name: `Agendar ${date} às 10:30`, exact: true }));
     const form = page.getByRole('dialog'); await expect(form).toContainText('Confira o reagendamento'); await expect(form.getByLabel('Hora *', { exact: true })).toHaveValue('10:30');
     const unchanged = await api.from('appointments').select('appointment_time').eq('id', id).single(); expect(new Date(unchanged.data.appointment_time).toISOString()).toBe(`${date}T12:00:00.000Z`);
+    const outsideHours = form.getByRole('checkbox', { name: 'Agendar fora da jornada neste atendimento', exact: true });
+    if (await outsideHours.isVisible()) { await outsideHours.check(); await expect(outsideHours).toBeChecked(); }
     await form.getByRole('button', { name: 'Salvar alterações', exact: true }).click(); await expect(form).toHaveCount(0);
     const empty = page.locator('.agenda-time-slot').first(); await empty.click(); await expect(form.getByLabel('Hora *', { exact: true })).not.toHaveValue(''); await form.getByRole('button', { name: 'Cancelar', exact: true }).click();
     for (const width of [320, 390, 768, 820, 1440]) { await page.setViewportSize({ width, height: 1000 }); expect(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth)).toBe(true); }
