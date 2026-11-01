@@ -1,188 +1,132 @@
-import {useCoordinatedSources} from '@/hooks/useCoordinatedSources';
-import { subscribeDomain } from '@/infrastructure/realtime/events';
-import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { Scale, Droplet, TrendingUp, TrendingDown, Minus, Activity } from 'lucide-react';
+import { useEffect, useId, useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
+import { Scale, Droplet, Activity } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useAuth } from '@/contexts/AuthContext';
-import { supabase } from '@/infrastructure/supabase/client';
+import { useCoordinatedSources } from '@/hooks/useCoordinatedSources';
+import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
+import { subscribeDomain } from '@/infrastructure/realtime/events';
+import { observeResources } from '@/lib/utils/resourceReads';
+import { classifyFailure } from '@/lib/utils/failure';
+import { format, parseISO } from 'date-fns';
+import { patientWeightHistory, patientGlycemiaHistory } from '@/features/patient-progress/model/patientIndicators';
+import { getLatestClinicalWeights, getLatestSelfWeights, getLatestGlycemia } from '@/features/patient-progress/api/indicator-queries';
 
-/**
- * PatientMetricsWidget - Widget de métricas reais do paciente
- *
- * Mostra:
- * - Último peso registrado
- * - Última glicemia registrada
- * - Tendência de evolução
- */
+const formatCivilDate = value => format(parseISO(value), 'dd/MM/yyyy');
+
 export default function PatientMetricsWidget() {
   const { user } = useAuth();
-  return <PatientMetricsWidgetContent key={user?.id || 'signed-out'} />;
+  return user?.id ? <PatientMetricsWidgetContent key={user.id} /> : null;
 }
 
 function PatientMetricsWidgetContent() {
   const { user } = useAuth();
-  const userId = user?.id;
-  const [dataRevision, setDataRevision] = useState(0);
-  const readSource = useCoordinatedSources(JSON.stringify([userId,'patient.metrics']));
+  const userId = user.id;
+  const scope = JSON.stringify([userId, 'patient.metrics', user.profile?.nutritionist_id, user.profile?.is_active]);
+  const readSource = useCoordinatedSources(scope);
+  const clinical = useResourceSnapshot(JSON.stringify([userId, scope, 'clinical']), []);
+  const self = useResourceSnapshot(JSON.stringify([userId, scope, 'self']), []);
+  const glycemia = useResourceSnapshot(JSON.stringify([userId, scope, 'glycemia']), []);
+  const { begin: beginClinical, succeed: succeedClinical, fail: failClinical, current: currentClinical, cancel: cancelClinical } = clinical;
+  const { begin: beginSelf, succeed: succeedSelf, fail: failSelf, current: currentSelf, cancel: cancelSelf } = self;
+  const { begin: beginGlycemia, succeed: succeedGlycemia, fail: failGlycemia, current: currentGlycemia, cancel: cancelGlycemia } = glycemia;
+  const reads = useMemo(() => ({
+    clinical: { begin: beginClinical, succeed: succeedClinical, fail: failClinical, current: currentClinical, cancel: cancelClinical },
+    self: { begin: beginSelf, succeed: succeedSelf, fail: failSelf, current: currentSelf, cancel: cancelSelf },
+    glycemia: { begin: beginGlycemia, succeed: succeedGlycemia, fail: failGlycemia, current: currentGlycemia, cancel: cancelGlycemia },
+  }), [beginClinical, succeedClinical, failClinical, currentClinical, cancelClinical, beginSelf, succeedSelf, failSelf, currentSelf, cancelSelf, beginGlycemia, succeedGlycemia, failGlycemia, currentGlycemia, cancelGlycemia]);
+  const [revision, setRevision] = useState(0);
+  const titleId = useId();
+
   useEffect(() => {
-    const refresh = () => setDataRevision(value => value + 1);
-    const off = ['clinical', 'access'].map(domain => subscribeDomain(userId, domain, refresh));
-    return () => off.forEach(unsubscribe => unsubscribe());
+    const refresh = () => setRevision(value => value + 1);
+    const subscriptions = ['clinical', 'access'].map(domain => subscribeDomain(userId, domain, refresh));
+    return () => subscriptions.forEach(unsubscribe => unsubscribe());
   }, [userId]);
-  const navigate = useNavigate();
-  const [latestWeight, setLatestWeight] = useState(null);
-  const [latestGlycemia, setLatestGlycemia] = useState(null);
-  const [weightTrend, setWeightTrend] = useState(null);
-  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    const loadMetrics = async () => {
-      if (!userId) return;
-      setLoading(true);
-
-      // Buscar últimos 2 registros de peso para calcular tendência
-      const { data: weightData } = await readSource('0', () => supabase
-        .from('growth_records')
-        .select('weight, record_date')
-        .eq('patient_id', userId)
-        .order('record_date', { ascending: false })
-        .limit(2));
-      if (cancelled) return;
-      setLatestWeight(null);
-      setWeightTrend(null);
-
-      if (weightData && weightData.length > 0) {
-        setLatestWeight(weightData[0]);
-
-        // Calcular tendência
-        if (weightData.length === 2) {
-          const diff = weightData[0].weight - weightData[1].weight;
-          if (diff > 0.5) {
-            setWeightTrend('up');
-          } else if (diff < -0.5) {
-            setWeightTrend('down');
-          } else {
-            setWeightTrend('stable');
-          }
-        }
+    let denied = false;
+    const tickets = Object.fromEntries(Object.entries(reads).map(([key, read]) => [key, read.begin()]));
+    void observeResources({
+      clinical: () => readSource('clinical', () => getLatestClinicalWeights(userId)),
+      self: () => readSource('self', () => getLatestSelfWeights(userId)),
+      glycemia: () => readSource('glycemia', () => getLatestGlycemia(userId)),
+    }, (key, result) => {
+      const read = reads[key], ticket = tickets[key];
+      if (cancelled || denied || !read.current(ticket)) return;
+      if (result.error && ['forbidden', 'unauthenticated'].includes(classifyFailure(result.error))) {
+        denied = true;
+        // A denied context cannot retain another source's snapshot or late response.
+        Object.values(reads).forEach(resource => resource.fail(resource.begin(), result.error));
+        return;
       }
-
-      // Buscar última glicemia - tabela não existe ainda
-      // TODO: Criar tabela glycemia_records
-      setLatestGlycemia(null);
-
-      setLoading(false);
+      if (result.error) read.fail(ticket, result.error);
+      else read.succeed(ticket, result.data || []);
+    });
+    return () => {
+      cancelled = true;
+      Object.entries(reads).forEach(([key, read]) => read.cancel(tickets[key]));
     };
+  }, [scope, userId, revision, reads, readSource]);
 
-    loadMetrics();
-    return () => { cancelled = true; };
-  }, [userId, dataRevision, user?.profile?.nutritionist_id, user?.profile?.is_active, readSource]);
-
-  if (loading) {
-    return (
-      <Card className="shadow-sm hover:shadow-md transition-shadow cursor-pointer bg-gradient-to-br from-primary/5 to-primary/10">
-        <CardContent className="pt-6">
-          <div className="flex items-center justify-center h-32">
-            <Activity className="w-8 h-8 text-primary animate-pulse" />
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-
-  const getTrendIcon = () => {
-    if (weightTrend === 'up') return TrendingUp;
-    if (weightTrend === 'down') return TrendingDown;
-    return Minus;
-  };
-
-  const getTrendColor = () => {
-    if (weightTrend === 'up') return 'text-red-500';
-    if (weightTrend === 'down') return 'text-green-500';
-    return 'text-gray-500';
-  };
-
-  const TrendIcon = getTrendIcon();
+  const weights = patientWeightHistory([
+    ...(clinical.hasSnapshot ? clinical.data.map(row => ({ ...row, source: 'clinical' })) : []),
+    ...(self.hasSnapshot ? self.data.map(row => ({ ...row, source: 'patient' })) : []),
+  ]);
+  const weight = weights[0], previousWeight = weights[1];
+  const glucose = patientGlycemiaHistory(glycemia.hasSnapshot ? glycemia.data : [])[0];
+  const weightError = clinical.error || self.error;
+  const error = weightError || glycemia.error;
+  const pending = clinical.pending || self.pending || glycemia.pending;
+  const weightEmpty = weightError ? 'Indisponível' : clinical.hasSnapshot && self.hasSnapshot ? 'Sem registro' : 'Aguardando confirmação';
+  const glucoseEmpty = glycemia.error ? 'Indisponível' : glycemia.hasSnapshot ? 'Sem registro' : 'Aguardando confirmação';
+  const difference = previousWeight ? weight.weight - previousWeight.weight : null;
+  const displayedDifference = difference === null ? null : Number(Math.abs(difference).toFixed(2));
+  const direction = difference > 0 ? 'Aumento' : difference < 0 ? 'Redução' : 'Sem variação';
+  const glucoseContext = { fasting: 'Em jejum', pre_prandial: 'Antes da refeição', post_prandial: 'Após a refeição', random: 'Medição casual' };
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-      onClick={() => navigate('/patient/progresso')}
-      className="cursor-pointer"
-    >
-      <Card className="shadow-sm hover:shadow-md transition-all duration-200 bg-white border-primary/20">
+    <Card className="shadow-sm hover:shadow-md transition-shadow border-primary/20">
+      <Link to="/patient/progresso" aria-labelledby={titleId} className="block rounded-lg focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2">
         <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-lg text-primary flex items-center gap-2">
-              <Activity className="w-5 h-5" />
-              Meus Indicadores
-            </CardTitle>
-            {latestWeight && (
-              <TrendIcon className={`w-5 h-5 ${getTrendColor()}`} />
-            )}
-          </div>
+          <CardTitle id={titleId} className="text-lg text-foreground flex items-center gap-2">
+            <Activity className="w-5 h-5" aria-hidden="true" />Meus Indicadores
+          </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-2 gap-4">
-            {/* Métrica: Peso */}
-            <div className="flex flex-col items-center justify-center p-4 bg-primary/5 rounded-lg">
-              <Scale className="w-6 h-6 text-primary mb-2" />
-              {latestWeight ? (
-                <>
-                  <p className="text-2xl font-bold text-primary">
-                    {latestWeight.weight}
-                    <span className="text-sm font-normal ml-1">kg</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Peso atual
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">--</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sem registro
-                  </p>
-                </>
-              )}
+          <div className="grid grid-cols-2 gap-3" aria-live="polite">
+            <div className="min-w-0 flex flex-col items-center p-3 bg-primary/5 rounded-lg text-center">
+              <Scale className="w-6 h-6 text-primary mb-2" aria-hidden="true" />
+              {weight ? <>
+                <p className="text-2xl font-bold text-foreground"><span>{weight.weight}</span><span className="text-sm font-normal ml-1">kg</span></p>
+                <p className="text-xs text-muted-foreground mt-1">{weight.source === 'patient' ? 'Autorregistro' : 'Registro profissional'}</p>
+                <p className="text-xs text-muted-foreground">{formatCivilDate(weight.record_date)}</p>
+              </> : <p className="text-sm text-muted-foreground">{weightEmpty}</p>}
+              {weight && weightError && <p className="text-xs text-muted-foreground mt-1">Histórico parcial</p>}
             </div>
-
-            {/* Métrica: Glicemia */}
-            <div className="flex flex-col items-center justify-center p-4 bg-secondary/5 rounded-lg">
-              <Droplet className="w-6 h-6 text-secondary mb-2" />
-              {latestGlycemia ? (
-                <>
-                  <p className="text-2xl font-bold text-secondary">
-                    {latestGlycemia.glycemia_value}
-                    <span className="text-sm font-normal ml-1">mg/dL</span>
-                  </p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Glicemia
-                  </p>
-                </>
-              ) : (
-                <>
-                  <p className="text-sm text-muted-foreground">--</p>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    Sem registro
-                  </p>
-                </>
-              )}
+            <div className="min-w-0 flex flex-col items-center p-3 bg-secondary/5 rounded-lg text-center">
+              <Droplet className="w-6 h-6 text-secondary mb-2" aria-hidden="true" />
+              {glucose ? <>
+                <p className="text-2xl font-bold text-foreground"><span>{glucose.value}</span><span className="text-sm font-normal ml-1">mg/dL</span></p>
+                <p className="text-xs text-muted-foreground mt-1">{formatCivilDate(glucose.date)}</p>
+                <p className="text-xs text-muted-foreground">{glucoseContext[glucose.condition] || 'Contexto não informado'}</p>
+              </> : <p className="text-sm text-muted-foreground">{glucoseEmpty}</p>}
             </div>
           </div>
-
-          <div className="mt-4 text-center">
-            <p className="text-xs text-primary font-medium">
-              Toque para ver todos os gráficos →
-            </p>
-          </div>
+          {previousWeight && <p className="mt-3 text-xs text-muted-foreground">
+            {direction}{difference !== 0 ? displayedDifference > 0 ? ' de ' + displayedDifference.toLocaleString('pt-BR') + ' kg' : ' inferior a 0,01 kg' : ''} entre {formatCivilDate(previousWeight.record_date)} e {formatCivilDate(weight.record_date)}.
+            {weightError ? ' Comparação parcial.' : ''}
+          </p>}
+          <p className="mt-4 text-center text-xs text-foreground font-medium">Ver todos os gráficos →</p>
         </CardContent>
-      </Card>
-    </motion.div>
+      </Link>
+      {pending && <p role="status" className="px-6 pb-3 text-xs text-muted-foreground">Atualizando indicadores…</p>}
+      {error && <div role="alert" className="px-6 pb-4 space-y-2 text-sm">
+        <p>Parte dos indicadores está indisponível. {error.message}</p>
+        {error.retryable && <Button type="button" variant="outline" onClick={() => setRevision(value => value + 1)}>Tentar novamente</Button>}
+      </div>}
+    </Card>
   );
 }

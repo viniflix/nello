@@ -337,25 +337,17 @@ export default function PatientHomePage() {
               </Card>
             </motion.div>
 
-            {/* 4. Meus Indicadores (Mobile) - Aparece só no mobile */}
-            <div className="lg:hidden">
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.5 }}
-              >
-                <PatientMetricsWidget />
-              </motion.div>
-            </div>
+
           </div>
 
           {/* Coluna Lateral (Desktop) */}
-          <div className="hidden lg:block lg:col-span-1 space-y-6">
+          <div className="lg:col-span-1 space-y-6">
             {/* Widget de Métricas */}
             <PatientMetricsWidget />
 
             {/* Widget de Conquistas */}
             <motion.div
+              className="hidden lg:block"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}

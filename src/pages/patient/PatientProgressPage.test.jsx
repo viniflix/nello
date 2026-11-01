@@ -42,8 +42,10 @@ vi.mock('@/infrastructure/supabase/client', () => ({
       const builder = {
         select: () => builder,
         eq: () => builder,
+        gt: () => builder,
+        lt: () => builder,
         order: () => builder,
-        limit: () => builder,
+        limit: limit => { pageEnd = limit - 1; return builder; },
         range: (start, end) => { pageStart = start; pageEnd = end; return builder; },
         then: (resolve) => resolve({ data: (mocks.rows[table] || []).slice(pageStart, pageEnd + 1), error: null }),
       };

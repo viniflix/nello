@@ -21,7 +21,7 @@ vi.mock('@/lib/supabase/meal-plan-queries', () => ({ getActiveMealPlan: mocks.pl
 vi.mock('@/lib/supabase/patient-queries', () => ({ getMyCareRelationship: mocks.care, endMyCareRelationship: vi.fn() }));
 vi.mock('@/lib/supabase/food-diary-queries', () => ({ getPatientReminderPreferences: async () => ({ data: null }), upsertPatientReminderPreferences: vi.fn() }));
 vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: table => {
-  const query = { select: () => query, eq: () => query, is: () => query, order: () => query, limit: () => query,
+  const query = { select: () => query, eq: () => query, is: () => query, order: () => query, limit: () => query, gt: () => query, lt: () => query, gte: () => query, lte: () => query,
     then: (resolve, reject) => { mocks.reads(table); return (mocks.pending || Promise.resolve({ data: [], error: null })).then(resolve, reject); } };
   return query;
 } } }));

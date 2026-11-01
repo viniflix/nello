@@ -50,9 +50,9 @@ export const CLINICAL_TYPE_LABELS = {
   discharge_summary: 'Resumo de alta',
 };
 export const HISTORY_PAGE_SIZE = 100;
-export const GROWTH_COLUMNS = 'id, patient_id, record_date, weight, height, head_circumference, notes, circumferences, skinfolds, bioimpedance, bone_diameters';
+export const GROWTH_COLUMNS = 'id, patient_id, record_date, created_at, weight, height, head_circumference, notes, circumferences, skinfolds, bioimpedance, bone_diameters';
 export const SELF_MEASUREMENT_COLUMNS = 'id, patient_id, record_date, weight, height, head_circumference, created_at';
-export const GLYCEMIA_COLUMNS = 'id, patient_id, date, value, condition, notes';
+export const GLYCEMIA_COLUMNS = 'id, patient_id, date, created_at, value, condition, notes';
 export const mergeUnique = (current, incoming, keyFor) => {
   const seen = new Set(current.map(keyFor));
   return [...current, ...incoming.filter((item) => {

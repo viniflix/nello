@@ -7,7 +7,7 @@ vi.mock('@/hooks/use-toast', () => ({ useToast: () => ({ toast: mocks.toast }) }
 vi.mock('@/lib/supabase/progress-photos-queries', () => ({ getProgressPhotos: mocks.photos, deleteProgressPhoto: vi.fn(), uploadProgressPhoto: vi.fn() }));
 vi.mock('@/lib/supabase/patient-queries', () => ({ logActivityEvent: vi.fn() }));
 vi.mock('@/features/clinical-records/api/record-foundation-queries', () => ({ getPatientRecordFoundation: mocks.foundation }));
-vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: table => { let range; const query = { select: () => query, eq: () => query, order: () => query, range: (...values) => {range=values;return query;}, then: (resolve, reject) => mocks.read(table,range).then(resolve, reject) }; return query; } } }));
+vi.mock('@/infrastructure/supabase/client', () => ({ supabase: { from: table => { let range=[0,99]; const query = { select: () => query, eq: () => query, order: () => query, gt: () => query, lt: () => query, limit: limit => {range=[0,limit-1];return query;}, range: (...values) => {range=values;return query;}, then: (resolve, reject) => mocks.read(table,range).then(resolve, reject) }; return query; } } }));
 describe('Patient progress source independence', () => {
   beforeEach(() => { vi.clearAllMocks(); mocks.read.mockImplementation(async table => ({ data: table === 'growth_records' ? [{ id: 'synthetic-weight', weight: 70, record_date: '2026-10-13' }] : [], error: null })); mocks.photos.mockResolvedValue({ data: [] }); mocks.foundation.mockResolvedValue({ data: { records: [] } }); });
   it('keeps a confirmed history while refreshing instead of re-entering initial loading', async () => {

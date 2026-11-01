@@ -1,7 +1,11 @@
 import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
 import { classifyFailure } from '@/lib/utils/failure';
+import { getAccessEpoch } from '@/infrastructure/realtime/accessEpochState';
+import { getPrivateSessionEpoch } from '@/lib/utils/privateSessionState';
 import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { observeResources } from '@/lib/utils/resourceReads';
+import { patientWeightHistory, patientGlycemiaHistory } from '@/features/patient-progress/model/patientIndicators';
+import { getLatestClinicalWeights, getLatestSelfWeights } from '@/features/patient-progress/api/indicator-queries';
 
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
@@ -53,27 +57,34 @@ export function usePatientProgressPageController() {
   const [storedMeasurementsdata, setMeasurementsData] = useState([]);
   const [storedPhotosdata, setPhotosData] = useState([]);
   const [storedClinicalrecords, setClinicalRecords] = useState([]);
+  const latestClinicalResource = useResourceSnapshot(JSON.stringify([userId, 'latestClinicalWeights']), []);
+  const latestSelfResource = useResourceSnapshot(JSON.stringify([userId, 'latestSelfWeights']), []);
   const growthResource = useResourceSnapshot(JSON.stringify([userId, 'growth']), []);
   const selfResource = useResourceSnapshot(JSON.stringify([userId, 'self']), []);
   const glycemiaResource = useResourceSnapshot(JSON.stringify([userId, 'glycemia']), []);
   const photosResource = useResourceSnapshot(JSON.stringify([userId, 'photos']), []);
   const clinicalResource = useResourceSnapshot(JSON.stringify([userId, 'clinical']), []);
+  const {begin:beginLatestClinical,succeed:confirmLatestClinical,fail:failLatestClinical}=latestClinicalResource;
+  const {begin:beginLatestSelf,succeed:confirmLatestSelf,fail:failLatestSelf}=latestSelfResource;
   const {begin:beginGrowth,succeed:confirmGrowth,fail:failGrowth,current:currentGrowth}=growthResource;
   const {begin:beginSelf,succeed:confirmSelf,fail:failSelf}=selfResource;
   const {begin:beginGlycemia,succeed:confirmGlycemia,fail:failGlycemia}=glycemiaResource;
   const {begin:beginPhotos,succeed:confirmPhotos,fail:failPhotos}=photosResource;
   const {begin:beginClinical,succeed:confirmClinical,fail:failClinical}=clinicalResource;
   const reads=useMemo(()=>({
+    latestClinical:{begin:beginLatestClinical,succeed:confirmLatestClinical,fail:failLatestClinical},
+    latestSelf:{begin:beginLatestSelf,succeed:confirmLatestSelf,fail:failLatestSelf},
     growth:{begin:beginGrowth,succeed:confirmGrowth,fail:failGrowth},
     self:{begin:beginSelf,succeed:confirmSelf,fail:failSelf},
     glycemia:{begin:beginGlycemia,succeed:confirmGlycemia,fail:failGlycemia},
     photos:{begin:beginPhotos,succeed:confirmPhotos,fail:failPhotos},
     clinical:{begin:beginClinical,succeed:confirmClinical,fail:failClinical}
-  }),[beginGrowth,confirmGrowth,failGrowth,beginSelf,confirmSelf,failSelf,beginGlycemia,confirmGlycemia,failGlycemia,beginPhotos,confirmPhotos,failPhotos,beginClinical,confirmClinical,failClinical]);
-  const allResources=[growthResource,selfResource,glycemiaResource,photosResource,clinicalResource];
+  }),[beginLatestClinical,confirmLatestClinical,failLatestClinical,beginLatestSelf,confirmLatestSelf,failLatestSelf,beginGrowth,confirmGrowth,failGrowth,beginSelf,confirmSelf,failSelf,beginGlycemia,confirmGlycemia,failGlycemia,beginPhotos,confirmPhotos,failPhotos,beginClinical,confirmClinical,failClinical]);
+  const allResources=[latestClinicalResource,latestSelfResource,growthResource,selfResource,glycemiaResource,photosResource,clinicalResource];
   const loading=allResources.every(resource=>!resource.hasSnapshot)&&allResources.some(resource=>resource.initialLoading);
   const loadError=[growthResource,selfResource,glycemiaResource,photosResource].every(resource=>!resource.hasSnapshot&&resource.error);
   const clinicalLoadError=Boolean(clinicalResource.error);
+  const historyPending=growthResource.pending||selfResource.pending||glycemiaResource.pending;
   const weightData=(growthResource.hasSnapshot||selfResource.hasSnapshot)?storedWeightdata:[];
   const measurementsData=(growthResource.hasSnapshot||selfResource.hasSnapshot)?storedMeasurementsdata:[];
   const glycemiaData=glycemiaResource.hasSnapshot?storedGlycemiadata:[];
@@ -114,10 +125,20 @@ export function usePatientProgressPageController() {
   const projectionRef=useRef({growth:[],self:[]});
   const projectionOwner=useRef(userId);
   if(projectionOwner.current!==userId){projectionOwner.current=userId;projectionRef.current={growth:[],self:[]};}
+  const clearDeniedContext = useCallback(error => {
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setLoadingMoreHistory(false);
+    projectionRef.current = { growth: [], self: [] };
+    Object.values(reads).forEach(read => read.fail(read.begin(), error));
+    setWeightData([]); setMeasurementsData([]); setGlycemiaData([]);
+    setPhotosData([]); setClinicalRecords([]); setHasMoreHistory(false);
+  }, [reads]);
   const loadProgressData = useCoordinatedLoader(useCallback(async () => {
     if (!userId || !isMounted.current) return;
     abortControllerRef.current?.abort();
     const currentController=new AbortController();abortControllerRef.current=currentController;
+    setLoadingMoreHistory(false);
     const tickets=Object.fromEntries(Object.entries(reads).map(([key,read])=>[key,read.begin()]));
     const requestedCount=(historyPageRef.current+1)*HISTORY_PAGE_SIZE;
     const publishWeight=()=>{
@@ -127,22 +148,19 @@ export function usePatientProgressPageController() {
       setWeightData(rows);setMeasurementsData(rows.filter(hasMeasurementData));
     };
     await observeResources({
-      growth:()=>supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id',userId).eq('status','active').eq('is_latest_revision',true).order('record_date',{ascending:false}).range(0,requestedCount-1),
-      self:()=>supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id',userId).order('record_date',{ascending:false}).range(0,requestedCount-1),
-      glycemia:()=>supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id',userId).order('date',{ascending:false}).range(0,requestedCount-1),
+      latestClinical: () => getLatestClinicalWeights(userId),
+      latestSelf: () => getLatestSelfWeights(userId),
+      growth:()=>supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id',userId).eq('status','active').eq('is_latest_revision',true).order('record_date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(0,requestedCount-1),
+      self:()=>supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id',userId).order('record_date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(0,requestedCount-1),
+      glycemia:()=>supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id',userId).order('date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(0,requestedCount-1),
       photos:()=>getProgressPhotos({patientId:userId,limit:50}),
       clinical:()=>getPatientRecordFoundation(userId)
     },(key,result)=>{
       if (!isMounted.current||currentController.signal.aborted||!currentGrowth(tickets.growth)) return;
       const read=reads[key],ticket=tickets[key];
       if(result.error){
-        read.fail(ticket,result.error);
-        if(['forbidden','unauthenticated'].includes(classifyFailure(result.error))){
-          if(key==='growth'||key==='self'){projectionRef.current[key]=[];publishWeight();}
-          if(key==='glycemia')setGlycemiaData([]);
-          if(key==='photos')setPhotosData([]);
-          if(key==='clinical')setClinicalRecords([]);
-        }
+        if(['forbidden','unauthenticated'].includes(classifyFailure(result.error))) clearDeniedContext(result.error);
+        else read.fail(ticket,result.error);
         return;
       }
       read.succeed(ticket,result.data||[]);
@@ -155,22 +173,28 @@ export function usePatientProgressPageController() {
       if(key==='clinical')setClinicalRecords(getCurrentSharedClinicalRecords(result.data?.records));
       setGoalWeight(null);
     });
-  },[userId,reads,currentGrowth]), clinicalResource.scopeKey, ['clinical']);
+  },[userId,reads,currentGrowth,clearDeniedContext]), clinicalResource.scopeKey, ['clinical']);
 
   const loadMoreHistory = async () => {
-    if (!userId || !hasMoreHistory || loadingMoreHistory) return;
+    if (!userId || !hasMoreHistory || loadingMoreHistory || historyPending || !abortControllerRef.current || abortControllerRef.current.signal.aborted) return;
     const ownerAtStart = projectionOwner.current, refreshAtStart = abortControllerRef.current;
+    const accessAtStart = getAccessEpoch(userId), sessionAtStart = getPrivateSessionEpoch();
+    const paginationCurrent = () => isMounted.current && ownerAtStart === projectionOwner.current
+      && refreshAtStart === abortControllerRef.current && !refreshAtStart.signal.aborted
+      && accessAtStart === getAccessEpoch(ownerAtStart) && sessionAtStart === getPrivateSessionEpoch();
     setLoadingMoreHistory(true);
     const nextPage = historyPage + 1;
     const start = nextPage * HISTORY_PAGE_SIZE;
     const end = start + HISTORY_PAGE_SIZE - 1;
     try {
-      const [clinical, self, glycemia] = await Promise.all([
-        supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id', userId).eq('status', 'active').eq('is_latest_revision', true).order('record_date', { ascending: false }).range(start, end),
-        supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id', userId).order('record_date', { ascending: false }).range(start, end),
-        supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id', userId).order('date', { ascending: false }).range(start, end),
-      ]);
-      if (!isMounted.current || ownerAtStart !== projectionOwner.current || refreshAtStart !== abortControllerRef.current) return;
+      const { clinical, self, glycemia } = await observeResources({
+        clinical: () => supabase.from('growth_records').select(GROWTH_COLUMNS).eq('patient_id', userId).eq('status', 'active').eq('is_latest_revision', true).order('record_date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(start, end),
+        self: () => supabase.from('patient_progress_measurements').select(SELF_MEASUREMENT_COLUMNS).eq('patient_id', userId).order('record_date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(start, end),
+        glycemia: () => supabase.from('glycemia_records').select(GLYCEMIA_COLUMNS).eq('patient_id', userId).order('date',{ascending:false}).order('created_at',{ascending:false,nullsFirst:false}).order('id',{ascending:true}).range(start, end),
+      }, (_key, result) => {
+        if (paginationCurrent() && result.error && ['forbidden', 'unauthenticated'].includes(classifyFailure(result.error))) clearDeniedContext(result.error);
+      });
+      if (!paginationCurrent()) return;
       if (clinical.error || self.error || glycemia.error) throw clinical.error || self.error || glycemia.error;
       projectionRef.current.growth = mergeUnique(projectionRef.current.growth, clinical.data || [], record => record.id);
       projectionRef.current.self = mergeUnique(projectionRef.current.self, self.data || [], record => record.id);
@@ -184,9 +208,11 @@ export function usePatientProgressPageController() {
       setHistoryPage(nextPage);
       setHasMoreHistory([clinical, self, glycemia].some((result) => result.data?.length === HISTORY_PAGE_SIZE));
     } catch (error) {
+      if (!paginationCurrent()) return;
+      if (['forbidden', 'unauthenticated'].includes(classifyFailure(error))) clearDeniedContext(error);
       toast({ title: 'Histórico não carregado', description: toPortugueseError(error), variant: 'destructive' });
     } finally {
-      setLoadingMoreHistory(false);
+      if (paginationCurrent()) setLoadingMoreHistory(false);
     }
   };
 
@@ -407,24 +433,33 @@ export function usePatientProgressPageController() {
   };
 
   // Preparar dados de glicemia para gráfico (colunas reais: date, value, condition)
-  const weightOnlyData = useMemo(() => weightData.filter((record) => record?.weight != null), [weightData]);
-  const sortedWeightData = useMemo(() => sortNewestFirst(weightOnlyData, 'record_date'), [weightOnlyData]);
-  const sortedGlycemiaData = useMemo(() => sortNewestFirst(glycemiaData, 'date'), [glycemiaData]);
+  const currentWeightRows = useMemo(() => [
+    ...(latestClinicalResource.hasSnapshot ? latestClinicalResource.data.map(record => ({ ...record, source: 'clinical' })) : []),
+    ...(latestSelfResource.hasSnapshot ? latestSelfResource.data.map(record => ({ ...record, id: 'patient:' + record.id, source: 'patient' })) : []),
+  ], [latestClinicalResource.hasSnapshot, latestClinicalResource.data, latestSelfResource.hasSnapshot, latestSelfResource.data]);
+  const sortedWeightData = useMemo(() => {
+    const identity = record => record.source + ':' + record.id;
+    const fullRows = new Map(weightData.map(record => [identity(record), record]));
+    const enriched = currentWeightRows.map(record => ({ ...fullRows.get(identity(record)), ...record }));
+    return patientWeightHistory(mergeUnique(enriched, weightData, identity));
+  }, [currentWeightRows, weightData]);
+  const weightOnlyData = useMemo(() => [...sortedWeightData].reverse(), [sortedWeightData]);
+  const sortedGlycemiaData = useMemo(() => patientGlycemiaHistory(glycemiaData), [glycemiaData]);
   const sortedMeasurementsData = useMemo(() => sortNewestFirst(measurementsData, 'record_date'), [measurementsData]);
   const timeline = useMemo(() => buildProgressTimeline({
-    weightRecords: weightData,
-    glycemiaRecords: glycemiaData,
+    weightRecords: mergeUnique(weightOnlyData, measurementsData.map(record => ({ ...record, weight: null })), record => record.source + ':' + record.id),
+    glycemiaRecords: sortedGlycemiaData,
     photos: photosData,
     clinicalRecords,
-  }), [weightData, glycemiaData, photosData, clinicalRecords]);
+  }), [weightOnlyData, measurementsData, sortedGlycemiaData, photosData, clinicalRecords]);
   const weightChartData = useMemo(() => weightOnlyData.map((record) => ({
     ...record,
     record_date: /^\d{4}-\d{2}-\d{2}$/.test(record.record_date || '') ? parseISO(record.record_date) : record.record_date,
   })), [weightOnlyData]);
 
-  const glycemiaChartData = glycemiaData.map((record) => ({
+  const glycemiaChartData = [...sortedGlycemiaData].reverse().map((record) => ({
     date: record.date ? format(new Date(record.date), 'dd/MM/yy') : '?',
-    value: parseFloat(record.value || 0)
+    value: record.value
   }));
 
   const openDetail = (detail) => {
@@ -438,14 +473,19 @@ export function usePatientProgressPageController() {
     pending:primary.pending||secondary.pending,refreshing:primary.refreshing||secondary.refreshing,
     error:primary.error||secondary.error
   });
-  const resources={peso:combine(growthResource,selfResource,weightData),medidas:combine(growthResource,selfResource,measurementsData),glicemia:glycemiaResource,fotos:photosResource,clinical:clinicalResource};
+  const weightHistoryResource=combine(growthResource,selfResource,weightData);
+  const currentWeightResource=combine(latestClinicalResource,latestSelfResource,currentWeightRows);
+  const resources={peso:{...weightHistoryResource,hasSnapshot:weightHistoryResource.hasSnapshot||currentWeightResource.hasSnapshot,error:currentWeightResource.error||weightHistoryResource.error,pending:currentWeightResource.pending||weightHistoryResource.pending,refreshing:currentWeightResource.refreshing||weightHistoryResource.refreshing},medidas:combine(growthResource,selfResource,measurementsData),glicemia:glycemiaResource,fotos:photosResource,clinical:clinicalResource};
+  const currentWeight = patientWeightHistory(currentWeightRows)[0];
+  const currentWeightValue = currentWeight ? Number(currentWeight.weight).toFixed(1) + ' kg'
+    : currentWeightResource.error ? 'Indisponível' : latestClinicalResource.hasSnapshot && latestSelfResource.hasSnapshot ? 'Sem registros' : 'Aguardando confirmação';
   const indicatorCards = [
-    { id: 'peso', label: 'PESO', icon: Scale, value: sortedWeightData[0]?.weight != null ? `${Number(sortedWeightData[0].weight).toFixed(1)} kg` : 'Sem registros' },
+    { id: 'peso', label: 'PESO', icon: Scale, value: currentWeightValue },
     { id: 'glicemia', label: 'GLICEMIA', icon: Droplet, value: sortedGlycemiaData[0]?.value != null ? `${Number(sortedGlycemiaData[0].value).toFixed(0)} mg/dL` : 'Sem registros' },
     { id: 'medidas', label: 'MEDIDAS', icon: Ruler, value: sortedMeasurementsData[0]?.height != null ? `${Number(sortedMeasurementsData[0].height).toFixed(1)} cm` : 'Sem registros' },
     { id: 'fotos', label: 'FOTOS', icon: Camera, value: photosData.length ? `${photosData.length} ${photosData.length === 1 ? 'foto' : 'fotos'}` : 'Sem registros' },
-  ].map(card=>resources[card.id].hasSnapshot?card:{...card,value:resources[card.id].error?'Indisponível':'Aguardando confirmação'});
+  ].map(card=>card.id==='peso'||resources[card.id].hasSnapshot?card:{...card,value:resources[card.id].error?'Indisponível':'Aguardando confirmação'});
 
   
-return {resources,activeDetail,setActiveDetail,setDialogOpen,activeTab,loading,loadError,loadProgressData,sortedWeightData,openDetail,weightOnlyData,indicatorCards,clinicalLoadError,timeline,user,setActiveTab,isDiabetic,weightChartData,goalWeight,glycemiaChartData,sortedGlycemiaData,measurementsData,sortedMeasurementsData,photosData,setLightboxPhoto,setDeletePhotoTarget,hasMoreHistory,loadingMoreHistory,loadMoreHistory,dialogOpen,handleAddWeightRecord,recordDate,setRecordDate,newWeight,setNewWeight,handleAddGlycemiaRecord,newGlycemiaCondition,setNewGlycemiaCondition,newGlycemia,setNewGlycemia,handleAddMeasurementRecord,newHeight,setNewHeight,newHeadCircumference,setNewHeadCircumference,selectedPhotoFile,handleAddPhotoRecord,photoNotes,setSelectedPhotoFile,setPhotoNotes,lightboxPhoto,deletePhotoTarget,handleDeletePhoto};
+return {resources,activeDetail,setActiveDetail,setDialogOpen,activeTab,loading,loadError,loadProgressData,sortedWeightData,openDetail,weightOnlyData,indicatorCards,clinicalLoadError,timeline,user,setActiveTab,isDiabetic,weightChartData,goalWeight,glycemiaChartData,sortedGlycemiaData,measurementsData,sortedMeasurementsData,photosData,setLightboxPhoto,setDeletePhotoTarget,hasMoreHistory,loadingMoreHistory:loadingMoreHistory||historyPending,loadMoreHistory,dialogOpen,handleAddWeightRecord,recordDate,setRecordDate,newWeight,setNewWeight,handleAddGlycemiaRecord,newGlycemiaCondition,setNewGlycemiaCondition,newGlycemia,setNewGlycemia,handleAddMeasurementRecord,newHeight,setNewHeight,newHeadCircumference,setNewHeadCircumference,selectedPhotoFile,handleAddPhotoRecord,photoNotes,setSelectedPhotoFile,setPhotoNotes,lightboxPhoto,deletePhotoTarget,handleDeletePhoto};
 }
