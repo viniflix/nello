@@ -1,66 +1,159 @@
 {
   "schemaVersion": 1,
-  "reviewedAt": "2026-10-10",
-  "reviewBy": "2026-10-23T00:00:00Z",
+  "reviewedAt": "2026-10-31",
+  "reviewBy": "2026-11-06T00:00:00Z",
   "responsible": "Nello maintainer / Vinicius Costa",
-  "advisory": "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm",
-  "scope": "Unpatched braces dev-only Tailwind 3 build/watch chain, trusted repository patterns only; no production exposure acceptance. No audit fix force or package substitution.",
-  "mitigation": "Exact dependency paths, versions and advisory causes are checked; new advisories, runtime exposure, path/version changes or expired review fail release. Keep residual finding open for upstream patch or separately validated replacement.",
+  "authorization": "Explicit owner approval: Autorizar exceção limitada até 05/11 às 21h; expires 2026-11-06T00:00:00Z (Fortaleza 2026-11-05 21:00), without automatic renewal",
+  "advisory": "https://github.com/advisories/GHSA-g3hv-75wg-m249",
+  "scope": "Exact development-only minimatch dependency chain. Legacy3.1.5 lacks this specific optimization implementation; modern10.2.6 callers inspected use default optimizationLevel1 and trusted repository configuration. This is not an upstream patch or audit zero. No runtime exposure accepted.",
+  "mitigation": "Glob upgraded to14.0.3 and sucrase3.35.1 removes its old glob CLI. Preserve legacy minimatch callable ABI; no global3to11override. All package paths, versions, severity and causes pinned below. New advisories, runtime exposure, path/version changes, unreviewed roots, rootless cycles or expiry fail release. No automatic renewal.",
   "packages": {
-    "braces": {
-      "severity": "high",
+    "@eslint-community/eslint-utils": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/braces": "3.0.3"
+        "node_modules/@eslint-community/eslint-utils": "4.10.1"
       },
       "via": [
-        "https://github.com/advisories/GHSA-vfj7-8cjw-p6xm"
+        "eslint"
       ]
     },
-    "chokidar": {
-      "severity": "high",
+    "@eslint/config-array": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/chokidar": "3.6.0"
+        "node_modules/@eslint/config-array": "0.21.2"
       },
       "via": [
-        "braces"
+        "minimatch"
       ]
     },
-    "fast-glob": {
-      "severity": "high",
+    "@eslint/eslintrc": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/fast-glob": "3.3.3"
+        "node_modules/@eslint/eslintrc": "3.3.7"
       },
       "via": [
-        "micromatch"
+        "minimatch"
       ]
     },
-    "micromatch": {
-      "severity": "high",
+    "@typescript-eslint/eslint-plugin": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/micromatch": "4.0.8"
+        "node_modules/@typescript-eslint/eslint-plugin": "8.71.1"
       },
       "via": [
-        "braces"
+        "@typescript-eslint/parser",
+        "@typescript-eslint/type-utils",
+        "@typescript-eslint/utils",
+        "eslint"
       ]
     },
-    "tailwindcss-animate": {
-      "severity": "high",
+    "@typescript-eslint/parser": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/tailwindcss-animate": "1.0.7"
+        "node_modules/@typescript-eslint/parser": "8.71.1"
       },
       "via": [
-        "tailwindcss"
+        "@typescript-eslint/typescript-estree",
+        "eslint"
       ]
     },
-    "tailwindcss": {
-      "severity": "high",
+    "@typescript-eslint/type-utils": {
+      "severity": "moderate",
       "nodes": {
-        "node_modules/tailwindcss": "3.4.17"
+        "node_modules/@typescript-eslint/type-utils": "8.71.1"
       },
       "via": [
-        "chokidar",
-        "fast-glob",
-        "micromatch"
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils",
+        "eslint"
+      ]
+    },
+    "@typescript-eslint/typescript-estree": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/@typescript-eslint/parser/node_modules/@typescript-eslint/typescript-estree": "8.71.1",
+        "node_modules/@typescript-eslint/type-utils/node_modules/@typescript-eslint/typescript-estree": "8.71.1",
+        "node_modules/@typescript-eslint/utils/node_modules/@typescript-eslint/typescript-estree": "8.71.1",
+        "node_modules/typescript-eslint/node_modules/@typescript-eslint/typescript-estree": "8.71.1"
+      },
+      "via": [
+        "minimatch"
+      ]
+    },
+    "@typescript-eslint/utils": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/@typescript-eslint/utils": "8.71.1"
+      },
+      "via": [
+        "@eslint-community/eslint-utils",
+        "@typescript-eslint/typescript-estree",
+        "eslint"
+      ]
+    },
+    "eslint": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/eslint": "9.39.5"
+      },
+      "via": [
+        "@eslint-community/eslint-utils",
+        "@eslint/config-array",
+        "@eslint/eslintrc",
+        "minimatch"
+      ]
+    },
+    "eslint-plugin-import": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/eslint-plugin-import": "2.32.0"
+      },
+      "via": [
+        "minimatch"
+      ]
+    },
+    "eslint-plugin-jsx-a11y": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/eslint-plugin-jsx-a11y": "6.10.2"
+      },
+      "via": [
+        "minimatch"
+      ]
+    },
+    "eslint-plugin-react": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/eslint-plugin-react": "7.37.5"
+      },
+      "via": [
+        "minimatch"
+      ]
+    },
+    "minimatch": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/@typescript-eslint/parser/node_modules/minimatch": "10.2.6",
+        "node_modules/@typescript-eslint/type-utils/node_modules/minimatch": "10.2.6",
+        "node_modules/@typescript-eslint/utils/node_modules/minimatch": "10.2.6",
+        "node_modules/minimatch": "3.1.5",
+        "node_modules/typescript-eslint/node_modules/minimatch": "10.2.6"
+      },
+      "via": [
+        "https://github.com/advisories/GHSA-g3hv-75wg-m249"
+      ]
+    },
+    "typescript-eslint": {
+      "severity": "moderate",
+      "nodes": {
+        "node_modules/typescript-eslint": "8.71.1"
+      },
+      "via": [
+        "@typescript-eslint/eslint-plugin",
+        "@typescript-eslint/parser",
+        "@typescript-eslint/typescript-estree",
+        "@typescript-eslint/utils",
+        "eslint"
       ]
     }
   }

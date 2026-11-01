@@ -31,15 +31,22 @@ export function checkDevelopmentAdvisories(audit, lock, policy, now = new Date()
     }
     // Follow every inherited warning to the one reviewed advisory, not a blanket package exception.
     const walk = (name, parents = new Set()) => {
-      if (parents.has(name)) throw new Error('Cyclic advisory chain');
+      if (parents.has(name)) return false;
       const item = audit.vulnerabilities[name];
       if (!item || !policy.packages[name] || !item.via.length) throw new Error('Incomplete advisory chain');
+      let reachesReviewedAdvisory = false;
       for (const cause of item.via) {
-        if (typeof cause === 'string') walk(cause, new Set([...parents, name]));
-        else if (cause.url !== policy.advisory) throw new Error('Unreviewed advisory in inherited chain');
+        if (typeof cause === 'string') {
+          const reachesRoot = walk(cause, new Set([...parents, name]));
+          reachesReviewedAdvisory = reachesRoot || reachesReviewedAdvisory;
+        } else {
+          if (cause.url !== policy.advisory) throw new Error('Unreviewed advisory in inherited chain');
+          reachesReviewedAdvisory = true;
+        }
       }
+      return reachesReviewedAdvisory;
     };
-    walk(finding.name);
+    if (!walk(finding.name)) throw new Error('Cyclic advisory chain');
     reviewed.push(finding.name);
   }
   return { reviewedDevelopmentWarnings: reviewed.sort(), reviewBy: policy.reviewBy,

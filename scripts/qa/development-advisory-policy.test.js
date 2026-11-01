@@ -53,3 +53,13 @@ describe('development security review gate', () => {
     cyclic.policy.packages.braces.via = ['compiler']; expect(() => run(cyclic)).toThrow('Cyclic');
   });
 });
+
+it('accepts a reviewed metadata cycle only when it reaches the reviewed advisory',()=>{
+ const f=fixture();f.audit.vulnerabilities.braces.via.push('compiler');f.policy.packages.braces.via.push('compiler');
+ expect(run(f)).toMatchObject({completeAuditClear:false,reviewedDevelopmentWarnings:['braces','compiler']});
+});
+it('does not let a reviewed cycle hide an unreviewed advisory on another branch',()=>{
+ const f=fixture();f.audit.vulnerabilities.braces.via.push('compiler');f.policy.packages.braces.via.push('compiler');
+ f.audit.vulnerabilities.compiler.via.push({url:'unreviewed-root'});f.policy.packages.compiler.via.push('unreviewed-root');
+ expect(()=>run(f)).toThrow('Unreviewed advisory');
+});
