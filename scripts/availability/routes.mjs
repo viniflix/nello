@@ -4,7 +4,7 @@ import { pathToFileURL } from 'node:url';
 import { publicInformationPaths } from '../../src/features/privacy/publicInformationPaths.js';
 
 export function applicationRewrites(root = '.') {
-  const files = ['authRoutes.jsx', 'nutritionistRoutes.jsx', 'patientRoutes.jsx', 'adminRoutes.jsx', 'index.jsx'];
+  const files = ['authRoutes.jsx', 'nutritionistRoutes.jsx', 'patientRoutes.jsx', 'adminRoutes.jsx', 'index.jsx', 'PrivateAppRouter.jsx'];
   const paths = [...new Set(files.flatMap(file => [...readFileSync(resolve(root, 'src/app/router', file), 'utf8')
     .matchAll(/path="([^"]+)"/g)].map(match => match[1])))].filter(route => route !== '*');
   paths.push('/status', ...publicInformationPaths.filter(path => path !== '/'));

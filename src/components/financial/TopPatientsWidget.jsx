@@ -5,7 +5,7 @@ import { formatCurrency } from '@/lib/utils';
 import { supabase } from '@/infrastructure/supabase/client';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 
-export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
+export default function TopPatientsWidget({ nutritionistId, refreshKey = 0, onAccessError }) {
     const [rows, setRows] = useState([]);
     const [state, setState] = useState('loading');
     const request = useRef(0);
@@ -20,10 +20,11 @@ export default function TopPatientsWidget({ nutritionistId, refreshKey = 0 }) {
             setRows(data || []); setState('ready');
         } catch (error) {
             if (sequence !== request.current) return;
+            onAccessError?.(error);
             logDiagnostic('warn', 'financial/top-patients', 'Ranking query failed', { code: error?.code || 'unknown' });
             setState('error');
         }
-    }, [nutritionistId]);
+    }, [nutritionistId, onAccessError]);
     useEffect(() => { void load(); return () => { request.current++; }; }, [load, refreshKey]);
     return <Card className="min-w-0 rounded-2xl bg-card shadow-sm">
         <CardHeader className="pb-3"><CardTitle className="font-sans text-base font-semibold">Recebimentos por paciente</CardTitle><CardDescription>Recebimentos líquidos acumulados · todos os períodos (LTV)</CardDescription></CardHeader>

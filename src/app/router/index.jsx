@@ -1,19 +1,12 @@
 import {isSessionIndependentPath,normalizeRoutePath} from './publicRoutePolicy';
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { Routes, Route, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { ChatProvider } from '@/contexts/ChatContext';
 import { PageLoadingFallback } from './routeGuards';
 import { authRoutes } from './authRoutes';
-import { nutritionistRoutes } from './nutritionistRoutes';
-import { patientRoutes } from './patientRoutes';
-import { adminRoutes } from './adminRoutes';
-import { RealtimeProvider } from '@/contexts/RealtimeContext';
-import { NotificationsCacheOwner } from '@/hooks/useNotificationsData';
-import { getHomePath } from './homePath';
 import { lazyWithReload } from '@/lib/utils/lazyWithReload';
-import StatusPage from '@/pages/public/StatusPage';
-import NotFoundPage from '@/pages/public/NotFoundPage';
+const StatusPage = lazyWithReload(() => import('@/pages/public/StatusPage'), 'public:status');
+const PrivateAppRouter = lazyWithReload(() => import('./PrivateAppRouter.jsx'), 'private:router');
 const LandingPage = lazyWithReload(() => import('@/pages/public/LandingPage'), 'public:landing');
 const LegalInformationPage = lazyWithReload(() => import('@/pages/public/LegalInformationPage'), 'public:legal-information');
 const ProductInformationPage = lazyWithReload(() => import('@/pages/public/ProductInformationPage'), 'public:product-information');
@@ -29,7 +22,7 @@ const AppRouter = () => {
 
   // Operational status must remain readable while authentication is unavailable.
   const publicPath=normalizeRoutePath(pathname);
-  if(publicPath==='/status')return <StatusPage/>;
+  if(publicPath==='/status')return <Suspense fallback={<PageLoadingFallback />}><StatusPage /></Suspense>;
   if (publicPath === '/pesquisa') return <Suspense fallback={<PageLoadingFallback />}><ResearchPage /></Suspense>;
   if (['/recursos', '/para-pacientes'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><ProductInformationPage pathname={publicPath} /></Suspense>;
   if (['/termos', '/privacidade', '/ajuda', '/seguranca'].includes(publicPath)) return <Suspense fallback={<PageLoadingFallback />}><LegalInformationPage pathname={publicPath} /></Suspense>;
@@ -46,28 +39,7 @@ const AppRouter = () => {
     return <PageLoadingFallback />;
   }
 
-  return (
-    <RealtimeProvider><NotificationsCacheOwner><ChatProvider>
-        <div className="min-h-dvh bg-background">
-          <Suspense fallback={<PageLoadingFallback />}>
-            <Routes>
-              {authRoutes}
-              {nutritionistRoutes}
-              {patientRoutes}
-              {adminRoutes}
-
-              {/* Rota Externa Segura: Formulários Omnichannel Mobile-First */}
-              <Route path="/f/:token" element={<PatientFacingAnamnesis key={pathname} />} />
-              <Route path="/verificar-documento/:code?" element={<DocumentAuthenticityPage />} />
-
-              {/* Rotas de redirecionamento */}
-              <Route path="/" element={<Navigate to={getHomePath(user)} replace />} />
-              <Route path="*" element={<NotFoundPage />} />
-            </Routes>
-          </Suspense>
-        </div>
-    </ChatProvider></NotificationsCacheOwner></RealtimeProvider>
-  );
+  return <Suspense fallback={<PageLoadingFallback />}><PrivateAppRouter /></Suspense>;
 };
 
 export default AppRouter;

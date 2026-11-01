@@ -39,23 +39,23 @@ function renderUnknownRoute() {
 }
 
 describe('fallback de rotas desconhecidas', () => {
-  it('exibe o status enquanto o serviço de autenticação ainda está carregando', () => {
+  it('exibe o status enquanto o serviço de autenticação ainda está carregando', async () => {
     mocks.loading = true;
     vi.stubGlobal('fetch', vi.fn(() => new Promise(() => {})));
     render(<MemoryRouter initialEntries={['/status']}><AppRouter /></MemoryRouter>);
-    expect(screen.getByRole('heading', { name: 'Status do Nello' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Status do Nello' })).toBeInTheDocument();
   });
-  it('preserva a URL inválida e informa o erro ao paciente autenticado', () => {
+  it('preserva a URL inválida e informa o erro ao paciente autenticado', async () => {
     mocks.user = { profile: { user_type: 'patient', is_admin: false } };
     renderUnknownRoute();
     expect(screen.getByLabelText('rota atual')).toHaveTextContent('/nutritionist/dashboard');
-    expect(screen.getByRole('heading', { name: 'Página não encontrada' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Página não encontrada' })).toBeInTheDocument();
   });
 
-  it('informa página inexistente ao visitante sem redirecionar em silêncio', () => {
+  it('informa página inexistente ao visitante sem redirecionar em silêncio', async () => {
     mocks.user = null;
     renderUnknownRoute();
     expect(screen.getByLabelText('rota atual')).toHaveTextContent('/nutritionist/dashboard');
-    expect(screen.getByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/');
+    expect(await screen.findByRole('link', { name: 'Voltar ao início' })).toHaveAttribute('href', '/');
   });
 });

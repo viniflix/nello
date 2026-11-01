@@ -2,9 +2,11 @@ import {SectionLoading} from '@/components/ui/section-loading';
 import { Navigate, useLocation } from 'react-router-dom';
 import { WifiOff } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import ForcePasswordUpdate from '@/components/patient/ForcePasswordUpdate';
+import { Suspense } from 'react';
+import { lazyWithReload } from '@/lib/utils/lazyWithReload';
 import { getHomePath, hasRequiredUserType, resolveAuthenticatedPath } from './homePath';
 import { hasDismissedPasswordReminder } from '@/features/auth/passwordReminder';
+const ForcePasswordUpdate = lazyWithReload(() => import('@/components/patient/ForcePasswordUpdate'), 'patient:password-reminder');
 
 // Fallback de carregamento para Suspense
 export const PageLoadingFallback = () => <SectionLoading fullPage label="Carregando página…"/>;
@@ -89,7 +91,7 @@ export const ProtectedRoute = ({ children, userType, allowAnyUserType = false })
 
   // Interceptador para paciente que não atualizou a senha ainda
   if (user?.profile?.user_type === 'patient' && user?.profile?.needs_password_reset === true && !hasDismissedPasswordReminder(user.id)) {
-    return <ForcePasswordUpdate>{children}</ForcePasswordUpdate>;
+    return <Suspense fallback={<PageLoadingFallback />}><ForcePasswordUpdate>{children}</ForcePasswordUpdate></Suspense>;
   }
 
   return children;

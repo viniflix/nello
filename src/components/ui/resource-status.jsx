@@ -5,7 +5,7 @@ export function ResourceStatus({ resource, onRetry }) {
   // A background read must not insert a row or announce routine revalidation.
   if (!error) return null;
   return <div className="min-h-8 text-sm" aria-busy={resource?.pending || undefined}>
-    <div role="alert" className="flex flex-wrap items-center gap-2 text-destructive">
+    <div role="alert" className="flex flex-wrap items-center gap-2 text-foreground">
       <span>{error.message}{resource.hasSnapshot ? ' A última consulta confirmada continua visível.' : ''}</span>
       {onRetry && error.retryable && <Button variant="ghost" size="sm" disabled={resource.pending} onClick={onRetry}>Tentar novamente</Button>}
     </div>

@@ -21,7 +21,7 @@ const SERVICE_CATEGORIES = [
     { value: 'outros', label: 'Outros' }
 ];
 
-export default function ServicesManager({ open, onOpenChange, nutritionistId }) {
+export default function ServicesManager({ open, onOpenChange, nutritionistId, onAccessError }) {
     const { toast } = useToast();
     const [services, setServices] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -52,6 +52,7 @@ export default function ServicesManager({ open, onOpenChange, nutritionistId }) 
             const data = await getServices(nutritionistId);
             setServices(data);
         } catch (error) {
+            onAccessError?.(error);
             setLoadError(true);
             toast({
                 title: "Erro",

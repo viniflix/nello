@@ -1,6 +1,7 @@
 import React from 'react';
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter } from 'react-router-dom';
+import { MemoryRouter, createMemoryRouter, RouterProvider } from 'react-router-dom';
+import DraftGuardProvider from '@/app/router/DraftGuardProvider';
 import PatientEditProfilePage from './PatientEditProfilePage';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({ user: null, toast: vi.fn(), update: vi.fn(), updateUserProfile: vi.fn() }));
@@ -96,4 +97,23 @@ it('a previous postal response cannot set another account address', async () => 
   mock.user = user('synthetic-b', 'Pessoa fictícia B'); app.rerender(view());
   await act(async () => resolve({ ok: true, json: async () => ({ logradouro: 'Rua privada fictícia A' }) }));
   expect(screen.getByLabelText('Rua/Logradouro')).toHaveValue('');
+});
+
+it('uses one accessible route confirmation for the real profile back button', async () => {
+  const confirm = vi.spyOn(window, 'confirm').mockReturnValue(true);
+  confirm.mockClear();
+  const router = createMemoryRouter([{ path: '/edit', element: <DraftGuardProvider><PatientEditProfilePage /></DraftGuardProvider> }, { path: '/patient/perfil', element: <h1>Profile destination</h1> }], { initialEntries: ['/edit'] });
+  try {
+    render(<RouterProvider router={router} />);
+    fireEvent.change(screen.getByLabelText('Nome Completo *'), { target: { value: 'Unconfirmed profile draft' } });
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar ao perfil' }));
+    await screen.findByRole('alertdialog');
+    expect(confirm).not.toHaveBeenCalled();
+    fireEvent.click(screen.getByRole('button', { name: 'Continuar editando' }));
+    expect(screen.getByLabelText('Nome Completo *')).toHaveValue('Unconfirmed profile draft');
+    fireEvent.click(screen.getByRole('button', { name: 'Voltar ao perfil' }));
+    await screen.findByRole('alertdialog');
+    fireEvent.click(screen.getByRole('button', { name: 'Sair sem confirmação' }));
+    await screen.findByRole('heading', { name: 'Profile destination' });
+  } finally { router.dispose(); confirm.mockRestore(); }
 });

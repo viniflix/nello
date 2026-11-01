@@ -1,7 +1,9 @@
 import { useCoordinatedLoader } from '@/hooks/useCoordinatedLoader';
 import { observeResources } from '@/lib/utils/resourceReads';
+import { useAccessEpoch } from '@/hooks/useAccessEpoch';
 import { useResourceSnapshot } from '@/hooks/useResourceSnapshot';
 import { ResourceStatus } from '@/components/ui/resource-status';
+import { classifyFailure } from '@/lib/utils/failure';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -52,7 +54,8 @@ import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialE
 
 export default function FinancialPage() {
     const { user } = useAuth();
-    return <FinancialPageContent key={user?.id || 'signed-out'} />;
+    const accessEpoch = useAccessEpoch(user?.id);
+    return <FinancialPageContent key={JSON.stringify([user?.id, accessEpoch])} />;
 }
 
 function FinancialPageContent() {
@@ -116,18 +119,40 @@ function FinancialPageContent() {
     const [metricView, setMetricView] = useState(null);
     const metricTrigger = useRef(null);
     const [inspectedTransaction, setInspectedTransaction] = useState(null);
+    const denied = [monthResource, goalResource, projectionResource, pendingResource, patientsResource, servicesResource]
+        .find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
+    const deniedKind = denied?.error?.kind;
+    const handleAccessError = useCallback(error => {
+        if (['forbidden', 'unauthenticated'].includes(classifyFailure(error))) failMonth(beginMonth(), error);
+    }, [beginMonth, failMonth]);
+    useEffect(() => {
+        if (!deniedKind) return;
+        loadRequest.current += 1;
+        auxiliaryRequest.current += 1;
+        const error = { status: deniedKind === 'unauthenticated' ? 401 : 403 };
+        failMonth(beginMonth(), error);
+        failGoal(beginGoal(), error);
+        for (const resource of Object.values(auxiliaryReads)) resource.fail(resource.begin(), error);
+        setInspectedTransaction(null); setEditingTransaction(null); setMetricView(null);
+        setIsDialogOpen(false); setIsServicesManagerOpen(false);
+        setDeleteConfirm(null); setPaymentConfirm(null); setRefundConfirm(null);
+        setMutationError(false); setAgendaLinkState('idle'); metricTrigger.current = null;
+        setFilters({ type: null, status: null, search: null });
+    }, [deniedKind, beginMonth, failMonth, beginGoal, failGoal, auxiliaryReads]);
     useEffect(() => { setInspectedTransaction(null); setAgendaLinkState('idle'); }, [user?.id]);
     useEffect(() => {
-        if (!user?.id || !agendaTransactionId) return;
+        if (!user?.id || !agendaTransactionId || deniedKind) return;
         let active = true;
         setAgendaLinkState('loading');
         getFinancialTransactionById(user.id, agendaTransactionId)
             .then(row => { if (active) { setInspectedTransaction(row); setAgendaLinkState('ready'); } })
-            .catch(() => { if (active) setAgendaLinkState('error'); });
-        const denied = [monthResource, goalResource, projectionResource, pendingResource, patientsResource, servicesResource].find(resource => ['forbidden', 'unauthenticated'].includes(resource.error?.kind));
-    if (denied) return <ResourceStatus resource={denied} label="financeiro" onRetry={loadData} />;
-    return () => { active = false; };
-    }, [user?.id, agendaTransactionId]);
+            .catch(error => {
+                if (!active) return;
+                if (['forbidden', 'unauthenticated'].includes(classifyFailure(error))) failMonth(beginMonth(), error);
+                setAgendaLinkState('error');
+            });
+        return () => { active = false; };
+    }, [user?.id, agendaTransactionId, deniedKind, beginMonth, failMonth]);
     const [goalRevision, setGoalRevision] = useState(0);
     const openFinancialSettings = () => navigate('/nutritionist/profile?tab=financial', { state: { financialReturn: { userId: user?.id, month: format(selectedMonth, 'yyyy-MM'), filters, view: workspaceView } } });
     const monthStartKey = format(startOfMonth(selectedMonth), 'yyyy-MM-dd');
@@ -398,6 +423,8 @@ function FinancialPageContent() {
         }
     };
 
+    if (denied) return <ResourceStatus resource={denied} />;
+
     return (
         <div className="financial-workspace min-h-dvh min-w-0 bg-[#f7f8f5] dark:bg-background">
             {agendaReturn && <div className="mx-auto max-w-7xl px-4 pt-4">
@@ -428,7 +455,7 @@ function FinancialPageContent() {
                     <TabsContent value="analysis">
                         <Tabs defaultValue="cash" className="space-y-4"><TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto"><TabsTrigger value="cash">Caixa e projeção</TabsTrigger><TabsTrigger value="patients">Por paciente</TabsTrigger><TabsTrigger value="services">Serviços</TabsTrigger></TabsList>
                             <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></TabsContent>
-                            <TabsContent value="patients"><TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} /></TabsContent>
+                            <TabsContent value="patients"><TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} onAccessError={handleAccessError} /></TabsContent>
                             <TabsContent value="services"><section aria-label="Catálogo de serviços" className="rounded-2xl bg-card p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold">Serviços do consultório</h2><p className="mt-1 text-sm text-muted-foreground">Preços cadastrados. Alterar um serviço não recalcula lançamentos anteriores.</p></div><Button variant="outline" onClick={() => setIsServicesManagerOpen(true)}>Gerenciar Serviços</Button></div>{auxiliaryState.services === 'error' ? <div role="alert" className="mt-4 text-sm">Catálogo indisponível. <Button variant="outline" onClick={loadAuxiliaryData}>Tentar carregar serviços</Button></div> : auxiliaryState.services === 'loading' ? <p role="status" className="mt-4 text-sm">Carregando serviços…</p> : !services.length ? <p className="mt-4 text-sm text-muted-foreground">Nenhum serviço cadastrado.</p> : <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{services.map(service => <li key={service.id} className="rounded-xl bg-muted/50 p-4"><p className="break-words text-sm font-medium">{service.name}</p><p className="mt-2 text-xl font-semibold tabular-nums">{formatCurrency(service.price)}</p>{service.description && <p className="mt-2 break-words text-sm text-muted-foreground">{service.description}</p>}</li>)}</ul>}</section></TabsContent>
                         </Tabs>
                     </TabsContent>
@@ -460,6 +487,7 @@ function FinancialPageContent() {
                     }
                 }}
                 nutritionistId={user?.id}
+                onAccessError={handleAccessError}
             />
 
             {/* Delete Confirmation */}

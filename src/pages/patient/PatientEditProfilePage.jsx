@@ -78,7 +78,6 @@ function PatientProfileEditor({ user }) {
   };
   const leave = () => {
     if (saving.current) return;
-    if (dirty && !window.confirm('Descartar as alterações deste perfil e voltar?')) return;
     navigate('/patient/perfil');
   };
   const reviewExternal = keepDraft => {
