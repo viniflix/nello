@@ -18,6 +18,7 @@ const AddFoodPage = route('add-food', () => import('@/pages/patient/AddFoodPage.
 const ChatPage = route('chat', () => import('@/pages/shared/ChatPage.jsx'));
 const PatientInvitesPage = route('invites', () => import('@/pages/patient/PatientInvitesPage.jsx'));
 const CheckinResponsePage = route('checkin-response', () => import('@/pages/patient/CheckinResponsePage.jsx'));
+const PatientQuestionnairesPage = route('questionnaires', () => import('@/pages/patient/PatientQuestionnairesPage.jsx'));
 const PatientClinicalRecordsPage = route('clinical-records', () => import('@/pages/patient/PatientClinicalRecordsPage.jsx'));
 
 export const patientRoutes = (
@@ -31,6 +32,7 @@ export const patientRoutes = (
             <Route path="/patient/chat" element={<ChatPage />} />
             <Route path="/patient/perfil" element={<PatientProfilePage />} />
             <Route path="/patient/editar-perfil" element={<PatientEditProfilePage />} />
+            <Route path="/patient/questionarios" element={<PatientQuestionnairesPage />} />
             <Route path="/patient/conquistas" element={<PatientAchievementsPage />} />
             <Route path="/patient/registros-clinicos" element={<PatientClinicalRecordsPage />} />
         </Route>

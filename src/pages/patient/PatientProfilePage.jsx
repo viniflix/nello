@@ -6,7 +6,7 @@ import { subscribeDomain } from '@/infrastructure/realtime/events';
 import { logDiagnostic } from '@/infrastructure/observability/safeLogger';
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { motion } from 'framer-motion';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import {
   User,
   Mail,
@@ -371,25 +371,22 @@ function PatientProfilePageContent() {
 
               {/* Meus Questionários */}
               <Button
+                asChild
                 variant="ghost"
-                className="w-full justify-between h-auto py-3"
-                onClick={() => {
-                  toast({
-                    title: 'Em breve',
-                    description: 'Esta funcionalidade estará disponível em breve.'
-                  });
-                }}
+                className="h-auto w-full min-w-0 justify-between gap-3 whitespace-normal py-3"
               >
-                <span className="flex items-center gap-3">
-                  <ClipboardList className="h-5 w-5 text-primary" />
-                  <div className="text-left">
+                <Link to="/patient/questionarios">
+                <span className="flex min-w-0 items-center gap-3">
+                  <ClipboardList className="h-5 w-5 shrink-0 text-primary" />
+                  <div className="min-w-0 break-words text-left">
                     <p className="text-sm font-medium">Meus Questionários</p>
                     <p className="text-xs text-muted-foreground">
-                      Visualize e atualize suas respostas
+                      Responda aos pendentes e consulte seu histórico
                     </p>
                   </div>
                 </span>
-                <ChevronRight className="w-4 h-4" />
+                <ChevronRight className="h-4 w-4 shrink-0" />
+                </Link>
               </Button>
 
               <hr className="border-t" />

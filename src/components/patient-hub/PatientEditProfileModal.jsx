@@ -32,6 +32,7 @@ export default function PatientEditProfileModal({
 }) {
   const { toast } = useToast();
   const fileInputRef = useRef(null);
+  const returnFocusRef = useRef(null);
   const [uploading, setUploading] = useState(false);
   const [previewUrl, setPreviewUrl] = useState(null);
   const episodeId = writableEpisodeId;
@@ -81,7 +82,14 @@ export default function PatientEditProfileModal({
   };
   return (
     <Dialog open={isOpen} onOpenChange={(open) => !open && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl">
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-3xl"
+        onOpenAutoFocus={() => { returnFocusRef.current = document.activeElement; }}
+        onCloseAutoFocus={(event) => {
+          if (returnFocusRef.current?.isConnected) {
+            event.preventDefault();
+            returnFocusRef.current.focus();
+          }
+        }}>
         <DialogHeader>
           <DialogTitle>Editar perfil do paciente</DialogTitle>
           <DialogDescription>Atualize os dados cadastrais e de contato.</DialogDescription>

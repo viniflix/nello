@@ -5,13 +5,13 @@ import { CheckSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { normalizeCheckinScore } from '@/domain/clinical/checkins';
 
-const PatientCheckinHistoryWidget = ({ patientId }) => {
+const PatientCheckinHistoryWidget = ({ patientId, showEmpty = false }) => {
   const { useCheckinHistory } = useCheckins();
   const { data: history, isLoading, isError, refetch } = useCheckinHistory(patientId);
 
   if (isLoading) {
     return (
-      <div className="flex justify-center p-8 mt-8">
+      <div className="flex justify-center p-8 mt-8" role="status" aria-label="Carregando histórico de questionários">
         <Activity className="w-6 h-6 animate-spin text-muted-foreground" />
       </div>
     );
@@ -31,7 +31,9 @@ const PatientCheckinHistoryWidget = ({ patientId }) => {
     );
   }
 
-  if (!history || history.length === 0) return null;
+  if (!history || history.length === 0) return showEmpty
+    ? <section aria-labelledby="questionnaire-history-title"><h2 id="questionnaire-history-title" className="mb-4 text-lg font-semibold">Histórico</h2><p className="rounded-xl border bg-card p-4 text-muted-foreground">Você ainda não respondeu a questionários.</p></section>
+    : null;
 
   return (
     <div className="mt-12 space-y-4 animate-in fade-in duration-500">

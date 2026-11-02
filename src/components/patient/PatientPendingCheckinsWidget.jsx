@@ -6,14 +6,14 @@ import { Button } from '@/components/ui/button';
 import { CheckSquare, ArrowRight, AlertCircle } from 'lucide-react';
 import { CardSkeleton } from '@/components/ui/custom-skeletons';
 
-const PatientPendingCheckinsWidget = () => {
+const PatientPendingCheckinsWidget = ({ showEmpty = false }) => {
   const { usePendingCheckins } = useCheckins();
   const { data: pendingCheckins, isLoading, isError, refetch } = usePendingCheckins();
   const navigate = useNavigate();
 
   if (isLoading) {
     return (
-      <div className="mb-6">
+      <div className="mb-6" role="status" aria-label="Carregando questionários pendentes">
         <CardSkeleton />
       </div>
     );
@@ -33,7 +33,9 @@ const PatientPendingCheckinsWidget = () => {
     );
   }
 
-  if (!pendingCheckins || pendingCheckins.length === 0) return null;
+  if (!pendingCheckins || pendingCheckins.length === 0) return showEmpty
+    ? <p className="rounded-xl border bg-card p-4 text-muted-foreground">Nenhum questionário pendente.</p>
+    : null;
 
   return (
     <div className="space-y-4 mb-6">

@@ -58,10 +58,10 @@ const flattenClinicalFlags = (clinicalFlags) => {
 
 function Metric({ icon: Icon, label, value, detail }) {
     return (
-        <div className="flex min-w-0 items-center gap-2.5 rounded-xl border border-[#d5d2cd] bg-[#efeeec] px-3 py-3 shadow-[inset_0_1px_3px_rgba(39,45,35,0.08)] sm:px-4">
+        <div className="flex min-w-0 flex-wrap items-center gap-2.5 rounded-xl border border-[#d5d2cd] bg-[#efeeec] px-3 py-3 shadow-[inset_0_1px_3px_rgba(39,45,35,0.08)] sm:px-4">
             <Icon className="h-4 w-4 shrink-0 text-[#718065]" />
-            <div className="min-w-0">
-                <p className="text-xs font-bold uppercase tracking-[0.09em] text-slate-600">{label}</p>
+            <div className="min-w-0 flex-1 basis-[3rem]">
+                <p className="break-words text-xs font-bold uppercase tracking-[0.09em] text-slate-600">{label}</p>
                 <p className="break-words text-[15px] font-semibold leading-5 text-slate-800">{value}</p>
                 {detail && <p className="break-words text-xs leading-4 text-slate-600">{detail}</p>}
             </div>
@@ -89,8 +89,8 @@ const PatientProfileSummary = ({
         <Card className="relative overflow-hidden rounded-xl border border-[#d8d5d0] bg-white shadow-card">
             <CardContent className="p-0">
                 <div className="flex flex-col gap-4 p-4 lg:flex-row lg:items-center lg:justify-between lg:p-5">
-                    <div className="flex min-w-0 items-stretch gap-4 sm:gap-5">
-                        <div className="relative h-24 w-24 shrink-0 self-center sm:h-28 sm:w-28">
+                    <div className="flex min-w-0 flex-1 flex-wrap items-stretch gap-4 sm:gap-5">
+                        <div className="relative aspect-square w-24 max-w-full shrink-0 self-center sm:w-28">
                             <div className="flex h-full w-full items-center justify-center overflow-hidden rounded-2xl bg-[#65765a] text-xl font-bold text-white shadow-[inset_0_1px_2px_rgba(255,255,255,0.2)] sm:text-2xl">
                                 {patientData?.avatar_url ? <PrivateImage src={patientData.avatar_url} alt={`Foto de ${patientData.name}`} className="h-full w-full object-cover" /> : <User className="h-11 w-11 text-white/85" />}
                             </div>
@@ -103,9 +103,9 @@ const PatientProfileSummary = ({
                             />
                         </div>
 
-                        <div className="group -m-2 flex min-w-0 cursor-pointer flex-col justify-center rounded-xl p-2 text-left outline-none transition-colors hover:bg-[#f6f5f3] focus-visible:ring-2 focus-visible:ring-[#718065] focus-visible:ring-offset-2">
+                        <div className="group -m-2 flex min-w-0 flex-1 basis-[8rem] cursor-pointer flex-col justify-center rounded-xl p-2 text-left outline-none transition-colors hover:bg-[#f6f5f3] focus-visible:ring-2 focus-visible:ring-[#718065] focus-visible:ring-offset-2">
                             <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
-                                <h1 className="truncate font-heading text-[22px] font-bold tracking-[0.025em] text-[#263125] transition-colors group-hover:text-[#526047] sm:text-[28px]"><button type="button" onClick={onEditProfile} aria-label={`Editar informações de ${patientData?.name || 'paciente'}`} className="text-left">{patientData?.name || 'Paciente'}</button></h1>
+                                <h1 className="min-w-0 break-words font-heading text-[22px] font-bold tracking-[0.025em] text-[#263125] transition-colors group-hover:text-[#526047] sm:text-[28px]"><button type="button" onClick={onEditProfile} aria-label={`Editar informações de ${patientData?.name || 'paciente'}`} className="max-w-full break-words text-left">{patientData?.name || 'Paciente'}</button></h1>
                                 <Badge className={patientData?.is_active === false ? 'border border-slate-200 bg-slate-100 text-slate-600 hover:bg-slate-100' : 'border border-emerald-200 bg-emerald-50 text-emerald-700 hover:bg-emerald-50'}>{patientData?.is_active === false ? 'Inativo' : 'Ativo'}</Badge>
                                 {patientData?.patient_invite_code && <Badge variant="outline" className="border-sky-200 bg-sky-50 text-xs text-sky-700">Sem conta</Badge>}
                             </div>
@@ -115,14 +115,14 @@ const PatientProfileSummary = ({
                         </div>
                     </div>
 
-                    <div className="grid grid-cols-3 gap-2 lg:flex">
-                        <Button variant="outline" onClick={onScheduleAppointment} className="h-10 gap-1.5 border-[#d8d5d0] px-2 text-xs sm:px-3 sm:text-sm"><CalendarPlus className="h-4 w-4 shrink-0" /><span className="sm:hidden">Agendar</span><span className="hidden sm:inline">Agendar consulta</span></Button>
-                        <Button variant="outline" onClick={onOpenChat} className="h-10 gap-1.5 border-[#d8d5d0] px-2 text-xs sm:px-3 sm:text-sm"><MessageCircle className="h-4 w-4 shrink-0" /><span className="sm:hidden">Chat</span><span className="hidden sm:inline">Abrir chat</span></Button>
-                        <Button onClick={onOpenMealPlan} className="h-10 gap-1.5 bg-[#5f6f52] px-2 text-xs font-semibold text-white hover:bg-[#4e5c45] sm:px-3 sm:text-sm"><Utensils className="h-4 w-4 shrink-0" /><span className="sm:hidden">{plan ? 'Ajustar' : 'Iniciar'}</span><span className="hidden sm:inline">{plan ? 'Ajustar plano' : 'Iniciar plano'}</span></Button>
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,5rem),1fr))] gap-2 lg:flex lg:flex-wrap">
+                        <Button variant="outline" onClick={onScheduleAppointment} className="h-auto min-h-10 min-w-0 whitespace-normal gap-1.5 py-2 border-[#d8d5d0] px-2 text-xs sm:px-3 sm:text-sm"><CalendarPlus className="h-4 w-4 shrink-0" /><span className="sm:hidden">Agendar</span><span className="hidden sm:inline">Agendar consulta</span></Button>
+                        <Button variant="outline" onClick={onOpenChat} className="h-auto min-h-10 min-w-0 whitespace-normal gap-1.5 py-2 border-[#d8d5d0] px-2 text-xs sm:px-3 sm:text-sm"><MessageCircle className="h-4 w-4 shrink-0" /><span className="sm:hidden">Chat</span><span className="hidden sm:inline">Abrir chat</span></Button>
+                        <Button onClick={onOpenMealPlan} className="h-auto min-h-10 min-w-0 whitespace-normal gap-1.5 py-2 bg-[#5f6f52] px-2 text-xs font-semibold text-white hover:bg-[#4e5c45] sm:px-3 sm:text-sm"><Utensils className="h-4 w-4 shrink-0" /><span className="sm:hidden">{plan ? 'Ajustar' : 'Iniciar'}</span><span className="hidden sm:inline">{plan ? 'Ajustar plano' : 'Iniciar plano'}</span></Button>
                     </div>
                 </div>
 
-                <div className="grid grid-cols-2 gap-2.5 border-t border-slate-100 px-4 py-4 sm:grid-cols-4 lg:px-5">
+                <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,7rem),1fr))] gap-2.5 border-t border-slate-100 px-4 py-4 lg:px-5">
                     <Metric icon={Scale} label="Peso atual" value={currentWeight ? `${currentWeight.toLocaleString('pt-BR')} kg` : 'Não informado'} detail={weightDelta !== null ? `${weightDelta > 0 ? '+' : ''}${weightDelta.toLocaleString('pt-BR', { maximumFractionDigits: 1 })} kg no período` : null} />
                     <Metric icon={HeartPulse} label="IMC" value={imc || 'Não calculado'} detail={getImcLabel(imc)} />
                     <Metric icon={Utensils} label="Plano" value={plan?.daily_calories != null ? `${Math.round(Number(plan.daily_calories)).toLocaleString('pt-BR')} kcal` : plan ? plan.name : operationalContext?.planStatus === 'missing' ? 'Não iniciado' : '—'} detail={planStatusLabel} />

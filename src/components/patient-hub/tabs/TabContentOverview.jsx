@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { appointmentStatusLabel, appointmentTypeLabel, checkinStatusLabel } from '@/lib/utils/patientHubPresentation';
 
 const sectionClass = 'rounded-xl border border-[#d8d5d0] bg-white shadow-card';
@@ -34,8 +35,8 @@ function Section({ title, description, action, children, className = '' }) {
     return (
         <section className={`${sectionClass} ${className}`}>
             <div className="flex flex-col gap-3 border-b border-slate-100 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
-                <div>
-                    <h2 className="font-heading text-lg font-semibold leading-tight tracking-[0.025em] text-[#263125]">{title}</h2>
+                <div className="min-w-0">
+                    <h2 className="break-words font-heading text-lg font-semibold leading-tight tracking-[0.025em] text-[#263125]">{title}</h2>
                     {description && <p className="mt-1 text-xs leading-5 text-slate-600">{description}</p>}
                 </div>
                 {action}
@@ -48,12 +49,14 @@ function Section({ title, description, action, children, className = '' }) {
 function RecommendationInfo({ insight }) {
     const reasons = insight?.reasons || [];
     return (
-        <div className="group relative">
-            <button type="button" aria-describedby="patient-hub-recommendation-details" className="flex h-8 w-8 items-center justify-center rounded-full text-[#9a531f] hover:bg-orange-100 focus:bg-orange-100 focus:outline-none">
+        <Popover>
+            <PopoverTrigger asChild>
+            <button type="button" className="flex h-8 w-8 items-center justify-center rounded-full text-[#9a531f] hover:bg-orange-100 focus:bg-orange-100 focus:outline-none">
                 <Info className="h-4 w-4" />
                 <span className="sr-only">Entenda esta recomendação</span>
             </button>
-            <div id="patient-hub-recommendation-details" role="tooltip" className="invisible absolute left-0 top-10 z-30 w-[min(300px,calc(100vw-48px))] rounded-lg bg-slate-900 p-3 text-left text-xs leading-relaxed text-white opacity-0 shadow-xl transition group-hover:visible group-hover:opacity-100 group-focus-within:visible group-focus-within:opacity-100 sm:left-auto sm:right-0">
+            </PopoverTrigger>
+            <PopoverContent aria-label="Detalhes da recomendação" align="start" collisionPadding={12} className="max-h-[var(--radix-popover-content-available-height)] w-[300px] max-w-[calc(100vw-24px)] overflow-y-auto break-words rounded-lg bg-slate-900 p-3 text-left text-xs leading-relaxed text-white shadow-xl">
                 <p className="font-bold">Por que esta ação foi sugerida?</p>
                 {reasons.length > 0 ? (
                     <ul className="mt-2 space-y-1.5 text-slate-200">
@@ -61,8 +64,8 @@ function RecommendationInfo({ insight }) {
                     </ul>
                 ) : <p className="mt-2 text-slate-200">Não há evidências adicionais disponíveis.</p>}
                 <p className="mt-2 border-t border-white/15 pt-2 text-slate-200">Dados considerados: perfil, agenda, plano, avaliações e check-ins disponíveis.</p>
-            </div>
-        </div>
+            </PopoverContent>
+        </Popover>
     );
 }
 
@@ -78,12 +81,12 @@ function RecommendedAction({ insights, onAction }) {
     const Icon = actionIconByType[insight.action?.type] || Activity;
     const isSuccess = insight.tone === 'success';
     return (
-        <section className={`rounded-xl border px-4 py-4 shadow-[0_8px_24px_-20px_rgba(70,77,60,0.7)] sm:px-5 ${isSuccess ? 'border-emerald-200/90 bg-emerald-50/60' : 'border-orange-200/90 bg-[#fffaf5]'}`}>
+        <section className={`min-w-0 rounded-xl border px-4 py-4 [overflow-wrap:anywhere] shadow-[0_8px_24px_-20px_rgba(70,77,60,0.7)] sm:px-5 ${isSuccess ? 'border-emerald-200/90 bg-emerald-50/60' : 'border-orange-200/90 bg-[#fffaf5]'}`}>
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="flex min-w-0 items-start gap-3">
+                <div className="flex min-w-0 flex-wrap items-start gap-3">
                     <div className={`mt-0.5 flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${isSuccess ? 'bg-emerald-100 text-emerald-700' : 'bg-orange-100 text-[#b75d1b]'}`}><Icon className="h-4 w-4" /></div>
-                    <div className="min-w-0">
-                        <div className="flex items-center gap-1">
+                    <div className="min-w-0 flex-1 basis-[10rem]">
+                        <div className="flex flex-wrap items-center gap-1">
                             <p className={`text-xs font-bold uppercase tracking-[0.09em] ${isSuccess ? 'text-emerald-700' : 'text-[#9a531f]'}`}>Próxima ação recomendada</p>
                             <RecommendationInfo insight={insight} />
                         </div>
@@ -91,8 +94,8 @@ function RecommendedAction({ insights, onAction }) {
                         <p className="mt-1 text-[13px] leading-5 text-slate-600 sm:text-sm">{insight.description}</p>
                     </div>
                 </div>
-                <Button onClick={() => onAction(insight.action)} className={`h-10 shrink-0 gap-2 text-white ${isSuccess ? 'bg-[#5f6f52] hover:bg-[#4e5c45]' : 'bg-[#a95318] hover:bg-[#a95318]'}`}>
-                    {insight.actionLabel}<ChevronRight className="h-4 w-4" />
+                <Button onClick={() => onAction(insight.action)} className={`h-auto min-h-10 max-w-full shrink-0 gap-2 whitespace-normal text-white ${isSuccess ? 'bg-[#5f6f52] hover:bg-[#4e5c45]' : 'bg-[#a95318] hover:bg-[#a95318]'}`}>
+                    {insight.actionLabel}<ChevronRight className="h-4 w-4 shrink-0" />
                 </Button>
             </div>
         </section>
@@ -115,12 +118,12 @@ function PlanCard({ context, onAction }) {
             {plan ? (
                 <>
                     <div className="px-4 py-4 sm:px-5">
-                        <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
-                            <div>
-                                <p className="text-sm font-semibold text-slate-800">{plan.name || 'Plano alimentar'}</p>
+                        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+                            <div className="min-w-0">
+                                <p className="break-words text-sm font-semibold text-slate-800">{plan.name || 'Plano alimentar'}</p>
                                 <p className="mt-1 text-xs text-slate-600">{context.mealCount ?? '—'} refeições · {context.foodCount ?? '—'} alimentos</p>
                             </div>
-                            <div className="mt-3 grid grid-cols-4 gap-2 sm:mt-0 sm:min-w-[360px]">
+                            <div className="mt-3 grid w-full min-w-0 grid-cols-[repeat(auto-fit,minmax(min(100%,3.5rem),1fr))] gap-2 sm:mt-0 sm:w-auto sm:min-w-[min(100%,360px)]">
                                 {[
                                     [plan.daily_calories, 'kcal'], [plan.daily_protein, 'prot.'],
                                     [plan.daily_carbs, 'carb.'], [plan.daily_fat, 'gord.'],

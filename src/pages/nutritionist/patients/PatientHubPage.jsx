@@ -190,7 +190,7 @@ export default function PatientHubPage() {
     }
 
     return (
-        <div className="min-h-dvh overflow-x-hidden bg-[#ecebe8] pb-8 text-slate-900">
+        <div className="min-h-dvh bg-[#ecebe8] pb-8 text-slate-900">
         <ResourceStatus resource={summaryResource} label="resumo" onRetry={refresh} />
         <ResourceStatus resource={activitiesResource} label="atividades" onRetry={loadActivities} />
         {Object.keys(partialFailures).length > 0 && <p role="alert" className="text-sm text-destructive">Algumas fontes complementares não foram confirmadas. {Object.keys(partialFailures).map(key => ({foundation:'prontuário',adherence:'diário',operational:'acompanhamento',guardians:'responsáveis'})[key] || 'fonte complementar').join(', ')}. Os dados disponíveis continuam visíveis.</p>}
@@ -219,10 +219,10 @@ export default function PatientHubPage() {
                 </div>
 
                 <nav aria-label="Áreas do prontuário" className="sticky top-0 z-20 my-4 rounded-xl border border-[#d8d5d0] bg-white p-1.5 shadow-card">
-                    <div className="grid grid-cols-3 gap-1 sm:grid-cols-6">
+                    <div className="grid grid-cols-[repeat(auto-fit,minmax(min(100%,6rem),1fr))] gap-1">
                         {tabs.map(({ id, label, icon: Icon }) => (
-                            <button key={id} type="button" aria-current={activeTab === id ? 'page' : undefined} onClick={() => changeTab(id)} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold transition-colors sm:flex-row sm:gap-2 sm:px-2 sm:text-sm ${activeTab === id ? 'bg-[#5f6f52] text-white' : 'text-slate-500 hover:bg-[#eef2eb] hover:text-[#526047]'}`}>
-                                <Icon className="h-4 w-4 shrink-0" /><span className="truncate">{label}</span>
+                            <button key={id} type="button" aria-current={activeTab === id ? 'page' : undefined} onClick={() => changeTab(id)} className={`flex min-w-0 flex-col items-center justify-center gap-1 rounded-lg px-1.5 py-2 text-xs font-semibold transition-colors sm:flex-row sm:gap-2 sm:px-0 sm:text-sm ${activeTab === id ? 'bg-[#5f6f52] text-white' : 'text-slate-500 hover:bg-[#eef2eb] hover:text-[#526047]'}`}>
+                                <Icon className="h-4 w-4 shrink-0" /><span className="min-w-0 break-words whitespace-normal text-center">{label}</span>
                             </button>
                         ))}
                     </div>

@@ -50,6 +50,7 @@ export const portalBreadcrumbRoutes = [
   { path: '/nutritionist/templates/edit/:type/:id', build: p => [...protocols(p.type), item(`Editar modelo${templateTypes[p.type] ? ` de ${templateTypes[p.type]}` : ''}`)] },
   { path: '/patient', build: () => patient },
   ...Object.entries({ invites: 'Convites', diario: 'Plano e diário alimentar', progresso: 'Progresso', chat: 'Mensagens', perfil: 'Meu perfil', conquistas: 'Conquistas', 'registros-clinicos': 'Registros clínicos' }).map(([path,label]) => simple(patient, `/patient/${path}`, label)),
+  { path: '/patient/questionarios', build: () => [...patient, item('Meu perfil', '/patient/perfil'), item('Meus Questionários')] },
   { path: '/patient/editar-perfil', build: () => [...patient, item('Meu perfil', '/patient/perfil'), item('Editar perfil')] },
   { path: '/patient/add-food/:mealId?', build: p => [...patient, item('Plano e diário alimentar', '/patient/diario'), item(p.mealId ? 'Editar refeição' : 'Registrar refeição')] },
   { path: '/patient/add-meal', build: () => [...patient, item('Plano e diário alimentar', '/patient/diario'), item('Registrar refeição')] },
