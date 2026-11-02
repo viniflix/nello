@@ -66,6 +66,6 @@ test('private Realtime signals participants and denies forged sender and unrelat
     expect(outsiderEvents).toEqual([]);expect(ownerEvents.every(event=>!('message' in event)&&!('from_id' in event))).toBe(true);
   } finally {
     for(const[connection,channel]of channels)await connection.removeChannel(channel);
-    execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from public.notifications where type='new_message' and content->>'message'='${marker}';delete from public.chats where message='${marker}';`,stdio:['pipe','ignore','pipe']});
+    execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input:`delete from public.notifications where type='new_message' and content->>'message'='${marker}';delete from public.chats where message='${marker}';`,stdio:['pipe','ignore','pipe']});
   }
 });

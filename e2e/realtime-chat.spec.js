@@ -18,7 +18,7 @@ test('switching the chat recipient cannot display the previous conversation',asy
 });
 test('patient badge and notification panel share an exact count beyond the 200-row window',async({page})=>{
  const {execFileSync}=await import('node:child_process');const user=fixture.personas['patient-a'].id;
- const sql=input=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-t','-A','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'}).trim();
+ const sql=input=>execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-t','-A','-U','supabase_admin','-d','postgres','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'}).trim();
  // Login also schedules a reminder; await its real response before measuring.
  const reminder = page.waitForResponse(response => response.url().includes('/rpc/process_patient_reminders') && response.status() === 200);
  await login(page,'patient-a');await reminder;

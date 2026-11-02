@@ -3,7 +3,7 @@ import {readFileSync} from 'node:fs';
 import {execFileSync} from 'node:child_process';
 import AxeBuilder from '@axe-core/playwright';
 const fixture=JSON.parse(readFileSync('.backend-ci/browser-runtime/fixture.json'));
-const sql=input=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d','postgres','-t','-A','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'}).trim();
+const sql=input=>execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d','postgres','-t','-A','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8'}).trim();
 async function login(page,key='nutritionist-a'){
  await page.goto('/login');await page.locator('#email').fill(fixture.personas[key].email);await page.locator('#password').fill(fixture.password);
  await page.getByRole('button',{name:'Entrar',exact:true}).click();await expect(page).toHaveURL(/\/nutritionist/);
