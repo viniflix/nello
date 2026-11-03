@@ -5,7 +5,7 @@ import {assertIsolatedRuntime} from '../qa/isolated-runtime.mjs';
 import {candidateMigrations} from './candidate-migrations.mjs';
 assertIsolatedRuntime();
 const db='nello_qa_wave02_1000010';
-const sql=(target,input)=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-d',target,'-At','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024});
+const sql=(target,input)=>execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-d',target,'-At','-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024});
 const fixture=JSON.parse(readFileSync('src/lib/utils/__fixtures__/energy-independent-reference.json','utf8'));
 let created=false;const output='.backend-ci/wave10-results';mkdirSync(output,{recursive:true});
 try {

@@ -11,8 +11,8 @@ const database = 'nello_qa_wave02_100';
 const container = 'supabase_db_nello-reconstruction';
 const output = '.backend-ci/forward-results';
 mkdirSync(output,{ recursive:true });
-const sql = (target,script) => execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres',container,
-  'psql','-X','-h','127.0.0.1','-U','supabase_admin','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-d',target],
+const sql = (target,script) => execFileSync('docker',['exec','-i',container,
+  'psql','-X','-U','supabase_admin','-v','ON_ERROR_STOP=1','-v','VERBOSITY=verbose','-d',target],
   { input:script,encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024 });
 const fixture = readFileSync('supabase/fixtures/wave02/clinical-attachments.sql','utf8');
 const check = readFileSync('operations/backend/checks/anamnesis-detachment.sql','utf8');

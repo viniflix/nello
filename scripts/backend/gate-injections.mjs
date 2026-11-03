@@ -3,7 +3,7 @@ import {execFileSync,spawnSync}from'node:child_process';import{readFileSync,writ
 assertIsolatedRuntime();
 const restoration=JSON.parse(readFileSync('.backend-ci/restore-results/result.json'));assertForwardRestoration(restoration);
 const db='nello_qa_wave02_103',out='.backend-ci/fault-results';mkdirSync(out,{recursive:true});
-const sql=(database,input,user='supabase_admin')=>execFileSync('docker',['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-t','-A','-h','127.0.0.1','-U',user,'-d',database,'-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
+const sql=(database,input,user='supabase_admin')=>execFileSync('docker',['exec','-i','supabase_db_nello-reconstruction','psql','-X','-t','-A','-U',user,'-d',database,'-v','ON_ERROR_STOP=1'],{input,encoding:'utf8',timeout:120000,maxBuffer:16*1024*1024});
 try{
  sql('postgres',`create database ${db} template ${restoration.database} owner supabase_admin;`);for(const migration of candidateMigrations())sql(db,migration.content);
  const capture=()=>sql(db,readFileSync('scripts/backend/catalog.sql','utf8'),'postgres');writeFileSync(out+'/expected.json',capture());

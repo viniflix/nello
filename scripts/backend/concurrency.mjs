@@ -13,8 +13,7 @@ export function assertRemoteDatabase(database, environment = process.env) {
 
 export function startSession(database, script) {
   assertRemoteDatabase(database);
-  const child = spawn('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres',
-    'supabase_db_nello-reconstruction', 'psql', '-X', '-h', '127.0.0.1', '-U', 'supabase_admin',
+  const child = spawn('docker', ['exec', '-i', 'supabase_db_nello-reconstruction', 'psql', '-X', '-U', 'supabase_admin',
     '-v', 'ON_ERROR_STOP=1', '-v', 'VERBOSITY=verbose', '-d', database], { stdio: ['pipe', 'pipe', 'pipe'] });
   let output = '';
   child.stdout.on('data', chunk => { output += chunk; });

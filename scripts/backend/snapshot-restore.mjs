@@ -14,7 +14,7 @@ export function restoreApplicationSnapshot({ execute = execFileSync } = {}) {
   const docker = (command, args, options = {}) => {
     const { user = 'supabase_admin', ...execution } = options;
     return execute('docker', ['exec', ...(execution.input ? ['-i'] : []),
-      '-e', 'PGPASSWORD=postgres', container, command, '-h', '127.0.0.1', '-U', user, ...args],
+      container, command, '-U', user, ...args],
       { timeout: 120000, maxBuffer: 64 * 1024 * 1024, ...execution });
   };
   const sql = (database, statement, user = 'supabase_admin') => docker('psql', ['-X', '-t', '-A', '-v', 'ON_ERROR_STOP=1',

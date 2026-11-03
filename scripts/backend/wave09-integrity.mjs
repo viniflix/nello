@@ -6,7 +6,7 @@ import { candidateMigrations } from './candidate-migrations.mjs';
 assertIsolatedRuntime();
 const runAsync=promisify(execFile);
 const database=`nello_qa_wave02_${1000000 + process.pid}`;
-const base=['exec','-i','-e','PGPASSWORD=postgres','supabase_db_nello-reconstruction','psql','-X','-h','127.0.0.1','-U','supabase_admin','-v','ON_ERROR_STOP=1'];
+const base=['exec','-i','supabase_db_nello-reconstruction','psql','-X','-U','supabase_admin','-v','ON_ERROR_STOP=1'];
 const sql=(target,input)=>execFileSync('docker',[...base,'-d',target],{input,encoding:'utf8',timeout:120000,maxBuffer:8*1024*1024});
 const actor='10000000-0000-0000-0000-000000000909';
 const output='.backend-ci/wave09-results';mkdirSync(output,{recursive:true});
