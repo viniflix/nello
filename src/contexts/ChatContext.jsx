@@ -25,6 +25,8 @@ export function ChatProvider({ children }) {
   const recipientRef = useRef(null);
   const viewRef = useRef(view); viewRef.current = view;
   const requestEpoch = useRef(0);
+  const readingEpoch = useRef(null);
+  const deferredRefresh = useRef(null);
   const conversationEpoch = useRef(0);
   const readThrough = useRef(null);
   const sending = useRef(false);
@@ -48,12 +50,18 @@ export function ChatProvider({ children }) {
   }, [userId]);
   const fetchMessages = useCallback(async (fromId, toId, { older = false, refresh = false } = {}) => {
     if (!userId || fromId !== userId || !toId) return;
+    if (refresh && readingEpoch.current !== null && recipientRef.current === toId) {
+      deferredRefresh.current = { owner: userId, recipient: toId };
+      return;
+    }
     const epoch = ++requestEpoch.current;
+    readingEpoch.current = epoch;
+    deferredRefresh.current = null;
     const access = getAccessEpoch(userId), session = getPrivateSessionEpoch();
     const previous = viewRef.current;
     const first = older ? previous.messages[0] : null;
     recipientRef.current = toId;
-    setView(current => ({ owner: userId, recipient: toId, messages: (older || refresh) && current.recipient === toId ? current.messages : [], hasMore: false, loading: true }));
+    setView(current => ({ owner: userId, recipient: toId, readEpoch: epoch, messages: (older || refresh) && current.recipient === toId ? current.messages : [], hasMore: false, loading: true }));
     setLoadError(false);
     try {
       const { data, error } = await supabase.rpc('list_chat_messages', {
@@ -63,23 +71,35 @@ export function ChatProvider({ children }) {
       if (identity.current !== userId || epoch !== requestEpoch.current || access !== getAccessEpoch(userId) || session !== getPrivateSessionEpoch()) return;
       if (error) throw error;
       const reconciled = refresh ? reconcileChatPage(previous, data) : { messages: mergeChatMessages(older ? previous.messages : [], data?.messages || []), hasMore: data?.has_more === true };
-      setView({ owner: userId, recipient: toId, ...reconciled, loading: false });
+      setView({ owner: userId, recipient: toId, readEpoch: epoch, ...reconciled, loading: false });
       accessBlocked.current = false;
     } catch (error) {
       if (identity.current === userId && epoch === requestEpoch.current) {
         const denied = ['forbidden','unauthenticated'].includes(classifyFailure(error));
         if (denied) accessBlocked.current = true;
-        setView({ owner: userId, recipient: toId, messages: !denied && (older || refresh) ? previous.messages : [], hasMore: !denied && (older || refresh) && previous.hasMore, loading: false });
+        setView({ owner: userId, recipient: toId, readEpoch: epoch, messages: !denied && (older || refresh) ? previous.messages : [], hasMore: !denied && (older || refresh) && previous.hasMore, loading: false });
         setLoadError(true);
       }
     }
   }, [userId]);
+  useEffect(() => {
+    // Keep the read protected until its confirmed snapshot has committed.
+    if (view.loading || view.readEpoch !== readingEpoch.current) return;
+    readingEpoch.current = null;
+    const queued = deferredRefresh.current;
+    if (!queued) return;
+    deferredRefresh.current = null;
+    if (!accessBlocked.current && identity.current === queued.owner && view.owner === queued.owner && view.recipient === queued.recipient) {
+      void fetchMessages(queued.owner, queued.recipient, { refresh: true });
+    }
+  }, [view, fetchMessages]);
   const loadOlderMessages = useCallback(() => {
     const current = viewRef.current;
     if (current.owner === userId && current.hasMore && !current.loading) return fetchMessages(userId, current.recipient, { older: true });
   }, [userId, fetchMessages]);
   const closeConversation = useCallback(() => {
     recipientRef.current = null; requestEpoch.current += 1; readThrough.current = null;
+    readingEpoch.current = null; deferredRefresh.current = null;
     setView({ owner: userId, recipient: null, messages: [], hasMore: false, loading: false });
   }, [userId]);
   const markChatAsRead = useCallback(async senderId => {
@@ -123,11 +143,12 @@ export function ChatProvider({ children }) {
       void fetchConversations();
       if (recipientRef.current) void fetchMessages(userId, recipientRef.current, { refresh: true });
     };
-    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => { if (session?.user?.id !== userId) { identity.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; } });
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event, session) => { if (session?.user?.id !== userId) { identity.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; readingEpoch.current = null; deferredRefresh.current = null; } });
     const unsubChat = subscribeDomain(userId, 'chat', refresh);
     const unsubNotifications = subscribeDomain(userId, 'notifications', () => { void fetchConversations(); });
     const unsubAccess = subscribeDomain(userId, 'access', () => {
       accessBlocked.current = true;
+      readingEpoch.current = null; deferredRefresh.current = null;
       requestEpoch.current += 1; conversationEpoch.current += 1; conversationRequest.current = null;
       readThrough.current = null;
       setConversationState({ owner: userId, data: [] });
@@ -135,7 +156,7 @@ export function ChatProvider({ children }) {
       void fetchConversations();
       if (recipientRef.current) void fetchMessages(userId, recipientRef.current);
     });
-    return () => { authListener.subscription.unsubscribe(); unsubChat(); unsubNotifications(); unsubAccess(); recipientRef.current = null; readThrough.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; };
+    return () => { authListener.subscription.unsubscribe(); unsubChat(); unsubNotifications(); unsubAccess(); readingEpoch.current = null; deferredRefresh.current = null; recipientRef.current = null; readThrough.current = null; requestEpoch.current += 1; conversationEpoch.current += 1; };
   }, [userId, fetchConversations, fetchMessages]);
   const conversations = conversationState.owner === userId ? conversationState.data : [];
   const messages = view.owner === userId ? view.messages : [];
