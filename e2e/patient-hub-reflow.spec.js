@@ -78,7 +78,9 @@ for (const [width, fontSize, loadedPlan, planReadError] of [[320, 32, false, fal
     await expect(help).toBeFocused();
     await identity.focus(); await expect(identity).toBeFocused();
     await page.keyboard.press('Enter');
-    await expect(page.getByRole('dialog')).toBeVisible();
+    const profile = page.getByRole('dialog', { name: 'Editar perfil do paciente', exact: true });
+    await expect(profile).toBeVisible();
+    await expect(profile.getByRole('button', { name: 'Alterar foto do paciente', exact: true })).toBeFocused();
     await page.keyboard.press('Escape');
     await expect(page.getByRole('dialog')).not.toBeVisible();
     await expect(identity).toBeFocused();
