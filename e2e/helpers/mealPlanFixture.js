@@ -7,7 +7,7 @@ export function seed(actor = fixture.personas['nutritionist-a'].id, existingPati
     if (!/^[a-f0-9-]{36}$/.test(actor)) throw Error('Synthetic actor ID required');
     if (existingPatient && !/^[a-f0-9-]{36}$/.test(existingPatient)) throw Error('Synthetic patient ID required');
     const patient = existingPatient || randomUUID();
-    const output = execFileSync('docker', ['exec', '-i', '-e', 'PGPASSWORD=postgres', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-h', '127.0.0.1', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
+    const output = execFileSync('docker', ['exec', '-i', 'supabase_db_nello-reconstruction', 'psql', '-X', '-At', '-U', 'supabase_admin', '-d', 'postgres', '-v', 'ON_ERROR_STOP=1'], {
         encoding:'utf8', input:`${existingPatient ? '' : `INSERT INTO auth.users(id,aud,role,email,raw_user_meta_data) VALUES('${patient}','authenticated','authenticated','${patient}@example.invalid','{"name":"QA Meal Module","user_type":"patient"}');`}
         UPDATE public.user_profiles SET user_type='patient',nutritionist_id='${actor}' WHERE id='${patient}';
         INSERT INTO public.patient_module_sync_flags(patient_id,needs_meal_plan_review) VALUES('${patient}',true);
