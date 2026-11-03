@@ -19,7 +19,7 @@ const COLORS = {
     pie: ['#527b42', '#ed7204', '#7a8c6a', '#a97c54', '#55646a', '#a6b89a', '#bd9f83']
 };
 
-export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading, loadError, projectionState, onRetry, onProjectionRetry, view = 'all' }) {
+export default function FinancialCharts({ cashFlowData, expenseDistribution, projectedCashFlow, loading, loadError, projectionState, onRetry, onProjectionRetry, onProjectionOpen, view = 'all' }) {
     const reducedMotion = useReducedMotion();
     const formattedCashFlow = useMemo(() => {
         if (!cashFlowData || cashFlowData.length === 0) return [];
@@ -111,7 +111,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                     <CardDescription>Despesas do mês. Projeção independente: hoje e os próximos 30 dias, condicionada aos recebimentos e pagamentos.</CardDescription>
                 </CardHeader>
                 <CardContent className="min-w-0">
-                    <Tabs defaultValue="expenses" className="w-full">
+                    <Tabs defaultValue="expenses" onValueChange={value => { if (value === 'projection') onProjectionOpen?.(); }} className="w-full">
                         <TabsList className="grid h-auto min-h-11 w-full grid-cols-2">
                             <TabsTrigger className="min-h-11 whitespace-normal py-2 leading-tight" value="expenses">Despesas</TabsTrigger>
                             <TabsTrigger className="min-h-11 whitespace-normal py-2 leading-tight" value="projection">Projeção (30 dias)</TabsTrigger>
@@ -158,7 +158,7 @@ export default function FinancialCharts({ cashFlowData, expenseDistribution, pro
                         </TabsContent>
                         <TabsContent value="projection" className="mt-4">
                             {projectionState === 'loading' ? (
-                                <ChartMessage>Carregando projeção...</ChartMessage>
+                                <div role="status"><ChartMessage>Carregando projeção...</ChartMessage></div>
                             ) : projectionState === 'error' ? (<ChartMessage onAction={onProjectionRetry} action="Tentar novamente">Projeção indisponível.</ChartMessage>) : formattedProjection.length === 0 ? (
                                 <ChartMessage icon={CalendarDays} description="A projeção acompanha compromissos registrados para hoje e os próximos 30 dias, independentemente do mês selecionado.">Nenhuma pendência prevista nos próximos 30 dias.</ChartMessage>
                             ) : (

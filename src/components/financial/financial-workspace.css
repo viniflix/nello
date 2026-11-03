@@ -150,3 +150,8 @@
 }
 @media(max-width:359px) { .financial-kpi { padding:10px; }.financial-kpi-value { font-size:20px; }.financial-kpi-value--long { font-size:14px; }.financial-kpi-value--extra-long { font-size:13px; }.financial-kpi--wide-number { grid-column:span 2; }.financial-kpi--wide-number .financial-kpi-value { font-size:20px; }.financial-kpi-label { min-height:34px; }.financial-kpi-action { font-size:11px; gap:4px; }.financial-toolbar-heading h1 { font-size:20px; }.financial-summary-dialog .financial-dialog-body>dl { grid-template-columns:1fr; } }
 @media(prefers-reduced-motion:reduce) { .financial-kpi,.financial-panel,.financial-dialog[role][data-state] { animation:none; }.financial-kpi,.financial-kpi-icon,.financial-kpi-action svg,.financial-pending-name { transition:none; }.financial-kpi:hover,.financial-kpi:focus-within,.financial-kpi:active,.financial-kpi:hover .financial-kpi-action svg { transform:none; } }
+
+.dark .financial-workspace .text-destructive,
+.dark .financial-dialog .text-destructive {
+  @apply text-red-300;
+}

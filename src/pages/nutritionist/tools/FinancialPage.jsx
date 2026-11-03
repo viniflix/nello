@@ -89,7 +89,7 @@ function FinancialPageContent() {
     const { begin: beginServices, succeed: confirmServices, fail: failServices } = servicesResource;
     const projectionResource = useResourceSnapshot(JSON.stringify([user?.id, 'projection']), []);
     const projectedCashFlow = projectionResource.data;
-    const { begin: beginProjection, succeed: confirmProjection, fail: failProjection } = projectionResource;
+    const { begin: beginProjection, succeed: confirmProjection, fail: failProjection, cancel: cancelProjection } = projectionResource;
     const [rankingRevision, setRankingRevision] = useState(0);
     const pendingResource = useResourceSnapshot(JSON.stringify([user?.id, 'pending']), []);
     const pendingPayments = pendingResource.data;
@@ -100,6 +100,8 @@ function FinancialPageContent() {
     const [mutationError, setMutationError] = useState(false);
     const loadRequest = useRef(0);
     const auxiliaryRequest = useRef(0);
+    const projectionRequested = useRef(false);
+    const projectionController = useRef(null);
     const auxiliaryState = Object.fromEntries(Object.entries({ projection: projectionResource, patients: patientsResource, services: servicesResource, pending: pendingResource })
         .map(([key, resource]) => [key, resource.hasSnapshot ? 'ready' : resource.error ? 'error' : 'loading']));
     const auxiliaryReads = useMemo(() => ({
@@ -129,6 +131,7 @@ function FinancialPageContent() {
         if (!deniedKind) return;
         loadRequest.current += 1;
         auxiliaryRequest.current += 1;
+        projectionController.current?.abort();
         const error = { status: deniedKind === 'unauthenticated' ? 401 : 403 };
         failMonth(beginMonth(), error);
         failGoal(beginGoal(), error);
@@ -199,12 +202,31 @@ function FinancialPageContent() {
         }
     }, [user?.id, monthKey, toast, beginMonth, confirmMonth, failMonth]), monthResource.scopeKey, ['clinical']);
 
+    const loadProjection = useCoordinatedLoader(useCallback(async () => {
+        if (!user?.id || !projectionRequested.current) return;
+        const controller = new AbortController();
+        projectionController.current = controller;
+        const ticket = beginProjection();
+        try {
+            const rows = await getProjectedCashFlow(user.id, new Date(), { signal: controller.signal });
+            if (controller.signal.aborted) cancelProjection(ticket);
+            else confirmProjection(ticket, rows);
+        } catch (error) {
+            if (controller.signal.aborted) cancelProjection(ticket);
+            else failProjection(ticket, error);
+        } finally {
+            if (projectionController.current === controller) projectionController.current = null;
+        }
+    }, [user?.id, beginProjection, confirmProjection, failProjection, cancelProjection]), projectionResource.scopeKey, ['clinical']);
+    useEffect(() => () => { projectionController.current?.abort(); }, []);
+    const refreshProjection = () => { projectionController.current?.abort(); return loadProjection(); };
+    const requestProjection = () => { projectionRequested.current = true; void refreshProjection(); };
+
     const loadAuxiliaryData = useCoordinatedLoader(useCallback(async () => {
         if (!user?.id) return;
         const request = ++auxiliaryRequest.current;
-        const tickets = Object.fromEntries(Object.entries(auxiliaryReads).map(([key, resource]) => [key, resource.begin()]));
+        const tickets = Object.fromEntries(Object.entries(auxiliaryReads).filter(([key]) => key !== 'projection').map(([key, resource]) => [key, resource.begin()]));
         await observeResources({
-            projection: () => getProjectedCashFlow(user.id, new Date()),
             patients: () => getPatientsForAutocomplete(user.id),
             services: () => getServices(user.id),
             pending: () => getPendingPayments(user.id),
@@ -223,7 +245,7 @@ function FinancialPageContent() {
     useEffect(() => { loadAuxiliaryData(); return () => { auxiliaryRequest.current += 1; }; }, [loadAuxiliaryData]);
 
     const refreshAfterMutation = async () => {
-        await Promise.all([loadData(), loadAuxiliaryData()]);
+        await Promise.all([loadData(), loadAuxiliaryData(), refreshProjection()]);
         setRankingRevision(revision => revision + 1);
     };
 
@@ -438,7 +460,7 @@ function FinancialPageContent() {
                     <TabsList className="financial-view-tabs grid h-auto w-full grid-cols-3 sm:w-auto sm:inline-flex"><TabsTrigger value="overview">Visão geral</TabsTrigger><TabsTrigger value="history">Movimentações</TabsTrigger><TabsTrigger value="analysis">Análises</TabsTrigger></TabsList>
                     {[monthResource,projectionResource,pendingResource,patientsResource,servicesResource,goalResource].some(resource=>resource.error)&&<div className="grid gap-x-4 sm:grid-cols-3">
                     <ResourceStatus resource={monthResource} label="lançamentos" onRetry={loadData} />
-                    <ResourceStatus resource={projectionResource} label="projeção" onRetry={loadAuxiliaryData} />
+                    <ResourceStatus resource={projectionResource} label="projeção" onRetry={refreshProjection} />
                     <ResourceStatus resource={pendingResource} label="cobranças" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={patientsResource} label="pacientes" onRetry={loadAuxiliaryData} />
                     <ResourceStatus resource={servicesResource} label="serviços" onRetry={loadAuxiliaryData} />
@@ -446,7 +468,7 @@ function FinancialPageContent() {
                     </div>}
                     {!unavailable && <FinancialKPIs summary={summary} loading={loading} onInspect={(kind, target) => { metricTrigger.current = target; setMetricView(kind); }} />}
                     <TabsContent value="overview" className="space-y-5">
-                        <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} readOnly={!pendingResource.canAct} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>
+                        <div className="financial-overview-grid"><div className="financial-panel financial-panel--flow"><FinancialCharts view="cash" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={refreshProjection} onProjectionOpen={requestProjection} /></div><div className="financial-panel financial-panel--pending"><PendingPaymentsWidget payments={pendingPayments} readOnly={!pendingResource.canAct} state={auxiliaryState.pending} onRetry={loadAuxiliaryData} onUpdate={refreshAfterMutation} onInspect={setInspectedTransaction} /></div></div>
                         <FinancialGoal goal={monthlyGoal} state={goalState} income={summary.income} loading={loading} incomeUnavailable={unavailable} onSettings={openFinancialSettings} onRetry={() => setGoalRevision(v => v + 1)} />
                         <div className="financial-history-heading flex flex-wrap items-center justify-between gap-3"><h2 className="text-base font-semibold">Últimas movimentações</h2><Button variant="ghost" aria-label="Abrir histórico completo" onClick={() => setWorkspaceView('history')}><span className="financial-desktop-label">Abrir histórico completo</span><span className="financial-mobile-label" aria-hidden="true">Ver histórico</span></Button></div>
                         <TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={unavailable} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} />
@@ -454,7 +476,7 @@ function FinancialPageContent() {
                     <TabsContent value="history" className="space-y-5"><TransactionList key={workspaceView} pageSize={workspaceView === 'overview' ? 6 : 20} transactions={transactions} totalCount={monthRows.length} loading={loading} loadError={unavailable} onRetry={loadData} onNew={handleNewTransaction} onEdit={handleEditTransaction} onDelete={id => setDeleteConfirm(id)} onGenerateReceipt={handleGenerateReceipt} onConfirmPayment={setPaymentConfirm} onRefund={setRefundConfirm} filters={filters} onFiltersChange={setFilters} /></TabsContent>
                     <TabsContent value="analysis">
                         <Tabs defaultValue="cash" className="space-y-4"><TabsList className="grid h-auto w-full grid-cols-3 sm:inline-flex sm:w-auto"><TabsTrigger value="cash">Caixa e projeção</TabsTrigger><TabsTrigger value="patients">Por paciente</TabsTrigger><TabsTrigger value="services">Serviços</TabsTrigger></TabsList>
-                            <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={loadAuxiliaryData} /></TabsContent>
+                            <TabsContent value="cash"><FinancialCharts view="analysis" cashFlowData={cashFlowData} expenseDistribution={expenseDistribution} projectedCashFlow={projectedCashFlow} loading={loading} loadError={unavailable} projectionState={auxiliaryState.projection} onRetry={loadData} onProjectionRetry={refreshProjection} onProjectionOpen={requestProjection} /></TabsContent>
                             <TabsContent value="patients"><TopPatientsWidget nutritionistId={user?.id} refreshKey={rankingRevision} onAccessError={handleAccessError} /></TabsContent>
                             <TabsContent value="services"><section aria-label="Catálogo de serviços" className="rounded-2xl bg-card p-5 shadow-sm"><div className="flex flex-wrap items-start justify-between gap-3"><div><h2 className="text-base font-semibold">Serviços do consultório</h2><p className="mt-1 text-sm text-muted-foreground">Preços cadastrados. Alterar um serviço não recalcula lançamentos anteriores.</p></div><Button variant="outline" onClick={() => setIsServicesManagerOpen(true)}>Gerenciar Serviços</Button></div>{auxiliaryState.services === 'error' ? <div role="alert" className="mt-4 text-sm">Catálogo indisponível. <Button variant="outline" onClick={loadAuxiliaryData}>Tentar carregar serviços</Button></div> : auxiliaryState.services === 'loading' ? <p role="status" className="mt-4 text-sm">Carregando serviços…</p> : !services.length ? <p className="mt-4 text-sm text-muted-foreground">Nenhum serviço cadastrado.</p> : <ul className="mt-5 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">{services.map(service => <li key={service.id} className="rounded-xl bg-muted/50 p-4"><p className="break-words text-sm font-medium">{service.name}</p><p className="mt-2 text-xl font-semibold tabular-nums">{formatCurrency(service.price)}</p>{service.description && <p className="mt-2 break-words text-sm text-muted-foreground">{service.description}</p>}</li>)}</ul>}</section></TabsContent>
                         </Tabs>

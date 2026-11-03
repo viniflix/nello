@@ -9,7 +9,7 @@ import { financeClient as supabase } from '@/infrastructure/supabase/domainClien
 import { format, startOfMonth, endOfMonth, addDays, parseISO, startOfDay } from 'date-fns';
 import { logSupabaseError } from '@/lib/supabase/query-helpers';
 import { summarizeFinancialTransactions, buildFinancialCashFlow, buildFinancialExpenseDistribution } from '@/lib/utils/financial-math';
-import {MAX_DATA_ROWS} from './bounded-pages';
+import {collectBoundedPages, MAX_DATA_ROWS} from './bounded-pages';
 
 export async function getFinancialTransactionById(nutritionistId, transactionId, readOptions = {}) {
     if (!nutritionistId || !/^[1-9]\d*$/.test(String(transactionId))) throw new Error('Invalid transaction reference');
@@ -149,17 +149,17 @@ export async function getExpenseDistribution(nutritionistId, monthDate) {
  * @param {Date} startDate - Starting date (usually today)
  * @returns {Promise<Array>} Array of { date, balance } objects
  */
-export async function getProjectedCashFlow(nutritionistId, startDate) {
+export async function getProjectedCashFlow(nutritionistId, startDate, readOptions = {}) {
+    if (!nutritionistId) throw new Error('nutritionistId is required');
+    return executeRead(async signal => {
     const today = startOfDay(startDate);
     const endDate = addDays(today, 30);
+    let remainingRows = MAX_DATA_ROWS;
     const allPages = async (buildQuery) => {
-        const rows = [];
-        for (let offset = 0; ; offset += 1000) {
-            const { data, error } = await buildQuery().order('id', { ascending: true }).range(offset, offset + 999);
-            if (error) throw error;
-            rows.push(...(data || []));
-            if (!data || data.length < 1000) break;
-        }
+        const rows = await collectBoundedPages((offset, size) => buildQuery()
+            .order('id', { ascending: true }).range(offset, offset + size - 1),
+        { signal, pageSize: 1000, maxRows: remainingRows });
+        remainingRows -= rows.length;
         return rows;
     };
 
@@ -245,6 +245,7 @@ export async function getProjectedCashFlow(nutritionistId, startDate) {
     }
 
     return projection;
+    }, { signal: readOptions?.signal, policy: readPolicies.collection });
 }
 
 /**
